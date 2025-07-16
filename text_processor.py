@@ -18,7 +18,8 @@ class TextProcessor:
         self.nlp = spacy.load("en_core_web_sm")
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
-            google_api_key=GOOGLE_API_KEY
+            google_api_key=GOOGLE_API_KEY,
+            convert_system_message_to_human=True  # Enable system message conversion
         )
 
     def extract_entities(self, text):
