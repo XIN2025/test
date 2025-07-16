@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict
 import logging
@@ -21,7 +22,49 @@ if not GOOGLE_API_KEY:
     raise ValueError("GOOGLE_API_KEY not found in environment variables. Please check your .env file.")
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Vite's default development port
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
 db = Neo4jDatabase()
+processor = TextProcessor()
+
+class UploadResponse(BaseModel):
+    entities: int
+    relationships: int
+
+@app.post("/upload", response_model=UploadResponse)
+async def upload_file(file: UploadFile = File(...)):
+    """Process an uploaded text file and store entities/relationships in the graph"""
+    try:
+        # Read the file content
+        content = await file.read()
+        text = content.decode('utf-8')
+        
+        # Process the text
+        entities, relationships = processor.process_text(text)
+        
+        # Store in Neo4j
+        for entity in entities:
+            db.create_entity(entity['type'], entity['name'])
+        
+        for rel in relationships:
+            db.create_relationship(rel['from'], rel['type'], rel['to'])
+        
+        return UploadResponse(
+            entities=len(entities),
+            relationships=len(relationships)
+        )
+        
+    except Exception as e:
+        logging.error(f"Error processing upload: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Initialize Gemini model
 llm = ChatGoogleGenerativeAI(
