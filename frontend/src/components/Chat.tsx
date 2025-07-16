@@ -7,10 +7,10 @@ import {
     Text,
     Flex,
     IconButton,
+    useColorModeValue,
 } from '@chakra-ui/react';
 import { FiSend, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import type { Message } from '../types';
-import axios from 'axios';
 
 interface ChatProps {
     messages: Message[];
@@ -21,6 +21,11 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
     const [input, setInput] = useState('');
     const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const userMessageBg = useColorModeValue('blue.100', 'blue.900');
+    const assistantMessageBg = useColorModeValue('green.100', 'green.900');
+    const contextBg = useColorModeValue('gray.100', 'gray.700');
+    const borderColor = useColorModeValue('gray.200', 'gray.600');
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,9 +59,10 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
                 {messages.map((message) => (
                     <Box
                         key={message.id}
-                        bg={message.type === 'user' ? 'blue.50' : 'green.50'}
+                        bg={message.type === 'user' ? userMessageBg : assistantMessageBg}
                         p={4}
                         borderRadius="lg"
+                        shadow="md"
                     >
                         <Flex justifyContent="space-between" alignItems="center">
                             <Text fontWeight="bold" mb={2}>
@@ -66,9 +72,9 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
                                 <IconButton
                                     aria-label="Toggle context"
                                     onClick={() => toggleContext(message.id)}
-                                >
-                                    {expandedMessage === message.id ? <FiChevronUp /> : <FiChevronDown />}
-                                </IconButton>
+                                    variant="ghost"
+                                    icon={expandedMessage === message.id ? <FiChevronUp /> : <FiChevronDown />}
+                                />
                             )}
                         </Flex>
                         <Text>{message.content}</Text>
@@ -76,7 +82,7 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
                             <Box 
                                 mt={4} 
                                 p={4} 
-                                bg="gray.50" 
+                                bg={contextBg}
                                 borderRadius="md"
                                 transition="all 0.2s"
                             >
@@ -93,13 +99,14 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
                 <div ref={messagesEndRef} />
             </VStack>
 
-            <Box p={4} borderTop="1px" borderColor="gray.200">
+            <Box p={4} borderTop="1px" borderColor={borderColor}>
                 <form onSubmit={handleSubmit}>
                     <Flex gap={2}>
                         <Input
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             placeholder="Ask a question..."
+                            bg={useColorModeValue('white', 'gray.700')}
                         />
                         <Button
                             colorScheme="blue"

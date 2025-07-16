@@ -6,6 +6,7 @@ import {
     Button,
     Box,
     Text,
+    useColorModeValue,
 } from '@chakra-ui/react';
 import { FiTrash2 } from 'react-icons/fi';
 import { Chat } from './components/Chat';
@@ -18,6 +19,11 @@ function App() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+
+    // Color mode values
+    const bgColor = useColorModeValue('gray.50', 'gray.900');
+    const containerBg = useColorModeValue('white', 'gray.800');
+    const headingColor = useColorModeValue('gray.800', 'white');
 
     const showError = (message: string) => {
         setError(message);
@@ -78,18 +84,20 @@ function App() {
     };
 
     return (
-        <Box minH="100vh" bg="gray.50">
+        <Box minH="100vh" bg={bgColor}>
             <Container maxW="container.lg" py={8}>
                 <VStack gap={8} align="stretch">
-                    <Heading textAlign="center">Knowledge Graph QA System</Heading>
+                    <Heading textAlign="center" color={headingColor}>
+                        Knowledge Graph QA System
+                    </Heading>
                     {error && (
-                        <Box p={4} bg="red.50" borderRadius="md" color="red.600">
+                        <Box p={4} bg={useColorModeValue('red.50', 'red.900')} borderRadius="md" color={useColorModeValue('red.600', 'red.200')}>
                             <Text fontWeight="bold">Error:</Text>
                             <Text>{error}</Text>
                         </Box>
                     )}
                     {success && (
-                        <Box p={4} bg="green.50" borderRadius="md" color="green.600">
+                        <Box p={4} bg={useColorModeValue('green.50', 'green.900')} borderRadius="md" color={useColorModeValue('green.600', 'green.200')}>
                             <Text>{success}</Text>
                         </Box>
                     )}
@@ -104,7 +112,7 @@ function App() {
                     </Button>
                     <Box
                         flex="1"
-                        bg="white"
+                        bg={containerBg}
                         p={6}
                         borderRadius="lg"
                         boxShadow="sm"

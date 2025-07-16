@@ -11,6 +11,16 @@ class Neo4jDatabase:
     def close(self):
         self.driver.close()
 
+    def get_all_entities(self):
+        """Get all entities from the database"""
+        with self.driver.session() as session:
+            cypher_query = """
+            MATCH (e)
+            RETURN labels(e)[0] as type, e.name as name
+            """
+            result = session.run(cypher_query)
+            return [{"type": record["type"], "name": record["name"]} for record in result]
+
     def create_entity(self, entity_type, name, properties=None):
         with self.driver.session() as session:
             properties = properties or {}

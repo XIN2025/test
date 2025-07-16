@@ -4,6 +4,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import json
 import os
 from dotenv import load_dotenv
+from graph_db import Neo4jDatabase
 
 # Load environment variables
 load_dotenv()
@@ -16,14 +17,24 @@ if not GOOGLE_API_KEY:
 class TextProcessor:
     def __init__(self):
         self.nlp = spacy.load("en_core_web_sm")
+        self.db = Neo4jDatabase()
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
             google_api_key=GOOGLE_API_KEY,
             convert_system_message_to_human=True  # Enable system message conversion
         )
 
+    def get_existing_entities(self):
+        """Get all existing entities from Neo4j"""
+        try:
+            return self.db.get_all_entities()
+        except Exception as e:
+            print(f"Warning: Failed to get existing entities: {str(e)}")
+            return []
+
     def extract_entities(self, text):
-        """Extract entities using SpaCy"""
+        """Extract entities using SpaCy and match against existing entities"""
+        # Get entities from SpaCy
         doc = self.nlp(text)
         entities = []
         for ent in doc.ents:
@@ -33,6 +44,27 @@ class TextProcessor:
                 "start": ent.start_char,
                 "end": ent.end_char
             })
+
+        # Get existing entities from Neo4j
+        existing_entities = self.get_existing_entities()
+        
+        # Convert text to lowercase for case-insensitive matching
+        text_lower = text.lower()
+        
+        # Check for existing entities in the text (case-insensitive)
+        for entity in existing_entities:
+            entity_lower = entity["name"].lower()
+            if entity_lower in text_lower:
+                # Check if this entity is already found by SpaCy
+                if not any(e["name"].lower() == entity_lower for e in entities):
+                    # Add the entity with the original capitalization from the database
+                    entities.append({
+                        "name": entity["name"],  # Use original capitalization
+                        "type": entity["type"],
+                        "start": text_lower.find(entity_lower),
+                        "end": text_lower.find(entity_lower) + len(entity_lower)
+                    })
+
         return entities
 
     def identify_relationships(self, text, entities):

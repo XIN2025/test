@@ -79,14 +79,20 @@ async def upload_file(file: UploadFile = File(...)):
 async def query(request: QueryRequest):
     """Query the knowledge graph"""
     try:
+        print(f"\n[DEBUG] Processing question: {request.question}")
+        
         # Extract entities from the question
         entities = processor.extract_entities(request.question)
+        print(f"[DEBUG] Extracted entities: {entities}")
         entity_names = [e["name"] for e in entities]
+        print(f"[DEBUG] Entity names for query: {entity_names}")
         
         # Get context from Neo4j
         context = db.get_context(entity_names)
+        print(f"[DEBUG] Retrieved context: {context}")
         
         if not context:
+            print("[DEBUG] No context found in knowledge graph")
             return QueryResponse(
                 answer="I couldn't find any relevant information in the knowledge graph.",
                 context=[]
@@ -115,6 +121,7 @@ async def query(request: QueryRequest):
             context=context
         )
     except Exception as e:
+        print(f"[DEBUG] Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/clear")

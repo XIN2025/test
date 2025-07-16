@@ -5,6 +5,7 @@ import {
     Input,
     Text,
     VStack,
+    useColorModeValue,
 } from '@chakra-ui/react';
 import { FiUpload } from 'react-icons/fi';
 import axios from 'axios';
@@ -18,6 +19,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Color mode values
+    const borderColor = useColorModeValue('gray.200', 'gray.600');
+    const progressTrackBg = useColorModeValue('gray.100', 'gray.700');
+    const textColor = useColorModeValue('gray.800', 'white');
 
     const handleUpload = async (file: File) => {
         const formData = new FormData();
@@ -68,9 +74,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     };
 
     return (
-        <Box p={4} borderWidth={1} borderRadius="lg">
+        <Box 
+            p={4} 
+            borderWidth={1} 
+            borderRadius="lg" 
+            borderColor={borderColor}
+            bg={useColorModeValue('white', 'gray.800')}
+        >
             <VStack gap={4}>
-                <Text fontSize="lg" fontWeight="bold">
+                <Text fontSize="lg" fontWeight="bold" color={textColor}>
                     Upload Text File
                 </Text>
                 <Input
@@ -92,7 +104,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
                     <Box
                         w="100%"
                         h="4px"
-                        bg="gray.100"
+                        bg={progressTrackBg}
                         borderRadius="full"
                         overflow="hidden"
                     >
