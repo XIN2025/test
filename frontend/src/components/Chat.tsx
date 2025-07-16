@@ -35,9 +35,16 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
     const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
+
+    // Scroll chat to bottom when messages change
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [messages]);
 
     const userMessageBg = useColorModeValue('blue.100', 'blue.900');
     const assistantMessageBg = useColorModeValue('green.100', 'green.900');
@@ -48,14 +55,6 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
     const badgeColor = useColorModeValue('white', 'gray.800');
     const modalBg = useColorModeValue('white', 'gray.800');
     const progressTrackBg = useColorModeValue('gray.100', 'gray.700');
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -121,11 +120,29 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
     return (
         <Box h="100%" display="flex" flexDirection="column">
             <VStack
+                ref={chatContainerRef}
                 flex="1"
-                overflowY="auto"
+                maxH="calc(100vh - 200px)" // Account for header, input box, and padding
+                overflowY="scroll"
                 p={4}
                 alignItems="stretch"
                 gap={4}
+                css={{
+                    '&::-webkit-scrollbar': {
+                        width: '8px',
+                    },
+                    '&::-webkit-scrollbar-track': {
+                        background: useColorModeValue('gray.100', 'gray.700'),
+                        borderRadius: '4px',
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                        background: useColorModeValue('gray.300', 'gray.600'),
+                        borderRadius: '4px',
+                        '&:hover': {
+                            background: useColorModeValue('gray.400', 'gray.500'),
+                        },
+                    },
+                }}
             >
                 {messages.map((message) => (
                     <Box
@@ -176,7 +193,7 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
                                 <Divider my={4} borderColor={borderColor} />
                                 <Box>
                                     <Text fontWeight="bold" mb={2} fontSize="sm" color={contextTextColor}>
-                                        Knowledge Graph Context:
+                                        Medical Knowledge Context:
                                     </Text>
                                     <VStack 
                                         align="stretch" 
@@ -205,7 +222,6 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
                         )}
                     </Box>
                 ))}
-                <div ref={messagesEndRef} />
             </VStack>
 
             <Box p={4} borderTop="1px" borderColor={borderColor}>
@@ -214,7 +230,7 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
                         <Input
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Ask a question..."
+                            placeholder="Ask a medical question..."
                             bg={useColorModeValue('white', 'gray.700')}
                         />
                         <Button
@@ -239,7 +255,7 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
             <Modal isOpen={isOpen} onClose={onClose}>
                 <ModalOverlay />
                 <ModalContent bg={modalBg}>
-                    <ModalHeader>Upload Text File</ModalHeader>
+                    <ModalHeader>Upload Medical Text File</ModalHeader>
                     <ModalCloseButton />
                     <ModalBody pb={6}>
                         <VStack spacing={4}>

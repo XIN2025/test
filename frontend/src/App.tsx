@@ -77,7 +77,7 @@ export const App: React.FC = () => {
                 bg={bgColor}
             >
                 <HStack justify="space-between" align="center">
-                    <Heading size="md">Knowledge Graph RAG</Heading>
+                    <Heading size="md">MediGraph Assistant</Heading>
                     <IconButton
                         aria-label="Toggle color mode"
                         icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}
