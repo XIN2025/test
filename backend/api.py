@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 import os
 from text_processor import TextProcessor
 from graph_db import Neo4jDatabase
@@ -48,6 +48,52 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     answer: str
     context: List[str]
+
+class GraphData(BaseModel):
+    nodes: List[Dict]
+    links: List[Dict]
+
+@app.get("/graph", response_model=GraphData)
+async def get_graph_data():
+    """Get the entire knowledge graph structure"""
+    try:
+        nodes, relationships = db.get_graph_data()
+        
+        # Format data for visualization
+        nodes_data = [
+            {
+                "id": node["name"],
+                "label": node["name"],
+                "type": node["type"],
+                "color": get_node_color(node["type"])
+            }
+            for node in nodes
+        ]
+        
+        links_data = [
+            {
+                "source": rel["from"],
+                "target": rel["to"],
+                "label": rel["type"]
+            }
+            for rel in relationships
+        ]
+        
+        return GraphData(nodes=nodes_data, links=links_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def get_node_color(node_type: str) -> str:
+    """Return color based on node type"""
+    color_map = {
+        "PERSON": "#ff7676",    # Red
+        "ORGANIZATION": "#76a5ff",  # Blue
+        "LOCATION": "#76ff7a",   # Green
+        "PRODUCT": "#ffd976",    # Yellow
+        "EVENT": "#c576ff",      # Purple
+        "DEFAULT": "#a0a0a0"     # Gray
+    }
+    return color_map.get(node_type, color_map["DEFAULT"])
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):

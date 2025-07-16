@@ -8,8 +8,12 @@ import {
     Flex,
     IconButton,
     useColorModeValue,
+    Collapse,
+    Badge,
+    Divider,
+    HStack,
 } from '@chakra-ui/react';
-import { FiSend, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiSend, FiChevronDown, FiChevronUp, FiInfo } from 'react-icons/fi';
 import type { Message } from '../types';
 
 interface ChatProps {
@@ -26,6 +30,9 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
     const assistantMessageBg = useColorModeValue('green.100', 'green.900');
     const contextBg = useColorModeValue('gray.100', 'gray.700');
     const borderColor = useColorModeValue('gray.200', 'gray.600');
+    const contextTextColor = useColorModeValue('gray.600', 'gray.300');
+    const badgeBg = useColorModeValue('blue.500', 'blue.200');
+    const badgeColor = useColorModeValue('white', 'gray.800');
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,35 +71,73 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
                         borderRadius="lg"
                         shadow="md"
                     >
-                        <Flex justifyContent="space-between" alignItems="center">
-                            <Text fontWeight="bold" mb={2}>
-                                {message.type === 'user' ? 'You' : 'Assistant'}
-                            </Text>
+                        <Flex justifyContent="space-between" alignItems="center" mb={2}>
+                            <HStack spacing={2}>
+                                <Text fontWeight="bold">
+                                    {message.type === 'user' ? 'You' : 'Assistant'}
+                                </Text>
+                                {message.type === 'assistant' && message.context && message.context.length > 0 && (
+                                    <Badge 
+                                        colorScheme="blue" 
+                                        variant="solid"
+                                        bg={badgeBg}
+                                        color={badgeColor}
+                                        borderRadius="full"
+                                        px={2}
+                                        display="flex"
+                                        alignItems="center"
+                                        cursor="pointer"
+                                        onClick={() => toggleContext(message.id)}
+                                    >
+                                        <FiInfo style={{ marginRight: '4px' }} />
+                                        {message.context.length} Context Items
+                                    </Badge>
+                                )}
+                            </HStack>
                             {message.context && message.context.length > 0 && (
                                 <IconButton
                                     aria-label="Toggle context"
                                     onClick={() => toggleContext(message.id)}
                                     variant="ghost"
+                                    size="sm"
                                     icon={expandedMessage === message.id ? <FiChevronUp /> : <FiChevronDown />}
                                 />
                             )}
                         </Flex>
-                        <Text>{message.content}</Text>
-                        {message.context && expandedMessage === message.id && (
-                            <Box 
-                                mt={4} 
-                                p={4} 
-                                bg={contextBg}
-                                borderRadius="md"
-                                transition="all 0.2s"
-                            >
-                                <Text fontWeight="bold" mb={2}>Context:</Text>
-                                <VStack align="stretch" gap={2}>
-                                    {message.context.map((ctx, idx) => (
-                                        <Text key={idx} fontSize="sm">{ctx}</Text>
-                                    ))}
-                                </VStack>
-                            </Box>
+                        <Text fontSize="md" mb={message.context && expandedMessage === message.id ? 4 : 0}>
+                            {message.content}
+                        </Text>
+                        {message.context && message.context.length > 0 && (
+                            <Collapse in={expandedMessage === message.id}>
+                                <Divider my={4} borderColor={borderColor} />
+                                <Box>
+                                    <Text fontWeight="bold" mb={2} fontSize="sm" color={contextTextColor}>
+                                        Knowledge Graph Context:
+                                    </Text>
+                                    <VStack 
+                                        align="stretch" 
+                                        spacing={2} 
+                                        bg={contextBg} 
+                                        p={3} 
+                                        borderRadius="md"
+                                        fontSize="sm"
+                                    >
+                                        {message.context.map((ctx, idx) => (
+                                            <Text 
+                                                key={idx} 
+                                                color={contextTextColor}
+                                                p={2}
+                                                borderRadius="sm"
+                                                borderLeft="3px solid"
+                                                borderLeftColor="blue.400"
+                                                bg={useColorModeValue('white', 'gray.800')}
+                                            >
+                                                {ctx}
+                                            </Text>
+                                        ))}
+                                    </VStack>
+                                </Box>
+                            </Collapse>
                         )}
                     </Box>
                 ))}

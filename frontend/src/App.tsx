@@ -7,10 +7,16 @@ import {
     Box,
     Text,
     useColorModeValue,
+    Tabs,
+    TabList,
+    TabPanels,
+    Tab,
+    TabPanel,
 } from '@chakra-ui/react';
-import { FiTrash2 } from 'react-icons/fi';
+import { FiTrash2, FiMessageSquare, FiShare2 } from 'react-icons/fi';
 import { Chat } from './components/Chat';
 import { FileUpload } from './components/FileUpload';
+import { KnowledgeGraph } from './components/KnowledgeGraph';
 import type { Message, QueryResponse } from './types';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,7 +26,6 @@ function App() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    // Color mode values
     const bgColor = useColorModeValue('gray.50', 'gray.900');
     const containerBg = useColorModeValue('white', 'gray.800');
     const headingColor = useColorModeValue('gray.800', 'white');
@@ -85,7 +90,7 @@ function App() {
 
     return (
         <Box minH="100vh" bg={bgColor}>
-            <Container maxW="container.lg" py={8}>
+            <Container maxW="container.xl" py={8}>
                 <VStack gap={8} align="stretch">
                     <Heading textAlign="center" color={headingColor}>
                         Knowledge Graph QA System
@@ -113,12 +118,33 @@ function App() {
                     <Box
                         flex="1"
                         bg={containerBg}
-                        p={6}
                         borderRadius="lg"
                         boxShadow="sm"
-                        minH="500px"
+                        overflow="hidden"
                     >
-                        <Chat messages={messages} onSendMessage={handleSendMessage} />
+                        <Tabs isFitted variant="enclosed">
+                            <TabList>
+                                <Tab>
+                                    <FiMessageSquare style={{ marginRight: '8px' }} />
+                                    Chat Interface
+                                </Tab>
+                                <Tab>
+                                    <FiShare2 style={{ marginRight: '8px' }} />
+                                    Knowledge Graph
+                                </Tab>
+                            </TabList>
+
+                            <TabPanels>
+                                <TabPanel p={0}>
+                                    <Box p={6} minH="500px">
+                                        <Chat messages={messages} onSendMessage={handleSendMessage} />
+                                    </Box>
+                                </TabPanel>
+                                <TabPanel p={6}>
+                                    <KnowledgeGraph />
+                                </TabPanel>
+                            </TabPanels>
+                        </Tabs>
                     </Box>
                 </VStack>
             </Container>

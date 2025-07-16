@@ -11,6 +11,27 @@ class Neo4jDatabase:
     def close(self):
         self.driver.close()
 
+    def get_graph_data(self):
+        """Get all nodes and relationships from the graph"""
+        with self.driver.session() as session:
+            # Get all nodes
+            node_query = """
+            MATCH (n)
+            RETURN DISTINCT labels(n)[0] as type, n.name as name
+            """
+            nodes = [{"type": record["type"], "name": record["name"]}
+                    for record in session.run(node_query)]
+
+            # Get all relationships
+            rel_query = """
+            MATCH (from)-[r]->(to)
+            RETURN from.name as from, type(r) as type, to.name as to
+            """
+            relationships = [{"from": record["from"], "type": record["type"], "to": record["to"]}
+                           for record in session.run(rel_query)]
+
+            return nodes, relationships
+
     def get_all_entities(self):
         """Get all entities from the database"""
         with self.driver.session() as session:
