@@ -233,19 +233,22 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
                             placeholder="Ask a medical question..."
                             bg={useColorModeValue('white', 'gray.700')}
                         />
-                        <Button
+                        <IconButton
+                            aria-label="Send message"
+                            icon={<FiSend />}
                             colorScheme="blue"
-                            type="submit"
+                            onClick={handleSubmit}
                             disabled={!input.trim()}
-                        >
-                            <FiSend style={{ marginRight: '8px' }} />
-                            Send
-                        </Button>
+                            h="40px"
+                            w="40px"
+                        />
                         <IconButton
                             aria-label="Upload file"
                             icon={<FiUpload />}
                             colorScheme="green"
                             onClick={onOpen}
+                            h="40px"
+                            w="40px"
                         />
                     </Flex>
                 </form>
