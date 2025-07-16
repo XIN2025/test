@@ -1,13 +1,16 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional, Dict
-import os
+from typing import List, Dict
+import logging
 from text_processor import TextProcessor
 from graph_db import Neo4jDatabase
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
+import os
 from dotenv import load_dotenv
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
 
 # Load environment variables
 load_dotenv()
@@ -15,31 +18,16 @@ load_dotenv()
 # Get API key
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
-    raise ValueError("GOOGLE_API_KEY not found in environment variables")
+    raise ValueError("GOOGLE_API_KEY not found in environment variables. Please check your .env file.")
 
 app = FastAPI()
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite development server
-        "http://localhost:3000",  # Alternative development port
-        "http://127.0.0.1:5173",  # Alternative hostname
-        "http://127.0.0.1:3000",  # Alternative hostname
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Initialize components
-processor = TextProcessor()
 db = Neo4jDatabase()
+
+# Initialize Gemini model
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
+    model="gemini-1.5-pro",
     google_api_key=GOOGLE_API_KEY,
-    convert_system_message_to_human=True  # Enable system message conversion
+    convert_system_message_to_human=True  # Add this parameter to handle system messages
 )
 
 class QueryRequest(BaseModel):
@@ -52,6 +40,118 @@ class QueryResponse(BaseModel):
 class GraphData(BaseModel):
     nodes: List[Dict]
     links: List[Dict]
+
+async def extract_entities_with_llm(text: str) -> List[str]:
+    """Use LLM to intelligently extract entities from text."""
+    messages = [
+        SystemMessage(content="""You are an entity extraction expert. For the given input text, return ONLY a comma-separated list of potential entity names, including variations and common nicknames. No explanation, just the names.
+
+Examples:
+Input: "who is elon"
+Output: Elon, Elon Musk
+
+Input: "tell me about microsoft and google"
+Output: Microsoft, Google, Alphabet
+
+Input: "what did sam do"
+Output: Sam, Sam Altman, Samuel Altman"""),
+        HumanMessage(content=f"Extract entities from: {text}")
+    ]
+    
+    try:
+        response = llm.invoke(messages)
+        # Split by commas and clean up whitespace
+        entities = [e.strip() for e in response.content.split(',')]
+        logging.debug(f"LLM extracted entities: {entities}")
+        return [e for e in entities if e]  # Filter out empty strings
+    except Exception as e:
+        logging.error(f"Error in LLM entity extraction: {e}")
+        return []
+
+async def get_context_with_llm(entities: List[str], db_context: List[str]) -> List[str]:
+    """Use LLM to filter and rank context relevance."""
+    if not db_context:
+        return []
+
+    messages = [
+        SystemMessage(content="""You are a context filtering expert. Given entities and context statements:
+1. Remove redundant or contradictory information
+2. Keep only the most relevant statements
+3. Order from most to least relevant
+4. Return ONLY the statements, one per line, no explanations."""),
+        HumanMessage(content=f"""Filter and rank these context statements about: {', '.join(entities)}
+
+Context statements:
+{chr(10).join(db_context)}""")
+    ]
+    
+    try:
+        response = llm.invoke(messages)
+        context = [line.strip() for line in response.content.split('\n') if line.strip()]
+        logging.debug(f"LLM filtered context: {context}")
+        return context
+    except Exception as e:
+        logging.error(f"Error in LLM context filtering: {e}")
+        return db_context  # Fall back to original context if parsing fails
+
+@app.post("/query", response_model=QueryResponse)
+async def query(request: QueryRequest):
+    """Process a natural language query using the knowledge graph"""
+    try:
+        question = request.question
+        logging.debug(f"Processing question: {question}")
+        
+        # Use LLM for intelligent entity extraction
+        entity_names = await extract_entities_with_llm(question)
+        logging.debug(f"LLM extracted entity names: {entity_names}")
+        
+        if not entity_names:
+            return QueryResponse(
+                answer="I couldn't identify any entities in your question. Could you please rephrase it?",
+                context=[]
+            )
+        
+        # Get context from Neo4j
+        raw_context = db.get_context(entity_names)
+        logging.debug(f"Raw context from db: {raw_context}")
+        
+        # Use LLM to filter and rank context
+        context = await get_context_with_llm(entity_names, raw_context)
+        logging.debug(f"Filtered context: {context}")
+        
+        if not context:
+            return QueryResponse(
+                answer="I don't have enough information to answer that question.",
+                context=[]
+            )
+        
+        # Format context for final LLM query
+        context_str = "\n".join(context)
+        
+        # Create messages for the answer generation
+        messages = [
+            SystemMessage(content="""You are a knowledgeable assistant. When answering:
+1. Use only the provided context
+2. If context is contradictory, explain the contradiction
+3. Express uncertainty when appropriate
+4. Be concise but informative"""),
+            HumanMessage(content=f"""Based on this context, answer: {question}
+
+Context:
+{context_str}""")
+        ]
+        
+        # Get answer from LLM
+        response = llm.invoke(messages)
+        
+        return QueryResponse(
+            answer=response.content,
+            context=context
+        )
+        
+    except Exception as e:
+        logging.error(f"Error processing query: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/graph", response_model=GraphData)
 async def get_graph_data():
@@ -84,101 +184,12 @@ async def get_graph_data():
         raise HTTPException(status_code=500, detail=str(e))
 
 def get_node_color(node_type: str) -> str:
-    """Return color based on node type"""
+    """Return a color based on node type"""
     color_map = {
-        "PERSON": "#ff7676",    # Red
-        "ORGANIZATION": "#76a5ff",  # Blue
-        "LOCATION": "#76ff7a",   # Green
-        "PRODUCT": "#ffd976",    # Yellow
-        "EVENT": "#c576ff",      # Purple
-        "DEFAULT": "#a0a0a0"     # Gray
+        "PERSON": "#4CAF50",  # Green
+        "COMPANY": "#2196F3",  # Blue
+        "PRODUCT": "#FFC107",  # Amber
+        "LOCATION": "#9C27B0",  # Purple
+        "ORGANIZATION": "#FF5722",  # Deep Orange
     }
-    return color_map.get(node_type, color_map["DEFAULT"])
-
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    """Upload a text file and process it for the knowledge graph"""
-    try:
-        # Read the file content
-        content = await file.read()
-        text = content.decode()
-        
-        # Process the text
-        entities, relationships = processor.process_text(text)
-        
-        # Store in Neo4j
-        for entity in entities:
-            db.create_entity(entity['type'], entity['name'])
-        
-        for rel in relationships:
-            db.create_relationship(rel['from'], rel['type'], rel['to'])
-        
-        return {
-            "message": "File processed successfully",
-            "entities": len(entities),
-            "relationships": len(relationships)
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/query", response_model=QueryResponse)
-async def query(request: QueryRequest):
-    """Query the knowledge graph"""
-    try:
-        print(f"\n[DEBUG] Processing question: {request.question}")
-        
-        # Extract entities from the question
-        entities = processor.extract_entities(request.question)
-        print(f"[DEBUG] Extracted entities: {entities}")
-        entity_names = [e["name"] for e in entities]
-        print(f"[DEBUG] Entity names for query: {entity_names}")
-        
-        # Get context from Neo4j
-        context = db.get_context(entity_names)
-        print(f"[DEBUG] Retrieved context: {context}")
-        
-        if not context:
-            print("[DEBUG] No context found in knowledge graph")
-            return QueryResponse(
-                answer="I couldn't find any relevant information in the knowledge graph.",
-                context=[]
-            )
-        
-        # Format context for LLM
-        context_str = "\n".join(context)
-        
-        # Create messages for the prompt
-        messages = [
-            SystemMessage(content="You are a helpful assistant that answers questions based on the provided knowledge graph context."),
-            HumanMessage(content=f"""Given the following context from a knowledge graph and a question, provide a detailed answer.
-            Use only the information provided in the context.
-            
-            Context:
-            {context_str}
-            
-            Question: {request.question}""")
-        ]
-        
-        # Get answer from LLM
-        response = llm.invoke(messages)
-        
-        return QueryResponse(
-            answer=response.content,
-            context=context
-        )
-    except Exception as e:
-        print(f"[DEBUG] Error occurred: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/clear")
-async def clear_database():
-    """Clear the entire graph database"""
-    try:
-        db.clear_database()
-        return {"message": "Database cleared successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    return color_map.get(node_type, "#607D8B")  # Grey as default 
