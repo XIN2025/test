@@ -12,19 +12,32 @@ import {
     Badge,
     Divider,
     HStack,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalCloseButton,
+    useDisclosure,
 } from '@chakra-ui/react';
-import { FiSend, FiChevronDown, FiChevronUp, FiInfo } from 'react-icons/fi';
+import { FiSend, FiChevronDown, FiChevronUp, FiInfo, FiUpload } from 'react-icons/fi';
 import type { Message } from '../types';
+import axios from 'axios';
 
 interface ChatProps {
     messages: Message[];
     onSendMessage: (message: string) => void;
+    onUploadSuccess: () => void;
 }
 
-export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
+export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuccess }) => {
     const [input, setInput] = useState('');
     const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { isOpen, onOpen, onClose } = useDisclosure();
 
     const userMessageBg = useColorModeValue('blue.100', 'blue.900');
     const assistantMessageBg = useColorModeValue('green.100', 'green.900');
@@ -33,6 +46,8 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
     const contextTextColor = useColorModeValue('gray.600', 'gray.300');
     const badgeBg = useColorModeValue('blue.500', 'blue.200');
     const badgeColor = useColorModeValue('white', 'gray.800');
+    const modalBg = useColorModeValue('white', 'gray.800');
+    const progressTrackBg = useColorModeValue('gray.100', 'gray.700');
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,6 +67,55 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
 
     const toggleContext = (messageId: string) => {
         setExpandedMessage(expandedMessage === messageId ? null : messageId);
+    };
+
+    const handleUpload = async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            setIsUploading(true);
+            setUploadProgress(0);
+
+            const response = await axios.post(
+                'http://localhost:8000/upload',
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        const progress = progressEvent.total
+                            ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                            : 0;
+                        setUploadProgress(progress);
+                    },
+                }
+            );
+
+            alert(`Upload successful! Processed ${response.data.entities} entities and ${response.data.relationships} relationships`);
+            onUploadSuccess();
+            onClose();
+        } catch (error) {
+            alert(error instanceof Error ? error.message : 'An error occurred during upload');
+        } finally {
+            setIsUploading(false);
+            setUploadProgress(0);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            if (file.type === 'text/plain') {
+                handleUpload(file);
+            } else {
+                alert('Please upload a text file (.txt)');
+            }
+        }
     };
 
     return (
@@ -161,9 +225,60 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage }) => {
                             <FiSend style={{ marginRight: '8px' }} />
                             Send
                         </Button>
+                        <IconButton
+                            aria-label="Upload file"
+                            icon={<FiUpload />}
+                            colorScheme="green"
+                            onClick={onOpen}
+                        />
                     </Flex>
                 </form>
             </Box>
+
+            {/* Upload Modal */}
+            <Modal isOpen={isOpen} onClose={onClose}>
+                <ModalOverlay />
+                <ModalContent bg={modalBg}>
+                    <ModalHeader>Upload Text File</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody pb={6}>
+                        <VStack spacing={4}>
+                            <Input
+                                type="file"
+                                accept=".txt"
+                                onChange={handleFileChange}
+                                ref={fileInputRef}
+                                display="none"
+                            />
+                            <Button
+                                colorScheme="blue"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
+                                w="100%"
+                            >
+                                <FiUpload style={{ marginRight: '8px' }} />
+                                {isUploading ? 'Uploading...' : 'Choose File'}
+                            </Button>
+                            {isUploading && (
+                                <Box
+                                    w="100%"
+                                    h="4px"
+                                    bg={progressTrackBg}
+                                    borderRadius="full"
+                                    overflow="hidden"
+                                >
+                                    <Box
+                                        w={`${uploadProgress}%`}
+                                        h="100%"
+                                        bg="blue.500"
+                                        transition="width 0.3s ease-in-out"
+                                    />
+                                </Box>
+                            )}
+                        </VStack>
+                    </ModalBody>
+                </ModalContent>
+            </Modal>
         </Box>
     );
 }; 
