@@ -65,6 +65,11 @@ def query(question: str):
             print("[bold red]No relevant information found in the knowledge graph.[/bold red]")
             return
         
+        print("\n[bold blue]Retrieved Context:[/bold blue]")
+        for statement in context:
+            print(f"- {statement}")
+        print()
+        
         # Format context for LLM
         context_str = "\n".join(context)
         
