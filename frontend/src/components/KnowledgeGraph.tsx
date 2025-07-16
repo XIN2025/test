@@ -52,7 +52,23 @@ export const KnowledgeGraph: React.FC = () => {
     const linkColor = useColorModeValue('#000000', '#FFFFFF');
     const linkTextColor = useColorModeValue('gray.600', 'gray.300');
 
-    // Remove animation-related effects
+    // Function to deduplicate links
+    const deduplicateLinks = (links: any[]): Link[] => {
+        const seen = new Set<string>();
+        return links.filter(link => {
+            // Create a unique key for each relationship
+            const source = typeof link.source === 'object' ? link.source.id : link.source;
+            const target = typeof link.target === 'object' ? link.target.id : link.target;
+            const key = `${source}-${link.label}-${target}`;
+            const reverseKey = `${target}-${link.label}-${source}`;
+            
+            if (seen.has(key) || seen.has(reverseKey)) {
+                return false;
+            }
+            seen.add(key);
+            return true;
+        });
+    };
 
     const nodeTypes = graphData?.nodes.reduce((types, node) => {
         if (!types.includes(node.type)) {
@@ -68,11 +84,11 @@ export const KnowledgeGraph: React.FC = () => {
                 // Convert string IDs to actual node references for the links
                 const data: GraphData = {
                     nodes: response.data.nodes,
-                    links: response.data.links.map(link => ({
+                    links: deduplicateLinks(response.data.links.map(link => ({
                         ...link,
                         source: response.data.nodes.find(node => node.id === link.source) || link.source,
                         target: response.data.nodes.find(node => node.id === link.target) || link.target
-                    }))
+                    })))
                 };
                 setGraphData(data);
             } catch (err) {
@@ -100,7 +116,6 @@ export const KnowledgeGraph: React.FC = () => {
     }, []);
 
     const handleNodeClick = useCallback((node: Node) => {
-        // Handle node click - could zoom in or show details
         console.log('Clicked node:', node);
     }, []);
 
@@ -178,7 +193,7 @@ export const KnowledgeGraph: React.FC = () => {
                         const adjustedTargetX = targetPos.x - (nodeRadius * Math.cos(angle));
                         const adjustedTargetY = targetPos.y - (nodeRadius * Math.sin(angle));
                         
-                        // Draw the main line
+                        // Draw the line
                         ctx.strokeStyle = linkColor;
                         ctx.lineWidth = 0.5;
                         ctx.beginPath();
@@ -209,11 +224,20 @@ export const KnowledgeGraph: React.FC = () => {
                         if (label) {
                             const midX = (sourcePos.x + targetPos.x) / 2;
                             const midY = (sourcePos.y + targetPos.y) / 2;
-                            ctx.font = '8px Sans-Serif';
+
+                            // Calculate offset based on link index to prevent overlaps
+                            const linkIndex = graphData?.links.indexOf(link as Link) || 0;
+                            const offset = (linkIndex % 2 === 0 ? 1 : -1) * 12;  // Alternate between above and below
+                            
+                            // Apply offset perpendicular to the line
+                            const labelX = midX - Math.sin(angle) * offset;
+                            const labelY = midY + Math.cos(angle) * offset;
+
+                            ctx.font = '6px Sans-Serif';
                             ctx.fillStyle = linkTextColor;
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
-                            ctx.fillText(label, midX, midY);
+                            ctx.fillText(label.toLowerCase(), labelX, labelY);
                         }
                     }}
                     nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
