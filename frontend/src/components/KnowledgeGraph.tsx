@@ -25,9 +25,6 @@ interface Link {
     source: string | Node;
     target: string | Node;
     label: string;
-    __lineObj?: {
-        offset: number;
-    };
 }
 
 interface GraphData {
@@ -55,26 +52,7 @@ export const KnowledgeGraph: React.FC = () => {
     const linkColor = useColorModeValue('#000000', '#FFFFFF');
     const linkTextColor = useColorModeValue('gray.600', 'gray.300');
 
-    // Animation loop
-    useEffect(() => {
-        const animationFrame = requestAnimationFrame(() => {
-            setTime(time => time + 1);
-        });
-        return () => cancelAnimationFrame(animationFrame);
-    }, [time]);
-
-    // Initialize line objects
-    useEffect(() => {
-        if (graphData) {
-            graphData.links.forEach(link => {
-                if (!link.__lineObj) {
-                    link.__lineObj = {
-                        offset: Math.random()
-                    };
-                }
-            });
-        }
-    }, [graphData]);
+    // Remove animation-related effects
 
     const nodeTypes = graphData?.nodes.reduce((types, node) => {
         if (!types.includes(node.type)) {
@@ -182,34 +160,48 @@ export const KnowledgeGraph: React.FC = () => {
                     width={dimensions.width}
                     height={dimensions.height}
                     onNodeClick={handleNodeClick}
-                    linkDirectionalArrowLength={6}
+                    linkDirectionalArrowLength={0}  // Disable built-in arrow
                     linkDirectionalArrowRelPos={1}
                     linkCurvature={0.25}
-                    linkWidth={1.5}
+                    linkWidth={0.5}
                     linkCanvasObject={(link: any, ctx: CanvasRenderingContext2D) => {
                         const sourcePos = { x: (link.source as any).x, y: (link.source as any).y };
                         const targetPos = { x: (link.target as any).x, y: (link.target as any).y };
                         
+                        // Calculate the angle of the line
+                        const angle = Math.atan2(targetPos.y - sourcePos.y, targetPos.x - sourcePos.x);
+                        
+                        // Calculate the radius of the target node circle (matching the nodeCanvasObject)
+                        const nodeRadius = 5;
+                        
+                        // Adjust end point to be outside the circle
+                        const adjustedTargetX = targetPos.x - (nodeRadius * Math.cos(angle));
+                        const adjustedTargetY = targetPos.y - (nodeRadius * Math.sin(angle));
+                        
                         // Draw the main line
                         ctx.strokeStyle = linkColor;
-                        ctx.lineWidth = 1.5;
+                        ctx.lineWidth = 0.5;
                         ctx.beginPath();
                         ctx.moveTo(sourcePos.x, sourcePos.y);
-                        ctx.lineTo(targetPos.x, targetPos.y);
+                        ctx.lineTo(adjustedTargetX, adjustedTargetY);
                         ctx.stroke();
 
-                        // Draw animated particle
-                        const particleSpeed = 0.01;
-                        const particleSize = 3;
-                        const offset = ((link as Link).__lineObj?.offset || 0);
-                        const t = (time * particleSpeed + offset) % 1;
-                        
-                        const x = sourcePos.x + (targetPos.x - sourcePos.x) * t;
-                        const y = sourcePos.y + (targetPos.y - sourcePos.y) * t;
+                        // Draw the arrow
+                        const arrowLength = 5;
+                        const arrowAngle = Math.PI / 6;
                         
                         ctx.fillStyle = linkColor;
                         ctx.beginPath();
-                        ctx.arc(x, y, particleSize, 0, 2 * Math.PI);
+                        ctx.moveTo(adjustedTargetX, adjustedTargetY);
+                        ctx.lineTo(
+                            adjustedTargetX - arrowLength * Math.cos(angle - arrowAngle),
+                            adjustedTargetY - arrowLength * Math.sin(angle - arrowAngle)
+                        );
+                        ctx.lineTo(
+                            adjustedTargetX - arrowLength * Math.cos(angle + arrowAngle),
+                            adjustedTargetY - arrowLength * Math.sin(angle + arrowAngle)
+                        );
+                        ctx.closePath();
                         ctx.fill();
 
                         // Draw the label
