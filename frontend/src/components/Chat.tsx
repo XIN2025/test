@@ -31,21 +31,20 @@ interface ChatProps {
 }
 
 export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuccess }) => {
+    // State hooks
     const [input, setInput] = useState('');
     const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+
+    // Ref hooks
     const fileInputRef = useRef<HTMLInputElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
+
+    // Disclosure hook
     const { isOpen, onOpen, onClose } = useDisclosure();
 
-    // Scroll chat to bottom when messages change
-    useEffect(() => {
-        if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
-    }, [messages]);
-
+    // Color mode hooks
     const userMessageBg = useColorModeValue('blue.100', 'blue.900');
     const assistantMessageBg = useColorModeValue('green.100', 'green.900');
     const contextBg = useColorModeValue('gray.100', 'gray.700');
@@ -55,11 +54,26 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
     const badgeColor = useColorModeValue('white', 'gray.800');
     const modalBg = useColorModeValue('white', 'gray.800');
     const progressTrackBg = useColorModeValue('gray.100', 'gray.700');
+    const scrollbarTrackBg = useColorModeValue('gray.100', 'gray.700');
+    const scrollbarThumbBg = useColorModeValue('gray.300', 'gray.600');
+    const scrollbarThumbHoverBg = useColorModeValue('gray.400', 'gray.500');
+    const inputBg = useColorModeValue('white', 'gray.700');
+    const messageContextBg = useColorModeValue('white', 'gray.800');
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Effect hooks
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [messages]);
+
+    // Event handlers
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (input.trim()) {
-            onSendMessage(input);
+            // If onSendMessage is async and returns the backend response, log it
+            const result = await onSendMessage(input);
+            console.log('Backend response:', result);
             setInput('');
         }
     };
@@ -122,7 +136,7 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
             <VStack
                 ref={chatContainerRef}
                 flex="1"
-                maxH="calc(100vh - 200px)" // Account for header, input box, and padding
+                maxH="calc(100vh - 200px)"
                 overflowY="scroll"
                 p={4}
                 alignItems="stretch"
@@ -132,19 +146,19 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
                         width: '8px',
                     },
                     '&::-webkit-scrollbar-track': {
-                        background: useColorModeValue('gray.100', 'gray.700'),
+                        background: scrollbarTrackBg,
                         borderRadius: '4px',
                     },
                     '&::-webkit-scrollbar-thumb': {
-                        background: useColorModeValue('gray.300', 'gray.600'),
+                        background: scrollbarThumbBg,
                         borderRadius: '4px',
                         '&:hover': {
-                            background: useColorModeValue('gray.400', 'gray.500'),
+                            background: scrollbarThumbHoverBg,
                         },
                     },
                 }}
             >
-                {messages.map((message) => (
+                {messages.map(message => (
                     <Box
                         key={message.id}
                         bg={message.type === 'user' ? userMessageBg : assistantMessageBg}
@@ -175,7 +189,7 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
                                     </Badge>
                                 )}
                             </HStack>
-                            {message.context && message.context.length > 0 && (
+                            {message.type === 'assistant' && message.context && message.context.length > 0 && (
                                 <IconButton
                                     aria-label="Toggle context"
                                     onClick={() => toggleContext(message.id)}
@@ -203,19 +217,52 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
                                         borderRadius="md"
                                         fontSize="sm"
                                     >
-                                        {message.context.map((ctx, idx) => (
-                                            <Text 
-                                                key={idx} 
-                                                color={contextTextColor}
-                                                p={2}
-                                                borderRadius="sm"
-                                                borderLeft="3px solid"
-                                                borderLeftColor="blue.400"
-                                                bg={useColorModeValue('white', 'gray.800')}
-                                            >
-                                                {ctx}
-                                            </Text>
-                                        ))}
+                                        {/* Display description for all entities referenced in context, even if not present in context array */}
+                                        {(() => {
+                                            // Render all description items at the top
+                                            const rendered: React.ReactNode[] = [];
+                                            message.context.forEach((ctx, idx) => {
+                                                if (ctx.startsWith('Description of ')) {
+                                                    const match = ctx.match(/^Description of ([^:]+):\s*(.*)$/);
+                                                    const entityName = match ? match[1] : '';
+                                                    const description = match ? match[2] : ctx;
+                                                    rendered.push(
+                                                        <Box
+                                                            key={`desc-${entityName}`}
+                                                            p={2}
+                                                            borderRadius="sm"
+                                                            borderLeft="3px solid"
+                                                            borderLeftColor="green.400"
+                                                            bg={messageContextBg}
+                                                            mb={1}
+                                                        >
+                                                            <Badge colorScheme="green" mr={2}>{entityName}</Badge>
+                                                            <Text as="span" fontWeight="bold" color={contextTextColor} mr={1}>Description:</Text>
+                                                            <Text as="span" color={contextTextColor}>{description}</Text>
+                                                        </Box>
+                                                    );
+                                                }
+                                            });
+                                            // Render other context items below descriptions
+                                            message.context.forEach((ctx, idx) => {
+                                                if (!ctx.startsWith('Description of ')) {
+                                                    rendered.push(
+                                                        <Text 
+                                                            key={idx} 
+                                                            color={contextTextColor}
+                                                            p={2}
+                                                            borderRadius="sm"
+                                                            borderLeft="3px solid"
+                                                            borderLeftColor="blue.400"
+                                                            bg={messageContextBg}
+                                                        >
+                                                            {ctx}
+                                                        </Text>
+                                                    );
+                                                }
+                                            });
+                                            return rendered;
+                                        })()}
                                     </VStack>
                                 </Box>
                             </Collapse>
@@ -231,7 +278,7 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             placeholder="Ask a medical question..."
-                            bg={useColorModeValue('white', 'gray.700')}
+                            bg={inputBg}
                         />
                         <IconButton
                             aria-label="Send message"
@@ -254,7 +301,6 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
                 </form>
             </Box>
 
-            {/* Upload Modal */}
             <Modal isOpen={isOpen} onClose={onClose}>
                 <ModalOverlay />
                 <ModalContent bg={modalBg}>

@@ -2,16 +2,16 @@ from neo4j import GraphDatabase
 from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
 class Neo4jDatabase:
-    def __init__(self):
-        self.driver = GraphDatabase.driver(
+    def __init__(self) -> None:
+        self.driver: GraphDatabase.driver = GraphDatabase.driver(
             NEO4J_URI,
             auth=(NEO4J_USER, NEO4J_PASSWORD)
         )
 
-    def close(self):
+    def close(self) -> None:
         self.driver.close()
 
-    def get_graph_data(self):
+    def get_graph_data(self) -> tuple[list[dict], list[dict]]:
         """Get all nodes and relationships from the graph"""
         with self.driver.session() as session:
             # Get all nodes
@@ -32,17 +32,17 @@ class Neo4jDatabase:
 
             return nodes, relationships
 
-    def get_all_entities(self):
+    def get_all_entities(self) -> list[dict]:
         """Get all entities from the database"""
         with self.driver.session() as session:
             cypher_query = """
             MATCH (e)
-            RETURN labels(e)[0] as type, e.name as name
+            RETURN labels(e)[0] as type, e.name as name, e.description as description
             """
             result = session.run(cypher_query)
-            return [{"type": record["type"], "name": record["name"]} for record in result]
+            return [{"type": record["type"], "name": record["name"], "description": record.get("description")} for record in result]
 
-    def create_entity(self, entity_type, name, properties=None):
+    def create_entity(self, entity_type: str, name: str, properties: dict = None) -> None:
         with self.driver.session() as session:
             properties = properties or {}
             cypher_query = (
@@ -52,7 +52,7 @@ class Neo4jDatabase:
             )
             return session.run(cypher_query, name=name, properties=properties)
 
-    def create_relationship(self, from_entity, relationship_type, to_entity, properties=None):
+    def create_relationship(self, from_entity: str, relationship_type: str, to_entity: str, properties: dict = None) -> None:
         with self.driver.session() as session:
             properties = properties or {}
             cypher_query = (
@@ -68,7 +68,7 @@ class Neo4jDatabase:
                 properties=properties
             )
 
-    def get_context(self, query_entities, max_hops=2):
+    def get_context(self, query_entities: list[str], max_hops: int = 2) -> list[str]:
         """
         Get relevant context from the graph database based on query entities.
         Args:
@@ -78,19 +78,31 @@ class Neo4jDatabase:
             list: List of context statements about the entities and their relationships
         """
         with self.driver.session() as session:
-            # First, get direct information about the query entities
-            entity_info = []
-            for entity in query_entities:
-                # Get entity details
+            # First, get direct information about the query entities (using CONTAINS for fuzzy match)
+        entity_info: list[str] = []
+        for entity in query_entities:
+                # Get entity details with partial match
                 entity_query = """
-                MATCH (e {name: $name})
+                MATCH (e)
+                WHERE toLower(e.name) CONTAINS toLower($name)
                 RETURN labels(e) as types, e.name as name
                 """
                 result = session.run(entity_query, name=entity)
-                record = result.single()
-                if record:
+                for record in result:
                     entity_type = record["types"][0]  # Get first label
                     entity_info.append(f"{record['name']} is a {entity_type}")
+
+            # Find all matching entity names for relationship traversal
+            matched_names_query = """
+            MATCH (e)
+            WHERE ANY(q IN $query_entities WHERE toLower(e.name) CONTAINS toLower(q))
+            RETURN DISTINCT e.name as name
+            """
+            matched_names_result = session.run(matched_names_query, query_entities=query_entities)
+            matched_names: list[str] = [r["name"] for r in matched_names_result]
+
+            if not matched_names:
+                return entity_info  # No matches, return what we have
 
             # Then, get relationships between entities and their neighbors
             relationship_query = f"""
@@ -100,12 +112,11 @@ class Neo4jDatabase:
             RETURN path
             LIMIT 15
             """
-            
-            result = session.run(relationship_query, entities=query_entities)
+            result = session.run(relationship_query, entities=matched_names)
             
             # Process the paths into natural language statements
-            relationship_info = []
-            seen_relationships = set()  # To avoid duplicates
+            relationship_info: list[str] = []
+            seen_relationships: set[str] = set()  # To avoid duplicates
             
             for record in result:
                 path = record["path"]
@@ -130,10 +141,10 @@ class Neo4jDatabase:
             context = entity_info + relationship_info
             return context
 
-    def _format_relationship(self, start_name, rel_type, end_name):
+    def _format_relationship(self, start_name: str, rel_type: str, end_name: str) -> str:
         """Format a relationship into a natural language statement"""
         # Map of relationship types to natural language phrases
-        rel_phrases = {
+        rel_phrases: dict[str, str] = {
             "FOUNDED": "founded",
             "LEADS": "leads",
             "CEO_OF": "is the CEO of",
@@ -145,11 +156,11 @@ class Neo4jDatabase:
         }
         
         # Get the natural language phrase for the relationship type
-        phrase = rel_phrases.get(rel_type, rel_type.lower().replace("_", " "))
+        phrase: str = rel_phrases.get(rel_type, rel_type.lower().replace("_", " "))
         
         # Return formatted statement
         return f"{start_name} {phrase} {end_name}"
 
-    def clear_database(self):
+    def clear_database(self) -> None:
         with self.driver.session() as session:
             session.run("MATCH (n) DETACH DELETE n") 

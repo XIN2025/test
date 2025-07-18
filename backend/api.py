@@ -52,8 +52,12 @@ async def upload_file(file: UploadFile = File(...)):
         
         # Store in Neo4j
         for entity in entities:
-            db.create_entity(entity['type'], entity['name'])
-        
+            # Pass description as a dictionary for properties
+            properties = {}
+            if entity.get('description'):
+                properties['description'] = entity['description']
+            db.create_entity(entity['type'], entity['name'], properties)
+
         for rel in relationships:
             db.create_relationship(rel['from'], rel['type'], rel['to'])
         
@@ -157,20 +161,70 @@ async def query(request: QueryRequest):
         # Get context from Neo4j
         raw_context = db.get_context(entity_names)
         logging.debug(f"Raw context from db: {raw_context}")
-        
+
         # Use LLM to filter and rank context
         context = await get_context_with_llm(entity_names, raw_context)
         logging.debug(f"Filtered context: {context}")
-        
-        if not context:
+
+        # Attach entity descriptions to context
+        all_entities = db.get_all_entities()
+        entity_descriptions = []
+        for name in entity_names:
+            # Direct match for entity name
+            for ent in all_entities:
+                if ent["name"].lower() == name.lower():
+                    desc = ent.get("description")
+                    if desc is not None:
+                        entity_descriptions.append(f"Description of {ent['name']}: {desc}")
+            # Fallback: substring match if direct match not found
+            for ent in all_entities:
+                ent_name_lower = ent["name"].lower()
+                if name.lower() in ent_name_lower or ent_name_lower in name.lower():
+                    desc = ent.get("description")
+                    if desc:
+                        # Only add if not already present
+                        desc_str = f"Description of {ent['name']}: {desc}"
+                        if desc_str not in entity_descriptions:
+                            entity_descriptions.append(desc_str)
+        # Ensure every relevant entity's description is included in the context
+        # Find all entity names referenced in context
+        referenced_entities = set()
+        for ctx_item in context:
+            match = None
+            # Try to extract entity name from context string
+            # e.g. "Sarah Chen studies Hypertension" => "Sarah Chen"
+            if isinstance(ctx_item, str):
+                match = ctx_item.split(' ')[0] if ctx_item else None
+            if match:
+                referenced_entities.add(match)
+
+        # Add missing descriptions for referenced entities
+        for ent in all_entities:
+            ent_name = ent["name"]
+            desc = ent.get("description")
+            if desc is not None:
+                for ref_name in referenced_entities:
+                    ent_name_lower = ent_name.lower()
+                    ref_name_lower = ref_name.lower()
+                    if ref_name_lower in ent_name_lower or ent_name_lower in ref_name_lower:
+                        # Only add if not already present
+                        desc_str = f"Description of {ent_name}: {desc}"
+                        if desc_str not in entity_descriptions:
+                            entity_descriptions.append(desc_str)
+        # Combine descriptions and context
+        full_context = entity_descriptions + context
+
+
+
+        if not full_context:
             return QueryResponse(
                 answer="I don't have enough information to answer that question.",
                 context=[]
             )
-        
+
         # Format context for final LLM query
-        context_str = "\n".join(context)
-        
+        context_str = "\n".join(full_context)
+
         # Create messages for the answer generation
         messages = [
             SystemMessage(content="""You are a knowledgeable assistant. When answering:
@@ -183,13 +237,13 @@ async def query(request: QueryRequest):
 Context:
 {context_str}""")
         ]
-        
+
         # Get answer from LLM
         response = llm.invoke(messages)
-        
+
         return QueryResponse(
             answer=response.content,
-            context=context
+            context=full_context
         )
         
     except Exception as e:
@@ -224,6 +278,16 @@ async def get_graph_data():
         
         return GraphData(nodes=nodes_data, links=links_data)
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/clear-database")
+async def clear_database():
+    """Clear all data from the Neo4j database"""
+    try:
+        db.clear_database()
+        return {"message": "Database cleared successfully"}
+    except Exception as e:
+        logging.error(f"Error clearing database: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 def get_node_color(node_type: str) -> str:
