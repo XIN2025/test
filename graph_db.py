@@ -78,19 +78,31 @@ class Neo4jDatabase:
             list: List of context statements about the entities and their relationships
         """
         with self.driver.session() as session:
-            # First, get direct information about the query entities
+            # First, get direct information about the query entities (using CONTAINS for fuzzy match)
             entity_info = []
             for entity in query_entities:
-                # Get entity details
+                # Get entity details with partial match
                 entity_query = """
-                MATCH (e {name: $name})
+                MATCH (e)
+                WHERE toLower(e.name) CONTAINS toLower($name)
                 RETURN labels(e) as types, e.name as name
                 """
                 result = session.run(entity_query, name=entity)
-                record = result.single()
-                if record:
+                for record in result:
                     entity_type = record["types"][0]  # Get first label
                     entity_info.append(f"{record['name']} is a {entity_type}")
+
+            # Find all matching entity names for relationship traversal
+            matched_names_query = """
+            MATCH (e)
+            WHERE ANY(q IN $query_entities WHERE toLower(e.name) CONTAINS toLower(q))
+            RETURN DISTINCT e.name as name
+            """
+            matched_names_result = session.run(matched_names_query, query_entities=query_entities)
+            matched_names = [r["name"] for r in matched_names_result]
+
+            if not matched_names:
+                return entity_info  # No matches, return what we have
 
             # Then, get relationships between entities and their neighbors
             relationship_query = f"""
@@ -100,8 +112,7 @@ class Neo4jDatabase:
             RETURN path
             LIMIT 15
             """
-            
-            result = session.run(relationship_query, entities=query_entities)
+            result = session.run(relationship_query, entities=matched_names)
             
             # Process the paths into natural language statements
             relationship_info = []

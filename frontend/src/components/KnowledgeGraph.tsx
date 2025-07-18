@@ -60,6 +60,7 @@ export const KnowledgeGraph: React.FC = () => {
     const bgColor = useColorModeValue('white', 'gray.800');
     const textColor = useColorModeValue('gray.800', 'white');
     const linkColor = useColorModeValue('#718096', '#A0AEC0');
+    const linkTextColor = useColorModeValue('gray.600', 'gray.400');
 
     // Function to deduplicate links
     const deduplicateLinks = (links: GraphData['links']) => {
@@ -181,7 +182,6 @@ export const KnowledgeGraph: React.FC = () => {
             <ForceGraph2D
                 graphData={graphData}
                 nodeLabel="label"
-                linkLabel="label"
                 width={dimensions.width}
                 height={dimensions.height}
                 onNodeClick={handleNodeClick}
@@ -196,7 +196,7 @@ export const KnowledgeGraph: React.FC = () => {
                 backgroundColor={bgColor}
                 nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
                     const label = node.label;
-                    const fontSize = 12/globalScale;
+                    const fontSize = 11/globalScale;
                     ctx.font = `${fontSize}px Sans-Serif`;
                     ctx.fillStyle = node.color;
                     ctx.beginPath();
@@ -207,6 +207,30 @@ export const KnowledgeGraph: React.FC = () => {
                     ctx.textBaseline = 'middle';
                     ctx.fillText(label, node.x, node.y + 10);
                 }}
+                linkCanvasObject={(link: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                    // Draw the line
+                    const start = link.source;
+                    const end = link.target;
+                    ctx.strokeStyle = linkColor;
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(start.x, start.y);
+                    ctx.lineTo(end.x, end.y);
+                    ctx.stroke();
+
+                    // Draw the label
+                    const label = link.label.toLowerCase();
+                    const middleX = (start.x + end.x) / 2;
+                    const middleY = (start.y + end.y) / 2;
+                    
+                    const fontSize = 30/globalScale;
+                    ctx.font = `${fontSize}px Sans-Serif`;
+                    ctx.fillStyle = linkTextColor;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(label, middleX, middleY);
+                }}
+                linkCanvasObjectMode={() => "after"}
             />
 
             {/* Confirmation Dialog */}
