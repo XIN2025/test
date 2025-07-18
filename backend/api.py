@@ -52,8 +52,12 @@ async def upload_file(file: UploadFile = File(...)):
         
         # Store in Neo4j
         for entity in entities:
-            db.create_entity(entity['type'], entity['name'])
-        
+            # Pass description as a dictionary for properties
+            properties = {}
+            if entity.get('description'):
+                properties['description'] = entity['description']
+            db.create_entity(entity['type'], entity['name'], properties)
+
         for rel in relationships:
             db.create_relationship(rel['from'], rel['type'], rel['to'])
         
@@ -157,20 +161,32 @@ async def query(request: QueryRequest):
         # Get context from Neo4j
         raw_context = db.get_context(entity_names)
         logging.debug(f"Raw context from db: {raw_context}")
-        
+
         # Use LLM to filter and rank context
         context = await get_context_with_llm(entity_names, raw_context)
         logging.debug(f"Filtered context: {context}")
-        
-        if not context:
+
+        # Attach entity descriptions to context
+        all_entities = db.get_all_entities()
+        entity_descriptions = []
+        for name in entity_names:
+            for ent in all_entities:
+                if ent["name"].lower() == name.lower():
+                    desc = ent.get("description")
+                    if desc:
+                        entity_descriptions.append(f"Description of {ent['name']}: {desc}")
+        # Combine descriptions and context
+        full_context = entity_descriptions + context
+
+        if not full_context:
             return QueryResponse(
                 answer="I don't have enough information to answer that question.",
                 context=[]
             )
-        
+
         # Format context for final LLM query
-        context_str = "\n".join(context)
-        
+        context_str = "\n".join(full_context)
+
         # Create messages for the answer generation
         messages = [
             SystemMessage(content="""You are a knowledgeable assistant. When answering:
@@ -183,13 +199,13 @@ async def query(request: QueryRequest):
 Context:
 {context_str}""")
         ]
-        
+
         # Get answer from LLM
         response = llm.invoke(messages)
-        
+
         return QueryResponse(
             answer=response.content,
-            context=context
+            context=full_context
         )
         
     except Exception as e:

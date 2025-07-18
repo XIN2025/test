@@ -46,8 +46,11 @@ class TextProcessor:
                 "type": ent.label_,
                 "start": ent.start_char,
                 "end": ent.end_char,
-                "iteration": iteration
+                "iteration": iteration,
+                "description": f"Entity of type {ent.label_} found in text."
             })
+        
+        print
 
         # Second pass: Check existing entities from Neo4j and previous iterations
         all_existing = existing_entities or self.get_existing_entities()
@@ -62,7 +65,8 @@ class TextProcessor:
                         "type": entity["type"],
                         "start": text_lower.find(entity_lower),
                         "end": text_lower.find(entity_lower) + len(entity_lower),
-                        "iteration": iteration
+                        "iteration": iteration,
+                        "description": entity.get("description", f"Entity of type {entity['type']} found in text.")
                     })
 
         # Third pass: Use LLM to identify potential entities missed by SpaCy
@@ -70,7 +74,8 @@ class TextProcessor:
             potential_entities = self._identify_potential_entities(text, entities)
             for entity in potential_entities:
                 if not any(e["name"].lower() == entity["name"].lower() for e in entities):
-                    entities.append({**entity, "iteration": iteration})
+                    description = entity.get("description", f"Entity of type {entity.get('type', 'UNKNOWN')} found in text.")
+                    entities.append({**entity, "iteration": iteration, "description": description})
 
         return entities
 
