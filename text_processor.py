@@ -15,7 +15,7 @@ if not GOOGLE_API_KEY:
     raise ValueError("GOOGLE_API_KEY not found in environment variables. Please check your .env file.")
 
 class TextProcessor:
-    def __init__(self, max_iterations=3):
+    def __init__(self, max_iterations: int = 3) -> None:
         self.nlp = spacy.load("en_core_web_sm")
         self.db = Neo4jDatabase()
         self.llm = ChatGoogleGenerativeAI(
@@ -25,7 +25,7 @@ class TextProcessor:
         )
         self.max_iterations = max_iterations
 
-    def get_existing_entities(self):
+    def get_existing_entities(self) -> list[dict]:
         """Get all existing entities from Neo4j"""
         try:
             return self.db.get_all_entities()
@@ -33,7 +33,7 @@ class TextProcessor:
             print(f"Warning: Failed to get existing entities: {str(e)}")
             return []
 
-    def extract_entities(self, text, existing_entities=None, iteration=1):
+    def extract_entities(self, text: str, existing_entities: list[dict] = None, iteration: int = 1) -> list[dict]:
         """Extract entities using SpaCy and match against existing entities"""
         # Get entities from SpaCy
         doc = self.nlp(text)
@@ -100,7 +100,7 @@ class TextProcessor:
 
         return entities
 
-    def _identify_potential_entities(self, text, existing_entities):
+    def _identify_potential_entities(self, text: str, existing_entities: list[dict]) -> list[dict]:
         """Use LLM to identify potential entities missed by SpaCy"""
         try:
             system_prompt = """You are an entity extraction expert. Analyze the text and identify potential entities that might have been missed.
@@ -139,7 +139,7 @@ Rules:
             print(f"Warning: Failed to identify potential entities: {str(e)}")
             return []
 
-    def identify_relationships(self, text, entities, existing_relationships=None, iteration=1):
+    def identify_relationships(self, text: str, entities: list[dict], existing_relationships: list[dict] = None, iteration: int = 1) -> list[dict]:
         """Use LangChain and Gemini to identify relationships between entities"""
         try:
             entity_names = [e["name"] for e in entities]
@@ -214,7 +214,7 @@ Rules:
             print(f"Error in identify_relationships: {str(e)}")
             return []
 
-    def _clean_llm_response(self, content):
+    def _clean_llm_response(self, content: str) -> str:
         """Clean up the LLM response content"""
         content = content.strip()
         # Remove markdown code block if present
@@ -225,7 +225,7 @@ Rules:
             content = content[5:].strip()
         return content
 
-    def process_text(self, text):
+    def process_text(self, text: str) -> tuple[list[dict], list[dict]]:
         """Process text to extract entities and relationships iteratively"""
         all_entities = []
         all_relationships = []
