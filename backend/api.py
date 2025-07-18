@@ -215,9 +215,6 @@ async def query(request: QueryRequest):
         full_context = entity_descriptions + context
 
 
-        # DEBUG: Print full context before returning
-        import pprint
-        pprint.pprint({'full_context': full_context})
 
         if not full_context:
             return QueryResponse(
