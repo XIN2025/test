@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     Box,
     Grid,
@@ -21,6 +21,7 @@ export const App: React.FC = () => {
     const { colorMode, toggleColorMode } = useColorMode();
     const bgColor = useColorModeValue('gray.50', 'gray.900');
     const borderColor = useColorModeValue('gray.200', 'gray.700');
+    const [graphKey, setGraphKey] = useState(0); // Add key to force graph refresh
 
     const handleSendMessage = async (content: string) => {
         // Add user message
@@ -56,39 +57,35 @@ export const App: React.FC = () => {
         }
     };
 
-    const handleUploadSuccess = () => {
-        // Clear messages when new data is uploaded
-        setMessages([]);
-    };
+    // Handle successful file upload
+    const handleUploadSuccess = useCallback(() => {
+        // Increment key to force graph component to remount and fetch fresh data
+        setGraphKey(prevKey => prevKey + 1);
+    }, []);
 
     return (
-        <Box h="100vh" bg={bgColor}>
-            {/* Header with theme toggle */}
-            <Box 
-                py={4} 
-                px={6} 
-                borderBottom="1px" 
-                borderColor={borderColor}
+        <Box minH="100vh" bg={bgColor}>
+            {/* Header */}
+            <Box
                 position="fixed"
                 top={0}
                 left={0}
                 right={0}
+                borderBottom="1px"
+                borderColor={borderColor}
+                bg={useColorModeValue('white', 'gray.800')}
                 zIndex={10}
-                bg={bgColor}
             >
-                <HStack justify="space-between" align="center">
-                    <Heading size="md">MediGraph Assistant</Heading>
+                <HStack justify="space-between" p={4} maxW="container.xl" mx="auto">
+                    <Heading size="md">Knowledge Graph RAG</Heading>
                     <IconButton
                         aria-label="Toggle color mode"
                         icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}
                         onClick={toggleColorMode}
-                        variant="ghost"
-                        size="lg"
                     />
                 </HStack>
             </Box>
 
-            {/* Main content */}
             <Grid
                 templateColumns={{ base: "1fr", lg: "repeat(2, 1fr)" }}
                 gap={4}
@@ -105,7 +102,7 @@ export const App: React.FC = () => {
                     overflow="hidden"
                     position="relative"
                 >
-                    <KnowledgeGraph />
+                    <KnowledgeGraph key={graphKey} />
                 </GridItem>
 
                 {/* Right column - Chat */}

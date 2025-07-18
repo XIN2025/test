@@ -226,6 +226,16 @@ async def get_graph_data():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/clear-database")
+async def clear_database():
+    """Clear all data from the Neo4j database"""
+    try:
+        db.clear_database()
+        return {"message": "Database cleared successfully"}
+    except Exception as e:
+        logging.error(f"Error clearing database: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 def get_node_color(node_type: str) -> str:
     """Return a color based on node type"""
     color_map = {
