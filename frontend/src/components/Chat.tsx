@@ -71,10 +71,11 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (input.trim()) {
+            const messageToSend = input;
+            setInput(''); // Clear input immediately
             // If onSendMessage is async and returns the backend response, log it
-            const result = await onSendMessage(input);
+            const result = await onSendMessage(messageToSend);
             console.log('Backend response:', result);
-            setInput('');
         }
     };
 
