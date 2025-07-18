@@ -41,13 +41,20 @@ class TextProcessor:
         
         # First pass: Get SpaCy entities
         for ent in doc.ents:
+            # Find the sentence containing the entity
+            entity_sentence = None
+            for sent in doc.sents:
+                if ent.start_char >= sent.start_char and ent.end_char <= sent.end_char:
+                    entity_sentence = sent.text.strip()
+                    break
+            description = entity_sentence if entity_sentence else f"Entity of type {ent.label_} found in text."
             entities.append({
                 "name": ent.text,
                 "type": ent.label_,
                 "start": ent.start_char,
                 "end": ent.end_char,
                 "iteration": iteration,
-                "description": f"Entity of type {ent.label_} found in text."
+                "description": description
             })
         
         print
@@ -60,13 +67,20 @@ class TextProcessor:
             entity_lower = entity["name"].lower()
             if entity_lower in text_lower:
                 if not any(e["name"].lower() == entity_lower for e in entities):
+                    # Find the sentence containing the entity
+                    entity_sentence = None
+                    for sent in doc.sents:
+                        if entity_lower in sent.text.lower():
+                            entity_sentence = sent.text.strip()
+                            break
+                    description = entity_sentence if entity_sentence else entity.get("description", f"Entity of type {entity['type']} found in text.")
                     entities.append({
                         "name": entity["name"],
                         "type": entity["type"],
                         "start": text_lower.find(entity_lower),
                         "end": text_lower.find(entity_lower) + len(entity_lower),
                         "iteration": iteration,
-                        "description": entity.get("description", f"Entity of type {entity['type']} found in text.")
+                        "description": description
                     })
 
         # Third pass: Use LLM to identify potential entities missed by SpaCy
@@ -74,7 +88,14 @@ class TextProcessor:
             potential_entities = self._identify_potential_entities(text, entities)
             for entity in potential_entities:
                 if not any(e["name"].lower() == entity["name"].lower() for e in entities):
-                    description = entity.get("description", f"Entity of type {entity.get('type', 'UNKNOWN')} found in text.")
+                    # Find the sentence containing the entity
+                    entity_lower = entity["name"].lower()
+                    entity_sentence = None
+                    for sent in doc.sents:
+                        if entity_lower in sent.text.lower():
+                            entity_sentence = sent.text.strip()
+                            break
+                    description = entity_sentence if entity_sentence else entity.get("description", f"Entity of type {entity.get('type', 'UNKNOWN')} found in text.")
                     entities.append({**entity, "iteration": iteration, "description": description})
 
         return entities
