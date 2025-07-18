@@ -46,6 +46,7 @@ export const App: React.FC = () => {
                 context: response.data.context,
             };
             setMessages((prev: Message[]) => [...prev, assistantMessage]);
+            return response.data; // Return backend response
         } catch (error) {
             // Add error message
             const errorMessage: Message = {
@@ -54,6 +55,7 @@ export const App: React.FC = () => {
                 type: 'assistant',
             };
             setMessages((prev: Message[]) => [...prev, errorMessage]);
+            return error; // Return error
         }
     };
 

@@ -170,13 +170,54 @@ async def query(request: QueryRequest):
         all_entities = db.get_all_entities()
         entity_descriptions = []
         for name in entity_names:
+            # Direct match for entity name
             for ent in all_entities:
                 if ent["name"].lower() == name.lower():
                     desc = ent.get("description")
                     if desc:
                         entity_descriptions.append(f"Description of {ent['name']}: {desc}")
+            # Fallback: substring match if direct match not found
+            for ent in all_entities:
+                ent_name_lower = ent["name"].lower()
+                if name.lower() in ent_name_lower or ent_name_lower in name.lower():
+                    desc = ent.get("description")
+                    if desc:
+                        # Only add if not already present
+                        desc_str = f"Description of {ent['name']}: {desc}"
+                        if desc_str not in entity_descriptions:
+                            entity_descriptions.append(desc_str)
+        # Ensure every relevant entity's description is included in the context
+        # Find all entity names referenced in context
+        referenced_entities = set()
+        for ctx_item in context:
+            match = None
+            # Try to extract entity name from context string
+            # e.g. "Sarah Chen studies Hypertension" => "Sarah Chen"
+            if isinstance(ctx_item, str):
+                match = ctx_item.split(' ')[0] if ctx_item else None
+            if match:
+                referenced_entities.add(match)
+
+        # Add missing descriptions for referenced entities
+        for ent in all_entities:
+            ent_name = ent["name"]
+            desc = ent.get("description")
+            if desc:
+                for ref_name in referenced_entities:
+                    ent_name_lower = ent_name.lower()
+                    ref_name_lower = ref_name.lower()
+                    if ref_name_lower in ent_name_lower or ent_name_lower in ref_name_lower:
+                        # Only add if not already present
+                        desc_str = f"Description of {ent_name}: {desc}"
+                        if desc_str not in entity_descriptions:
+                            entity_descriptions.append(desc_str)
         # Combine descriptions and context
         full_context = entity_descriptions + context
+
+
+        # DEBUG: Print full context before returning
+        import pprint
+        pprint.pprint({'full_context': full_context})
 
         if not full_context:
             return QueryResponse(

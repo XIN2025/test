@@ -68,10 +68,12 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
     }, [messages]);
 
     // Event handlers
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (input.trim()) {
-            onSendMessage(input);
+            // If onSendMessage is async and returns the backend response, log it
+            const result = await onSendMessage(input);
+            console.log('Backend response:', result);
             setInput('');
         }
     };
@@ -215,19 +217,52 @@ export const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, onUploadSuc
                                         borderRadius="md"
                                         fontSize="sm"
                                     >
-                                        {message.context.map((ctx, idx) => (
-                                            <Text 
-                                                key={idx} 
-                                                color={contextTextColor}
-                                                p={2}
-                                                borderRadius="sm"
-                                                borderLeft="3px solid"
-                                                borderLeftColor="blue.400"
-                                                bg={messageContextBg}
-                                            >
-                                                {ctx}
-                                            </Text>
-                                        ))}
+                                        {/* Display description for all entities referenced in context, even if not present in context array */}
+                                        {(() => {
+                                            // Render all description items at the top
+                                            const rendered: React.ReactNode[] = [];
+                                            message.context.forEach((ctx, idx) => {
+                                                if (ctx.startsWith('Description of ')) {
+                                                    const match = ctx.match(/^Description of ([^:]+):\s*(.*)$/);
+                                                    const entityName = match ? match[1] : '';
+                                                    const description = match ? match[2] : ctx;
+                                                    rendered.push(
+                                                        <Box
+                                                            key={`desc-${entityName}`}
+                                                            p={2}
+                                                            borderRadius="sm"
+                                                            borderLeft="3px solid"
+                                                            borderLeftColor="green.400"
+                                                            bg={messageContextBg}
+                                                            mb={1}
+                                                        >
+                                                            <Badge colorScheme="green" mr={2}>{entityName}</Badge>
+                                                            <Text as="span" fontWeight="bold" color={contextTextColor} mr={1}>Description:</Text>
+                                                            <Text as="span" color={contextTextColor}>{description}</Text>
+                                                        </Box>
+                                                    );
+                                                }
+                                            });
+                                            // Render other context items below descriptions
+                                            message.context.forEach((ctx, idx) => {
+                                                if (!ctx.startsWith('Description of ')) {
+                                                    rendered.push(
+                                                        <Text 
+                                                            key={idx} 
+                                                            color={contextTextColor}
+                                                            p={2}
+                                                            borderRadius="sm"
+                                                            borderLeft="3px solid"
+                                                            borderLeftColor="blue.400"
+                                                            bg={messageContextBg}
+                                                        >
+                                                            {ctx}
+                                                        </Text>
+                                                    );
+                                                }
+                                            });
+                                            return rendered;
+                                        })()}
                                     </VStack>
                                 </Box>
                             </Collapse>
