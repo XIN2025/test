@@ -186,10 +186,27 @@ export const KnowledgeGraph: React.FC = () => {
                 height={dimensions.height}
                 onNodeClick={handleNodeClick}
                 nodeColor={node => (node as Node).color}
-                linkDirectionalArrowLength={3}
-                linkDirectionalArrowRelPos={0.5}
+                linkDirectionalArrowLength={5}
+                linkDirectionalArrowRelPos={1}
+                linkDirectionalArrowColor={() => linkColor}
+                linkDirectionalParticles={2}
+                linkDirectionalParticleWidth={2}
+                linkDirectionalParticleSpeed={0.005}
                 linkColor={() => linkColor}
                 backgroundColor={bgColor}
+                nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                    const label = node.label;
+                    const fontSize = 12/globalScale;
+                    ctx.font = `${fontSize}px Sans-Serif`;
+                    ctx.fillStyle = node.color;
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.fillStyle = textColor;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(label, node.x, node.y + 10);
+                }}
             />
 
             {/* Confirmation Dialog */}
