@@ -174,7 +174,7 @@ async def query(request: QueryRequest):
             for ent in all_entities:
                 if ent["name"].lower() == name.lower():
                     desc = ent.get("description")
-                    if desc:
+                    if desc is not None:
                         entity_descriptions.append(f"Description of {ent['name']}: {desc}")
             # Fallback: substring match if direct match not found
             for ent in all_entities:
@@ -202,7 +202,7 @@ async def query(request: QueryRequest):
         for ent in all_entities:
             ent_name = ent["name"]
             desc = ent.get("description")
-            if desc:
+            if desc is not None:
                 for ref_name in referenced_entities:
                     ent_name_lower = ent_name.lower()
                     ref_name_lower = ref_name.lower()
