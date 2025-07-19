@@ -6,6 +6,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from graph_db import Neo4jDatabase
 import re
+import json
 
 
 class NodeType(Enum):
@@ -65,9 +66,17 @@ class AgenticContextRetrieval:
         
         return workflow.compile(checkpointer=MemorySaver())
     
-    async def _similarity_search_node(self, state: AgentState) -> dict:
+    async def _similarity_search_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
+        step_info = {
+            "step": "similarity_search",
+            "query": state.query,
+            "discovered_nodes": list(state.discovered_nodes),
+            "reasoning": state.reasoning
+        }
+        if step_callback:
+            step_callback(json.dumps(step_info))
         print(f"[STEP] similarity_search | Query: {state.query}")
         """Extract keywords and find similar nodes in the graph"""
         # Extract keywords from query using LLM
@@ -94,9 +103,18 @@ class AgenticContextRetrieval:
         print(f"[INFO] Reasoning: {state.reasoning}")
         return asdict(state)
     
-    async def _node_exploration_node(self, state: AgentState) -> dict:
+    async def _node_exploration_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
+        step_info = {
+            "step": "node_exploration",
+            "unexplored": list(state.discovered_nodes - state.explored_nodes),
+            "current_focus": state.current_focus,
+            "explored_nodes": list(state.explored_nodes),
+            "reasoning": state.reasoning
+        }
+        if step_callback:
+            step_callback(json.dumps(step_info))
         print(f"[STEP] node_exploration | Unexplored: {state.discovered_nodes - state.explored_nodes}")
         """Decide which nodes to explore based on query relevance"""
         if not state.discovered_nodes:
@@ -129,9 +147,16 @@ class AgenticContextRetrieval:
         print(f"[INFO] Reasoning: {state.reasoning}")
         return asdict(state)
     
-    async def _relationship_exploration_node(self, state: AgentState) -> dict:
+    async def _relationship_exploration_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
+        step_info = {
+            "step": "relationship_exploration",
+            "current_focus": state.current_focus,
+            "explored_relationships": list(state.explored_relationships)
+        }
+        if step_callback:
+            step_callback(json.dumps(step_info))
         print(f"[STEP] relationship_exploration | Current focus: {state.current_focus}")
         """Explore relationships of the current focus node"""
         if not state.current_focus:
@@ -161,9 +186,17 @@ class AgenticContextRetrieval:
         print(f"[INFO] Explored relationships: {state.explored_relationships}")
         return asdict(state)
     
-    async def _decision_maker_node(self, state: AgentState) -> dict:
+    async def _decision_maker_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
+        step_info = {
+            "step": "decision_maker",
+            "depth": f"{state.exploration_depth}/{state.max_depth}",
+            "should_continue": state.should_continue,
+            "reasoning": state.reasoning
+        }
+        if step_callback:
+            step_callback(json.dumps(step_info))
         print(f"[STEP] decision_maker | Depth: {state.exploration_depth}/{state.max_depth}")
         print(f"[INFO] Should continue: {state.should_continue}")
         print(f"[INFO] Reasoning: {state.reasoning}")
@@ -185,9 +218,15 @@ class AgenticContextRetrieval:
         
         return asdict(state)
     
-    async def _context_synthesis_node(self, state: AgentState) -> dict:
+    async def _context_synthesis_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
+        step_info = {
+            "step": "context_synthesis",
+            "context_pieces": len(state.context_pieces)
+        }
+        if step_callback:
+            step_callback(json.dumps(step_info))
         print(f"[STEP] context_synthesis | Synthesizing context...")
         print(f"[INFO] Context pieces: {len(state.context_pieces)}")
         """Synthesize and rank the collected context pieces"""
@@ -401,6 +440,40 @@ class AgenticContextRetrieval:
         
         return result["context_pieces"]
 
+    async def retrieve_context_stream(self, query: str, max_depth: int = 3):
+        """Generator version: yields each step as a string (JSON) as it happens."""
+        initial_state = asdict(AgentState(
+            query=query,
+            discovered_nodes=set(),
+            explored_nodes=set(),
+            explored_relationships=set(),
+            context_pieces=[],
+            max_depth=max_depth
+        ))
+        steps = []
+        async def step_callback(step_str):
+            steps.append(step_str)
+            yield step_str
+        # Custom runner to yield steps as they happen
+        state = initial_state
+        # similarity_search
+        state = await self._similarity_search_node(state, step_callback=steps.append)
+        yield steps[-1]
+        # node_exploration
+        state = await self._node_exploration_node(state, step_callback=steps.append)
+        yield steps[-1]
+        # relationship_exploration
+        state = await self._relationship_exploration_node(state, step_callback=steps.append)
+        yield steps[-1]
+        # decision_maker
+        state = await self._decision_maker_node(state, step_callback=steps.append)
+        yield steps[-1]
+        # context_synthesis
+        state = await self._context_synthesis_node(state, step_callback=steps.append)
+        yield steps[-1]
+        # Final context
+        yield json.dumps({"step": "final_context", "context": state["context_pieces"]})
+
 
 # Convenience function for backward compatibility
 async def agentic_context_retrieval(
@@ -415,3 +488,13 @@ async def agentic_context_retrieval(
     """
     agent = AgenticContextRetrieval(llm, db)
     return await agent.retrieve_context(question, max_depth) 
+
+async def agentic_context_retrieval_stream(
+    question: str,
+    llm,
+    db: Neo4jDatabase,
+    max_depth: int = 3
+):
+    agent = AgenticContextRetrieval(llm, db)
+    async for step in agent.retrieve_context_stream(question, max_depth):
+        yield step 

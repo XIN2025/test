@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict
@@ -9,7 +9,9 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import os
 from dotenv import load_dotenv
-from agentic_context_langgraph import agentic_context_retrieval
+from agentic_context_langgraph import agentic_context_retrieval, agentic_context_retrieval_stream
+from fastapi.responses import StreamingResponse
+import asyncio
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -185,6 +187,14 @@ Context:
     except Exception as e:
         logging.error(f"Error processing query: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/query-stream")
+async def query_stream(question: str = Query(...)):
+    async def event_generator():
+        async for step in agentic_context_retrieval_stream(question, llm, db):
+            yield f"data: {step}\n\n"
+            await asyncio.sleep(0.01)
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/graph", response_model=GraphData)
 async def get_graph_data():
