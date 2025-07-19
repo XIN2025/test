@@ -19,6 +19,7 @@ import {
   ModalBody,
   ModalCloseButton,
   useDisclosure,
+  Spinner,
 } from "@chakra-ui/react";
 import {
   FiSend,
@@ -40,6 +41,18 @@ const stepMessages: Record<string, string> = {
   decision_maker: "Deciding next step...",
   context_synthesis: "Synthesizing the most relevant medical context...",
   final_context: "Finalizing answer...",
+};
+
+// Add a fading style for the thinking message
+const fadeThinkingStyle = (ageMs: number) => {
+  // Fade from gray.600 to gray.300 over 2 seconds
+  const maxFade = 2000;
+  const fade = Math.min(ageMs / maxFade, 1);
+  const color =
+    fade < 1
+      ? `rgba(113, 128, 150, ${1 - fade * 0.5})`
+      : `rgba(203, 213, 224, 0.7)`; // gray.600 to gray.300
+  return { color, transition: "color 0.5s" };
 };
 
 // --- Agent Steps Streaming Hook ---
@@ -142,6 +155,7 @@ export const Chat: React.FC<ChatProps> = ({
   const [thinkingLog, setThinkingLog] = useState<any[] | null>(null);
   const [thinkingLogOpen, setThinkingLogOpen] = useState(false);
   const [pendingMessageId, setPendingMessageId] = useState<string | null>(null);
+  const [thinkingStart, setThinkingStart] = useState<number | null>(null);
 
   // Ref hooks
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -312,6 +326,15 @@ export const Chat: React.FC<ChatProps> = ({
     "minDisplayTime:",
     minDisplayTime
   );
+
+  useEffect(() => {
+    if (shouldShowAnyThinkingBubble) {
+      setThinkingStart(Date.now());
+    } else {
+      setThinkingStart(null);
+    }
+  }, [shouldShowAnyThinkingBubble]);
+  const thinkingAge = thinkingStart ? Date.now() - thinkingStart : 0;
 
   // --- View Thinking Log Modal ---
   const openThinkingLog = (log: any[]) => {
@@ -520,21 +543,20 @@ export const Chat: React.FC<ChatProps> = ({
               timeout={300}
               classNames="fade"
             >
-              <Box
-                bg={"yellow.100"}
-                p={3}
-                borderRadius="md"
-                alignSelf="flex-end"
-                fontStyle="italic"
-                fontSize="sm"
-                color="gray.700"
-                maxW="60%"
+              <Flex
+                align="center"
+                mt={2}
                 mb={2}
+                pl={1}
+                style={fadeThinkingStyle(thinkingAge)}
               >
-                {activeStep
-                  ? stepMessages[activeStep.step] || activeStep.step
-                  : "Processing your question and preparing the best medical context..."}
-              </Box>
+                <Spinner size="xs" mr={2} color="gray.400" speed="0.7s" />
+                <Text fontSize="sm" fontStyle="italic" color="inherit">
+                  {activeStep
+                    ? stepMessages[activeStep.step] || activeStep.step
+                    : "Processing your question and preparing the best medical context..."}
+                </Text>
+              </Flex>
             </CSSTransition>
           )}
         </TransitionGroup>
