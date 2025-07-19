@@ -29,13 +29,29 @@ import {
 } from "react-icons/fi";
 import type { Message } from "../types";
 import axios from "axios";
+import { CSSTransition, TransitionGroup } from "react-transition-group";
+import "./AgentStepFade.css"; // You will need to create this CSS for fade animations
+
+// Map step keys to user-friendly thinking messages
+const stepMessages: Record<string, string> = {
+  similarity_search: "Searching similarities...",
+  node_exploration: "Exploring relevant nodes...",
+  relationship_exploration: "Exploring relationships...",
+  decision_maker: "Deciding next step...",
+  context_synthesis: "Synthesizing context...",
+  final_context: "Finalizing answer...",
+};
 
 // --- Agent Steps Streaming Hook ---
-function useAgentSteps(question: string | null) {
+function useAgentSteps(
+  question: string | null,
+  onFinalContext?: (context: any, steps: any[]) => void
+) {
   const [steps, setSteps] = useState<any[]>([]);
   useEffect(() => {
     if (!question) return;
     setSteps([]);
+    let allSteps: any[] = [];
     const eventSource = new EventSource(
       `http://localhost:8000/query-stream?question=${encodeURIComponent(
         question
@@ -45,13 +61,21 @@ function useAgentSteps(question: string | null) {
       }
     );
     eventSource.onmessage = (event) => {
+      let parsed;
       try {
-        setSteps((prev) => [...prev, JSON.parse(event.data)]);
+        parsed = JSON.parse(event.data);
       } catch {
-        setSteps((prev) => [...prev, event.data]);
+        parsed = event.data;
+      }
+      allSteps = [...allSteps, parsed];
+      setSteps((prev) => [...prev, parsed]);
+      // If this is the final context, call the callback with all steps
+      if (parsed && parsed.step === "final_context" && onFinalContext) {
+        onFinalContext(parsed.context, allSteps);
       }
     };
     return () => eventSource.close();
+    // eslint-disable-next-line
   }, [question]);
   return steps;
 }
@@ -73,6 +97,10 @@ export const Chat: React.FC<ChatProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+  const [activeStep, setActiveStep] = useState<any | null>(null);
+  const [thinkingLog, setThinkingLog] = useState<any[] | null>(null);
+  const [thinkingLogOpen, setThinkingLogOpen] = useState(false);
+  const [pendingMessageId, setPendingMessageId] = useState<string | null>(null);
 
   // Ref hooks
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +124,9 @@ export const Chat: React.FC<ChatProps> = ({
   const scrollbarThumbHoverBg = useColorModeValue("gray.400", "gray.500");
   const inputBg = useColorModeValue("white", "gray.700");
   const messageContextBg = useColorModeValue("white", "gray.800");
+  const entityDescBg = useColorModeValue("green.100", "green.400");
+  const entityDescText = useColorModeValue("gray.900", "white");
+  const entityNameColor = useColorModeValue("green.800", "green.100");
 
   // Effect hooks
   useEffect(() => {
@@ -112,9 +143,10 @@ export const Chat: React.FC<ChatProps> = ({
       const messageToSend = input;
       setInput("");
       setCurrentQuestion(messageToSend); // Start streaming steps
-      // If onSendMessage is async and returns the backend response, log it
-      const result = await onSendMessage(messageToSend);
-      console.log("Backend response:", result);
+      setActiveStep(null);
+      setThinkingLog(null);
+      setPendingMessageId(null);
+      await onSendMessage(messageToSend);
     }
   };
 
@@ -178,52 +210,45 @@ export const Chat: React.FC<ChatProps> = ({
   };
 
   // --- Agent Steps ---
-  const agentSteps = useAgentSteps(currentQuestion);
+  const agentSteps = useAgentSteps(currentQuestion, (finalContext, steps) => {
+    setActiveStep(null); // Clear active step
+    setThinkingLog(steps);
+    setThinkingLogOpen(false);
+    setCurrentQuestion(null);
+    setPendingMessageId(Date.now().toString());
+  });
+
+  // Show only the current active step as a chat bubble at the end
+  useEffect(() => {
+    if (currentQuestion && agentSteps.length > 0) {
+      // Find the last non-final step
+      const lastStep = [...agentSteps]
+        .reverse()
+        .find((s) => s && s.step && s.step !== "final_context");
+      setActiveStep(lastStep || null);
+    }
+  }, [agentSteps, currentQuestion]);
+
+  // Clear activeStep as soon as the assistant's message is rendered
+  useEffect(() => {
+    if (
+      messages.length > 0 &&
+      messages[messages.length - 1].type === "assistant" &&
+      activeStep
+    ) {
+      setActiveStep(null);
+    }
+  }, [messages, activeStep]);
+
+  // --- View Thinking Log Modal ---
+  const openThinkingLog = (log: any[]) => {
+    setThinkingLog(log);
+    setThinkingLogOpen(true);
+  };
+  const closeThinkingLog = () => setThinkingLogOpen(false);
 
   return (
     <Box h="100%" display="flex" flexDirection="column">
-      {/* --- Agent Steps Live View --- */}
-      <Box
-        maxH="200px"
-        overflowY="auto"
-        mb={2}
-        p={2}
-        bg={contextBg}
-        borderRadius="md"
-        border="1px solid"
-        borderColor={borderColor}
-      >
-        <Text fontWeight="bold" mb={1} color={contextTextColor}>
-          Agent Steps (Live):
-        </Text>
-        <VStack align="stretch" spacing={1} fontSize="sm">
-          {agentSteps.length === 0 && (
-            <Text color={contextTextColor}>No steps yet.</Text>
-          )}
-          {agentSteps.map((step, idx) => (
-            <Box
-              key={idx}
-              bg={messageContextBg}
-              p={2}
-              borderRadius="sm"
-              fontFamily="mono"
-            >
-              <pre
-                style={{
-                  margin: 0,
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                }}
-              >
-                {typeof step === "string"
-                  ? step
-                  : JSON.stringify(step, null, 2)}
-              </pre>
-            </Box>
-          ))}
-        </VStack>
-      </Box>
-      {/* --- End Agent Steps Live View --- */}
       <VStack
         ref={chatContainerRef}
         flex="1"
@@ -249,13 +274,14 @@ export const Chat: React.FC<ChatProps> = ({
           },
         }}
       >
-        {messages.map((message) => (
+        {messages.map((message, idx) => (
           <Box
             key={message.id}
             bg={message.type === "user" ? userMessageBg : assistantMessageBg}
             p={4}
             borderRadius="lg"
             shadow="md"
+            position="relative"
           >
             <Flex justifyContent="space-between" alignItems="center" mb={2}>
               <HStack spacing={2}>
@@ -306,6 +332,21 @@ export const Chat: React.FC<ChatProps> = ({
             >
               {message.content}
             </Text>
+            {/* --- Attach View Thinking Log button to assistant message if available --- */}
+            {message.type === "assistant" &&
+              thinkingLog &&
+              idx === messages.map((m) => m.type).lastIndexOf("assistant") && (
+                <Button
+                  size="xs"
+                  mt={2}
+                  onClick={() => setThinkingLogOpen(true)}
+                  colorScheme="yellow"
+                  variant="outline"
+                >
+                  View Thinking Log
+                </Button>
+              )}
+            {/* --- End View Thinking Log button --- */}
             {message.context && message.context.length > 0 && (
               <Collapse in={expandedMessage === message.id}>
                 <Divider my={4} borderColor={borderColor} />
@@ -331,43 +372,50 @@ export const Chat: React.FC<ChatProps> = ({
                       // Render all description items at the top
                       const rendered: React.ReactNode[] = [];
                       message.context.forEach((ctx, idx) => {
-                        if (ctx.startsWith("Description of ")) {
+                        if (ctx.startsWith("ENTITY DESCRIPTION:")) {
+                          // Format: ENTITY DESCRIPTION: Name: Description
                           const match = ctx.match(
-                            /^Description of ([^:]+):\s*(.*)$/
+                            /^ENTITY DESCRIPTION: ([^:]+):\s*(.*)$/
                           );
                           const entityName = match ? match[1] : "";
                           const description = match ? match[2] : ctx;
                           rendered.push(
                             <Box
-                              key={`desc-${entityName}`}
+                              key={`entity-desc-${entityName}`}
                               p={2}
                               borderRadius="sm"
                               borderLeft="3px solid"
                               borderLeftColor="green.400"
-                              bg={messageContextBg}
+                              bg={entityDescBg}
                               mb={1}
                             >
                               <Badge colorScheme="green" mr={2}>
-                                {entityName}
+                                <Text
+                                  as="span"
+                                  fontWeight="bold"
+                                  color={entityNameColor}
+                                >
+                                  {entityName}
+                                </Text>
                               </Badge>
                               <Text
                                 as="span"
                                 fontWeight="bold"
-                                color={contextTextColor}
+                                color={entityDescText}
                                 mr={1}
                               >
-                                Description:
+                                Entity Description:
                               </Text>
-                              <Text as="span" color={contextTextColor}>
+                              <Text as="span" color={entityDescText}>
                                 {description}
                               </Text>
                             </Box>
                           );
                         }
                       });
-                      // Render other context items below descriptions
+                      // Render other context items below entity descriptions
                       message.context.forEach((ctx, idx) => {
-                        if (!ctx.startsWith("Description of ")) {
+                        if (!ctx.startsWith("ENTITY DESCRIPTION:")) {
                           rendered.push(
                             <Text
                               key={idx}
@@ -391,6 +439,31 @@ export const Chat: React.FC<ChatProps> = ({
             )}
           </Box>
         ))}
+        {/* --- Agent thinking step as a chat bubble at the end --- */}
+        <TransitionGroup>
+          {activeStep && (
+            <CSSTransition
+              key={activeStep.step}
+              timeout={300}
+              classNames="fade"
+            >
+              <Box
+                bg={"yellow.100"}
+                p={3}
+                borderRadius="md"
+                alignSelf="flex-end"
+                fontStyle="italic"
+                fontSize="sm"
+                color="gray.700"
+                maxW="60%"
+                mb={2}
+              >
+                {stepMessages[activeStep.step] || activeStep.step}
+              </Box>
+            </CSSTransition>
+          )}
+        </TransitionGroup>
+        {/* --- End agent thinking step --- */}
       </VStack>
 
       <Box p={4} borderTop="1px" borderColor={borderColor}>
@@ -462,6 +535,40 @@ export const Chat: React.FC<ChatProps> = ({
                   />
                 </Box>
               )}
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+      {/* --- View Thinking Log Modal --- */}
+      <Modal isOpen={thinkingLogOpen} onClose={closeThinkingLog} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Agent Thinking Log</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing={2} maxH="60vh" overflowY="auto">
+              {thinkingLog &&
+                thinkingLog.map((step, idx) => (
+                  <Box
+                    key={idx}
+                    bg={messageContextBg}
+                    p={2}
+                    borderRadius="sm"
+                    fontFamily="mono"
+                  >
+                    <pre
+                      style={{
+                        margin: 0,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {typeof step === "string"
+                        ? step
+                        : JSON.stringify(step, null, 2)}
+                    </pre>
+                  </Box>
+                ))}
             </VStack>
           </ModalBody>
         </ModalContent>

@@ -221,25 +221,45 @@ class AgenticContextRetrieval:
     async def _context_synthesis_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
-        step_info = {
-            "step": "context_synthesis",
-            "context_pieces": len(state.context_pieces)
-        }
-        if step_callback:
-            step_callback(json.dumps(step_info))
         print(f"[STEP] context_synthesis | Synthesizing context...")
         print(f"[INFO] Context pieces: {len(state.context_pieces)}")
-        """Synthesize and rank the collected context pieces"""
-        if not state.context_pieces:
-            return asdict(state)
-        
-        # Use LLM to synthesize and rank context
-        synthesized_context = await self._synthesize_context(
-            state.context_pieces, state.query
+        # Add descriptions for all discovered nodes if not already present
+        def normalize_name(name):
+            return name.lower().replace("dr. ", "").strip()
+        all_entities = self.db.get_all_entities()
+        existing_descriptions = set(
+            c for c in state.context_pieces if c.startswith("ENTITY DESCRIPTION: ")
         )
-        
-        state.context_pieces = synthesized_context
+        added_entity_names = set()
+        for node in state.discovered_nodes:
+            node_norm = normalize_name(node)
+            for entity in all_entities:
+                entity_name_norm = normalize_name(entity["name"])
+                print(f"[DEBUG] Comparing node '{node}' ({node_norm}) with entity '{entity['name']}' ({entity_name_norm})")
+                if node_norm in entity_name_norm or entity_name_norm in node_norm:
+                    if entity["name"] in added_entity_names:
+                        continue  # Skip duplicate entity descriptions
+                    entity_type = entity.get("type", "entity")
+                    description = entity.get("description", "")
+                    if description:
+                        desc_str = f"ENTITY DESCRIPTION: {entity['name']}: {description}"
+                    else:
+                        desc_str = f"ENTITY DESCRIPTION: {entity['name']} is a {entity_type}"
+                    if desc_str not in state.context_pieces and desc_str not in existing_descriptions:
+                        print(f"[DEBUG] Adding description: {desc_str}")
+                        state.context_pieces.append(desc_str)
+                        added_entity_names.add(entity["name"])
+        # TEMP: Skip LLM synthesis to debug
         return asdict(state)
+        # --- original code below ---
+        # if not state.context_pieces:
+        #     return asdict(state)
+        # # Use LLM to synthesize and rank context
+        # synthesized_context = await self._synthesize_context(
+        #     state.context_pieces, state.query
+        # )
+        # state.context_pieces = synthesized_context
+        # return asdict(state)
     
     def _should_continue_exploring(self, state: AgentState) -> str:
         if isinstance(state, dict):
