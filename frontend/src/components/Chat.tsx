@@ -43,18 +43,6 @@ const stepMessages: Record<string, string> = {
   final_context: "Finalizing answer...",
 };
 
-// Add a fading style for the thinking message
-const fadeThinkingStyle = (ageMs: number) => {
-  // Fade from gray.600 to gray.300 over 2 seconds
-  const maxFade = 2000;
-  const fade = Math.min(ageMs / maxFade, 1);
-  const color =
-    fade < 1
-      ? `rgba(113, 128, 150, ${1 - fade * 0.5})`
-      : `rgba(203, 213, 224, 0.7)`; // gray.600 to gray.300
-  return { color, transition: "color 0.5s" };
-};
-
 // --- Agent Steps Streaming Hook ---
 function useAgentSteps(
   question: string | null,
@@ -543,15 +531,9 @@ export const Chat: React.FC<ChatProps> = ({
               timeout={300}
               classNames="fade"
             >
-              <Flex
-                align="center"
-                mt={2}
-                mb={2}
-                pl={1}
-                style={fadeThinkingStyle(thinkingAge)}
-              >
-                <Spinner size="xs" mr={2} color="gray.400" speed="0.7s" />
-                <Text fontSize="sm" fontStyle="italic" color="inherit">
+              <Flex align="center" mt={2} mb={2} pl={1}>
+                <Spinner size="xs" mr={2} color="gray.500" speed="0.7s" />
+                <Text fontSize="sm" fontStyle="italic" color="gray.500">
                   {activeStep
                     ? stepMessages[activeStep.step] || activeStep.step
                     : "Processing your question and preparing the best medical context..."}
