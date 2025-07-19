@@ -1,3 +1,4 @@
+import asyncio
 from typing import List, Dict, Any, Optional, Set
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -69,6 +70,8 @@ class AgenticContextRetrieval:
     async def _similarity_search_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
+        if step_callback:
+            step_callback(json.dumps({"step": "similarity_search", "status": "started"}))
         step_info = {
             "step": "similarity_search",
             "query": state.query,
@@ -76,6 +79,7 @@ class AgenticContextRetrieval:
             "reasoning": state.reasoning
         }
         if step_callback:
+            step_callback(json.dumps({"step": "similarity_search", "status": "finished"}))
             step_callback(json.dumps(step_info))
         print(f"[STEP] similarity_search | Query: {state.query}")
         """Extract keywords and find similar nodes in the graph"""
@@ -106,6 +110,8 @@ class AgenticContextRetrieval:
     async def _node_exploration_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
+        if step_callback:
+            step_callback(json.dumps({"step": "node_exploration", "status": "started"}))
         step_info = {
             "step": "node_exploration",
             "unexplored": list(state.discovered_nodes - state.explored_nodes),
@@ -114,6 +120,7 @@ class AgenticContextRetrieval:
             "reasoning": state.reasoning
         }
         if step_callback:
+            step_callback(json.dumps({"step": "node_exploration", "status": "finished"}))
             step_callback(json.dumps(step_info))
         print(f"[STEP] node_exploration | Unexplored: {state.discovered_nodes - state.explored_nodes}")
         """Decide which nodes to explore based on query relevance"""
@@ -150,12 +157,15 @@ class AgenticContextRetrieval:
     async def _relationship_exploration_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
+        if step_callback:
+            step_callback(json.dumps({"step": "relationship_exploration", "status": "started"}))
         step_info = {
             "step": "relationship_exploration",
             "current_focus": state.current_focus,
             "explored_relationships": list(state.explored_relationships)
         }
         if step_callback:
+            step_callback(json.dumps({"step": "relationship_exploration", "status": "finished"}))
             step_callback(json.dumps(step_info))
         print(f"[STEP] relationship_exploration | Current focus: {state.current_focus}")
         """Explore relationships of the current focus node"""
@@ -189,6 +199,8 @@ class AgenticContextRetrieval:
     async def _decision_maker_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
+        if step_callback:
+            step_callback(json.dumps({"step": "decision_maker", "status": "started"}))
         step_info = {
             "step": "decision_maker",
             "depth": f"{state.exploration_depth}/{state.max_depth}",
@@ -196,6 +208,7 @@ class AgenticContextRetrieval:
             "reasoning": state.reasoning
         }
         if step_callback:
+            step_callback(json.dumps({"step": "decision_maker", "status": "finished"}))
             step_callback(json.dumps(step_info))
         print(f"[STEP] decision_maker | Depth: {state.exploration_depth}/{state.max_depth}")
         print(f"[INFO] Should continue: {state.should_continue}")
@@ -221,6 +234,8 @@ class AgenticContextRetrieval:
     async def _context_synthesis_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
+        if step_callback:
+            step_callback(json.dumps({"step": "context_synthesis", "status": "started"}))
         print(f"[STEP] context_synthesis | Synthesizing context...")
         print(f"[INFO] Context pieces: {len(state.context_pieces)}")
         # Add descriptions for all discovered nodes if not already present
@@ -250,6 +265,13 @@ class AgenticContextRetrieval:
                         state.context_pieces.append(desc_str)
                         added_entity_names.add(entity["name"])
         # TEMP: Skip LLM synthesis to debug
+        step_info = {
+            "step": "context_synthesis",
+            "context_pieces": len(state.context_pieces)
+        }
+        if step_callback:
+            step_callback(json.dumps({"step": "context_synthesis", "status": "finished"}))
+            step_callback(json.dumps(step_info))
         return asdict(state)
         # --- original code below ---
         # if not state.context_pieces:
@@ -470,27 +492,64 @@ class AgenticContextRetrieval:
             context_pieces=[],
             max_depth=max_depth
         ))
-        steps = []
-        async def step_callback(step_str):
-            steps.append(step_str)
-            yield step_str
+        
         # Custom runner to yield steps as they happen
         state = initial_state
+        
         # similarity_search
-        state = await self._similarity_search_node(state, step_callback=steps.append)
-        yield steps[-1]
+        state = await self._similarity_search_node(state, step_callback=lambda x: None)
+        # Manually yield the events that would have been sent by step_callback
+        yield json.dumps({"step": "similarity_search", "status": "started"})
+        yield json.dumps({
+            "step": "similarity_search",
+            "query": state["query"],
+            "discovered_nodes": list(state["discovered_nodes"]),
+            "reasoning": state["reasoning"]
+        })
+        yield json.dumps({"step": "similarity_search", "status": "finished"})
+        
         # node_exploration
-        state = await self._node_exploration_node(state, step_callback=steps.append)
-        yield steps[-1]
+        state = await self._node_exploration_node(state, step_callback=lambda x: None)
+        yield json.dumps({"step": "node_exploration", "status": "started"})
+        yield json.dumps({
+            "step": "node_exploration",
+            "unexplored": list(state["discovered_nodes"] - state["explored_nodes"]),
+            "current_focus": state["current_focus"],
+            "explored_nodes": list(state["explored_nodes"]),
+            "reasoning": state["reasoning"]
+        })
+        yield json.dumps({"step": "node_exploration", "status": "finished"})
+        
         # relationship_exploration
-        state = await self._relationship_exploration_node(state, step_callback=steps.append)
-        yield steps[-1]
+        state = await self._relationship_exploration_node(state, step_callback=lambda x: None)
+        yield json.dumps({"step": "relationship_exploration", "status": "started"})
+        yield json.dumps({
+            "step": "relationship_exploration",
+            "current_focus": state["current_focus"],
+            "explored_relationships": list(state["explored_relationships"])
+        })
+        yield json.dumps({"step": "relationship_exploration", "status": "finished"})
+        
         # decision_maker
-        state = await self._decision_maker_node(state, step_callback=steps.append)
-        yield steps[-1]
+        state = await self._decision_maker_node(state, step_callback=lambda x: None)
+        yield json.dumps({"step": "decision_maker", "status": "started"})
+        yield json.dumps({
+            "step": "decision_maker",
+            "depth": f"{state['exploration_depth']}/{state['max_depth']}",
+            "should_continue": state["should_continue"],
+            "reasoning": state["reasoning"]
+        })
+        yield json.dumps({"step": "decision_maker", "status": "finished"})
+        
         # context_synthesis
-        state = await self._context_synthesis_node(state, step_callback=steps.append)
-        yield steps[-1]
+        state = await self._context_synthesis_node(state, step_callback=lambda x: None)
+        yield json.dumps({"step": "context_synthesis", "status": "started"})
+        yield json.dumps({
+            "step": "context_synthesis",
+            "context_pieces": len(state["context_pieces"])
+        })
+        yield json.dumps({"step": "context_synthesis", "status": "finished"})
+        
         # Final context
         yield json.dumps({"step": "final_context", "context": state["context_pieces"]})
 

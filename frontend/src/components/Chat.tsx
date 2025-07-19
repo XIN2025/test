@@ -38,7 +38,7 @@ const stepMessages: Record<string, string> = {
   node_exploration: "Exploring relevant nodes...",
   relationship_exploration: "Exploring relationships...",
   decision_maker: "Deciding next step...",
-  context_synthesis: "Synthesizing context...",
+  context_synthesis: "Synthesizing the most relevant medical context...",
   final_context: "Finalizing answer...",
 };
 
@@ -48,10 +48,18 @@ function useAgentSteps(
   onFinalContext?: (context: any, steps: any[]) => void
 ) {
   const [steps, setSteps] = useState<any[]>([]);
+  const [activeStep, setActiveStep] = useState<any | null>(null);
+  const [lastStepTime, setLastStepTime] = useState<number>(0);
+
   useEffect(() => {
     if (!question) return;
     setSteps([]);
+    setActiveStep(null);
+    setLastStepTime(0);
     let allSteps: any[] = [];
+    let lastStartedStep: string | null = null;
+    let stepTimeout: ReturnType<typeof setTimeout> | null = null;
+
     const eventSource = new EventSource(
       `http://localhost:8000/query-stream?question=${encodeURIComponent(
         question
@@ -60,6 +68,7 @@ function useAgentSteps(
         withCredentials: true,
       }
     );
+
     eventSource.onmessage = (event) => {
       let parsed;
       try {
@@ -69,15 +78,48 @@ function useAgentSteps(
       }
       allSteps = [...allSteps, parsed];
       setSteps((prev) => [...prev, parsed]);
+
+      // Show bubble on started, keep until next started or final_context
+      if (parsed && parsed.status === "started" && parsed.step) {
+        console.log("Setting activeStep to:", parsed.step);
+        lastStartedStep = parsed.step;
+        setActiveStep({ step: parsed.step });
+        setLastStepTime(Date.now());
+
+        // Clear any existing timeout
+        if (stepTimeout) {
+          clearTimeout(stepTimeout);
+        }
+      } else if (parsed && parsed.step === "final_context") {
+        console.log(
+          "Final context received, but keeping activeStep until assistant message appears"
+        );
+        // Don't clear activeStep here - let it stay visible until assistant message appears
+        if (stepTimeout) {
+          clearTimeout(stepTimeout);
+        }
+      }
+
       // If this is the final context, call the callback with all steps
       if (parsed && parsed.step === "final_context" && onFinalContext) {
         onFinalContext(parsed.context, allSteps);
       }
     };
-    return () => eventSource.close();
+
+    eventSource.onerror = (error) => {
+      console.error("SSE error:", error);
+    };
+
+    return () => {
+      if (stepTimeout) {
+        clearTimeout(stepTimeout);
+      }
+      eventSource.close();
+    };
     // eslint-disable-next-line
   }, [question]);
-  return steps;
+
+  return { steps, activeStep };
 }
 
 interface ChatProps {
@@ -97,7 +139,6 @@ export const Chat: React.FC<ChatProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
-  const [activeStep, setActiveStep] = useState<any | null>(null);
   const [thinkingLog, setThinkingLog] = useState<any[] | null>(null);
   const [thinkingLogOpen, setThinkingLogOpen] = useState(false);
   const [pendingMessageId, setPendingMessageId] = useState<string | null>(null);
@@ -143,7 +184,6 @@ export const Chat: React.FC<ChatProps> = ({
       const messageToSend = input;
       setInput("");
       setCurrentQuestion(messageToSend); // Start streaming steps
-      setActiveStep(null);
       setThinkingLog(null);
       setPendingMessageId(null);
       await onSendMessage(messageToSend);
@@ -210,35 +250,68 @@ export const Chat: React.FC<ChatProps> = ({
   };
 
   // --- Agent Steps ---
-  const agentSteps = useAgentSteps(currentQuestion, (finalContext, steps) => {
-    setActiveStep(null); // Clear active step
-    setThinkingLog(steps);
-    setThinkingLogOpen(false);
-    setCurrentQuestion(null);
-    setPendingMessageId(Date.now().toString());
-  });
-
-  // Show only the current active step as a chat bubble at the end
-  useEffect(() => {
-    if (currentQuestion && agentSteps.length > 0) {
-      // Find the last non-final step
-      const lastStep = [...agentSteps]
-        .reverse()
-        .find((s) => s && s.step && s.step !== "final_context");
-      setActiveStep(lastStep || null);
+  const { steps: agentSteps, activeStep } = useAgentSteps(
+    currentQuestion,
+    (finalContext, steps) => {
+      setThinkingLog(steps);
+      setThinkingLogOpen(false);
+      // setCurrentQuestion(null); // <-- moved to useEffect below
+      setPendingMessageId(Date.now().toString());
     }
-  }, [agentSteps, currentQuestion]);
+  );
 
-  // Clear activeStep as soon as the assistant's message is rendered
+  // Clear currentQuestion only after assistant message is rendered
   useEffect(() => {
     if (
+      currentQuestion &&
       messages.length > 0 &&
-      messages[messages.length - 1].type === "assistant" &&
-      activeStep
+      messages[messages.length - 1].type === "assistant"
     ) {
-      setActiveStep(null);
+      setCurrentQuestion(null);
     }
-  }, [messages, activeStep]);
+  }, [messages, currentQuestion]);
+
+  // Keep thinking bubble visible until assistant message appears
+  const shouldShowThinkingBubble = activeStep && currentQuestion;
+
+  // Ensure thinking bubble stays visible for at least 1 second
+  const [minDisplayTime, setMinDisplayTime] = useState<number>(0);
+
+  useEffect(() => {
+    if (activeStep) {
+      setMinDisplayTime(Date.now() + 1000); // Show for at least 1 second
+    }
+  }, [activeStep]);
+
+  const shouldShowWithMinTime =
+    activeStep && currentQuestion && Date.now() < minDisplayTime;
+
+  // Show placeholder when waiting for assistant but no specific step is active
+  // This includes: after steps finish but before assistant responds, or when steps are very fast
+  const shouldShowPlaceholder = currentQuestion && !activeStep;
+
+  // Show any thinking bubble if we have a current question and either active step or placeholder condition
+  const shouldShowAnyThinkingBubble =
+    currentQuestion && (shouldShowWithMinTime || shouldShowPlaceholder);
+
+  console.log(
+    "shouldShowThinkingBubble:",
+    shouldShowThinkingBubble,
+    "shouldShowWithMinTime:",
+    shouldShowWithMinTime,
+    "shouldShowPlaceholder:",
+    shouldShowPlaceholder,
+    "shouldShowAnyThinkingBubble:",
+    shouldShowAnyThinkingBubble,
+    "activeStep:",
+    activeStep,
+    "currentQuestion:",
+    currentQuestion,
+    "agentSteps.length:",
+    agentSteps.length,
+    "minDisplayTime:",
+    minDisplayTime
+  );
 
   // --- View Thinking Log Modal ---
   const openThinkingLog = (log: any[]) => {
@@ -441,9 +514,9 @@ export const Chat: React.FC<ChatProps> = ({
         ))}
         {/* --- Agent thinking step as a chat bubble at the end --- */}
         <TransitionGroup>
-          {activeStep && (
+          {shouldShowAnyThinkingBubble && (
             <CSSTransition
-              key={activeStep.step}
+              key={activeStep?.step || "placeholder"}
               timeout={300}
               classNames="fade"
             >
@@ -458,7 +531,9 @@ export const Chat: React.FC<ChatProps> = ({
                 maxW="60%"
                 mb={2}
               >
-                {stepMessages[activeStep.step] || activeStep.step}
+                {activeStep
+                  ? stepMessages[activeStep.step] || activeStep.step
+                  : "Processing your question and preparing the best medical context..."}
               </Box>
             </CSSTransition>
           )}
