@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict
@@ -9,6 +9,9 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import os
 from dotenv import load_dotenv
+from agentic_context_langgraph import agentic_context_retrieval, agentic_context_retrieval_stream
+from fastapi.responses import StreamingResponse
+import asyncio
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -148,73 +151,8 @@ async def query(request: QueryRequest):
         question = request.question
         logging.debug(f"Processing question: {question}")
         
-        # Use LLM for intelligent entity extraction
-        entity_names = await extract_entities_with_llm(question)
-        logging.debug(f"LLM extracted entity names: {entity_names}")
-        
-        if not entity_names:
-            return QueryResponse(
-                answer="I couldn't identify any entities in your question. Could you please rephrase it?",
-                context=[]
-            )
-        
-        # Get context from Neo4j
-        raw_context = db.get_context(entity_names)
-        logging.debug(f"Raw context from db: {raw_context}")
-
-        # Use LLM to filter and rank context
-        context = await get_context_with_llm(entity_names, raw_context)
-        logging.debug(f"Filtered context: {context}")
-
-        # Attach entity descriptions to context
-        all_entities = db.get_all_entities()
-        entity_descriptions = []
-        for name in entity_names:
-            # Direct match for entity name
-            for ent in all_entities:
-                if ent["name"].lower() == name.lower():
-                    desc = ent.get("description")
-                    if desc is not None:
-                        entity_descriptions.append(f"Description of {ent['name']}: {desc}")
-            # Fallback: substring match if direct match not found
-            for ent in all_entities:
-                ent_name_lower = ent["name"].lower()
-                if name.lower() in ent_name_lower or ent_name_lower in name.lower():
-                    desc = ent.get("description")
-                    if desc:
-                        # Only add if not already present
-                        desc_str = f"Description of {ent['name']}: {desc}"
-                        if desc_str not in entity_descriptions:
-                            entity_descriptions.append(desc_str)
-        # Ensure every relevant entity's description is included in the context
-        # Find all entity names referenced in context
-        referenced_entities = set()
-        for ctx_item in context:
-            match = None
-            # Try to extract entity name from context string
-            # e.g. "Sarah Chen studies Hypertension" => "Sarah Chen"
-            if isinstance(ctx_item, str):
-                match = ctx_item.split(' ')[0] if ctx_item else None
-            if match:
-                referenced_entities.add(match)
-
-        # Add missing descriptions for referenced entities
-        for ent in all_entities:
-            ent_name = ent["name"]
-            desc = ent.get("description")
-            if desc is not None:
-                for ref_name in referenced_entities:
-                    ent_name_lower = ent_name.lower()
-                    ref_name_lower = ref_name.lower()
-                    if ref_name_lower in ent_name_lower or ent_name_lower in ref_name_lower:
-                        # Only add if not already present
-                        desc_str = f"Description of {ent_name}: {desc}"
-                        if desc_str not in entity_descriptions:
-                            entity_descriptions.append(desc_str)
-        # Combine descriptions and context
-        full_context = entity_descriptions + context
-
-
+        # Use new agentic_context_langgraph for context
+        full_context = await agentic_context_retrieval(question, llm, db)
 
         if not full_context:
             return QueryResponse(
@@ -249,6 +187,14 @@ Context:
     except Exception as e:
         logging.error(f"Error processing query: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/query-stream")
+async def query_stream(question: str = Query(...)):
+    async def event_generator():
+        async for step in agentic_context_retrieval_stream(question, llm, db):
+            yield f"data: {step}\n\n"
+            await asyncio.sleep(0.01)
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/graph", response_model=GraphData)
 async def get_graph_data():

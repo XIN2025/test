@@ -79,8 +79,8 @@ class Neo4jDatabase:
         """
         with self.driver.session() as session:
             # First, get direct information about the query entities (using CONTAINS for fuzzy match)
-        entity_info: list[str] = []
-        for entity in query_entities:
+            entity_info: list[str] = []
+            for entity in query_entities:
                 # Get entity details with partial match
                 entity_query = """
                 MATCH (e)
