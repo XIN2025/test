@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict
@@ -9,6 +9,9 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import os
 from dotenv import load_dotenv
+from agentic_context_langgraph import agentic_context_retrieval, agentic_context_retrieval_stream
+from fastapi.responses import StreamingResponse
+import asyncio
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -52,8 +55,12 @@ async def upload_file(file: UploadFile = File(...)):
         
         # Store in Neo4j
         for entity in entities:
-            db.create_entity(entity['type'], entity['name'])
-        
+            # Pass description as a dictionary for properties
+            properties = {}
+            if entity.get('description'):
+                properties['description'] = entity['description']
+            db.create_entity(entity['type'], entity['name'], properties)
+
         for rel in relationships:
             db.create_relationship(rel['from'], rel['type'], rel['to'])
         
@@ -144,33 +151,18 @@ async def query(request: QueryRequest):
         question = request.question
         logging.debug(f"Processing question: {question}")
         
-        # Use LLM for intelligent entity extraction
-        entity_names = await extract_entities_with_llm(question)
-        logging.debug(f"LLM extracted entity names: {entity_names}")
-        
-        if not entity_names:
-            return QueryResponse(
-                answer="I couldn't identify any entities in your question. Could you please rephrase it?",
-                context=[]
-            )
-        
-        # Get context from Neo4j
-        raw_context = db.get_context(entity_names)
-        logging.debug(f"Raw context from db: {raw_context}")
-        
-        # Use LLM to filter and rank context
-        context = await get_context_with_llm(entity_names, raw_context)
-        logging.debug(f"Filtered context: {context}")
-        
-        if not context:
+        # Use new agentic_context_langgraph for context
+        full_context = await agentic_context_retrieval(question, llm, db)
+
+        if not full_context:
             return QueryResponse(
                 answer="I don't have enough information to answer that question.",
                 context=[]
             )
-        
+
         # Format context for final LLM query
-        context_str = "\n".join(context)
-        
+        context_str = "\n".join(full_context)
+
         # Create messages for the answer generation
         messages = [
             SystemMessage(content="""You are a knowledgeable assistant. When answering:
@@ -183,18 +175,26 @@ async def query(request: QueryRequest):
 Context:
 {context_str}""")
         ]
-        
+
         # Get answer from LLM
         response = llm.invoke(messages)
-        
+
         return QueryResponse(
             answer=response.content,
-            context=context
+            context=full_context
         )
         
     except Exception as e:
         logging.error(f"Error processing query: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/query-stream")
+async def query_stream(question: str = Query(...)):
+    async def event_generator():
+        async for step in agentic_context_retrieval_stream(question, llm, db):
+            yield f"data: {step}\n\n"
+            await asyncio.sleep(0.01)
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/graph", response_model=GraphData)
 async def get_graph_data():
@@ -224,6 +224,16 @@ async def get_graph_data():
         
         return GraphData(nodes=nodes_data, links=links_data)
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/clear-database")
+async def clear_database():
+    """Clear all data from the Neo4j database"""
+    try:
+        db.clear_database()
+        return {"message": "Database cleared successfully"}
+    except Exception as e:
+        logging.error(f"Error clearing database: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 def get_node_color(node_type: str) -> str:
