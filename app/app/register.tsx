@@ -1,18 +1,10 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
+import { View, Text, TextInput, Button, Alert } from "react-native";
 import { useRouter } from "expo-router";
 
 export default function RegisterScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -22,12 +14,12 @@ export default function RegisterScreen() {
       const response = await fetch("http://localhost:8000/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Registration failed");
-      Alert.alert("Success", "Registration successful. Please login.");
-      router.push("./login");
+      Alert.alert("Success", "OTP sent to your email.");
+      router.push({ pathname: "./verify-registration-otp", params: { email } });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       Alert.alert("Registration Error", error.message);
@@ -74,31 +66,11 @@ export default function RegisterScreen() {
         autoCapitalize="none"
         keyboardType="email-address"
       />
-      <TextInput
-        style={{
-          width: 250,
-          borderWidth: 1,
-          borderColor: "#ccc",
-          borderRadius: 5,
-          padding: 10,
-          marginBottom: 16,
-        }}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
       <Button
         title={loading ? "Registering..." : "Register"}
         onPress={handleRegister}
         disabled={loading}
       />
-      <TouchableOpacity
-        onPress={() => router.push({ pathname: "./login" })}
-        style={{ marginTop: 16 }}
-      >
-        <Text style={{ color: "#007bff" }}>Already have an account? Login</Text>
-      </TouchableOpacity>
     </View>
   );
 }

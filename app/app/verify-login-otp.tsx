@@ -1,27 +1,28 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Button, Alert } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
-export default function LoginScreen() {
-  const [email, setEmail] = useState("");
+export default function VerifyLoginOtpScreen() {
+  const { email } = useLocalSearchParams();
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async () => {
+  const handleVerify = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/login", {
+      const response = await fetch("http://localhost:8000/verify-login-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, otp }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Login failed");
-      Alert.alert("Success", "OTP sent to your email.");
-      router.push({ pathname: "./verify-login-otp", params: { email } });
+      if (!response.ok) throw new Error(data.detail || "Verification failed");
+      Alert.alert("Success", "Login successful!");
+      router.push("/");
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      Alert.alert("Login Error", error.message);
+      Alert.alert("Verification Error", error.message);
     } finally {
       setLoading(false);
     }
@@ -36,7 +37,7 @@ export default function LoginScreen() {
         padding: 16,
       }}
     >
-      <Text style={{ fontSize: 24, marginBottom: 24 }}>Login</Text>
+      <Text style={{ fontSize: 24, marginBottom: 24 }}>Verify Login OTP</Text>
       <TextInput
         style={{
           width: 250,
@@ -46,15 +47,14 @@ export default function LoginScreen() {
           padding: 10,
           marginBottom: 16,
         }}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
+        placeholder="OTP"
+        value={otp}
+        onChangeText={setOtp}
+        keyboardType="numeric"
       />
       <Button
-        title={loading ? "Logging in..." : "Login"}
-        onPress={handleLogin}
+        title={loading ? "Verifying..." : "Verify"}
+        onPress={handleVerify}
         disabled={loading}
       />
     </View>
