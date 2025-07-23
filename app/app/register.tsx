@@ -1,12 +1,40 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
 import { useRouter } from "expo-router";
 
 export default function RegisterScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const handleRegister = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8000/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Registration failed");
+      Alert.alert("Success", "Registration successful. Please login.");
+      router.push("./login");
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      Alert.alert("Registration Error", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View
@@ -61,10 +89,9 @@ export default function RegisterScreen() {
         secureTextEntry
       />
       <Button
-        title="Register"
-        onPress={() => {
-          /* TODO: Add registration logic */
-        }}
+        title={loading ? "Registering..." : "Register"}
+        onPress={handleRegister}
+        disabled={loading}
       />
       <TouchableOpacity
         onPress={() => router.push({ pathname: "./login" })}
