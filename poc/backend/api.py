@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict
+from typing import List, Dict, Union
 import logging
 from text_processor import TextProcessor
 from graph_db import Neo4jDatabase
@@ -48,6 +48,12 @@ app.add_middleware(
 db = Neo4jDatabase()
 processor = TextProcessor()
 vector_store = VectorStore()
+
+# Automatically sync vector store with graph database on startup
+def sync_vector_store_on_startup():
+    vector_store.sync_from_graph(db)
+
+sync_vector_store_on_startup()
 
 class UploadResponse(BaseModel):
     entities: int
@@ -161,7 +167,7 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     answer: str
-    context: List[str]
+    context: List[Union[str, Dict]]
 
 class GraphData(BaseModel):
     nodes: List[Dict]
@@ -236,8 +242,11 @@ async def query(request: QueryRequest):
                 context=[]
             )
 
-        # Format context for final LLM query
-        context_str = "\n".join(full_context)
+        # Format context for final LLM query (only use text parts)
+        context_str = "\n".join([
+            c if isinstance(c, str) else c.get("summary", "[Image]")
+            for c in full_context
+        ])
 
         # Create messages for the answer generation
         messages = [
@@ -274,10 +283,11 @@ async def query_stream(question: str = Query(...)):
 
 @app.get("/graph", response_model=GraphData)
 async def get_graph_data():
-    """Get the entire knowledge graph structure"""
+    import logging
+    logging.info("Received request for /graph")
     try:
         nodes, relationships = db.get_graph_data()
-        
+        logging.info(f"Fetched {len(nodes)} nodes and {len(relationships)} relationships from Neo4j")
         # Format data for visualization
         nodes_data = [
             {
@@ -288,7 +298,6 @@ async def get_graph_data():
             }
             for node in nodes
         ]
-        
         links_data = [
             {
                 "source": rel["from"],
@@ -297,9 +306,10 @@ async def get_graph_data():
             }
             for rel in relationships
         ]
-        
+        logging.info("Returning graph data")
         return GraphData(nodes=nodes_data, links=links_data)
     except Exception as e:
+        logging.error(f"Error in /graph: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/clear-database")
@@ -366,6 +376,35 @@ async def hybrid_query(request: QueryRequest):
     except Exception as e:
         logging.error(f"Error in hybrid_query: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+class ImageResult(BaseModel):
+    id: str
+    summary: str
+    base64: str
+
+@app.get("/search-images", response_model=List[ImageResult])
+async def search_images(query: str = Query(...)):
+    """
+    Search for images by semantic summary using the vector store.
+    Returns a list of images (id, summary, base64).
+    """
+    image_ids = vector_store.search(query, top_k=5)
+    images = []
+    for image_id in image_ids:
+        # Query Neo4j for image node
+        with db.driver.session() as session:
+            result = session.run(
+                "MATCH (i:Image {name: $name}) RETURN i.name as id, i.summary as summary, i.base64 as base64",
+                name=image_id
+            )
+            record = result.single()
+            if record:
+                images.append({
+                    "id": record["id"],
+                    "summary": record["summary"],
+                    "base64": record["base64"]
+                })
+    return images
 
 def get_node_color(node_type: str) -> str:
     """Return a color based on node type"""

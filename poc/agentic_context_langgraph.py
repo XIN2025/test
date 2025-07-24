@@ -240,14 +240,27 @@ class AgenticContextRetrieval:
                         continue  # Skip duplicate entity descriptions
                     entity_type = entity.get("type", "entity")
                     description = entity.get("description", "")
-                    if description:
-                        desc_str = f"ENTITY DESCRIPTION: {entity['name']}: {description}"
+                    if entity_type == "Image":
+                        # Add image as a dict for frontend rendering
+                        desc_obj = {
+                            "type": "image",
+                            "name": entity["name"],
+                            "summary": description,
+                            "base64": entity.get("base64", "")
+                        }
+                        if desc_obj not in state.context_pieces:
+                            print(f"[DEBUG] Adding image context: {desc_obj}")
+                            state.context_pieces.append(desc_obj)
+                            added_entity_names.add(entity["name"])
                     else:
-                        desc_str = f"ENTITY DESCRIPTION: {entity['name']} is a {entity_type}"
-                    if desc_str not in state.context_pieces and desc_str not in existing_descriptions:
-                        print(f"[DEBUG] Adding description: {desc_str}")
-                        state.context_pieces.append(desc_str)
-                        added_entity_names.add(entity["name"])
+                        if description:
+                            desc_str = f"ENTITY DESCRIPTION: {entity['name']}: {description}"
+                        else:
+                            desc_str = f"ENTITY DESCRIPTION: {entity['name']} is a {entity_type}"
+                        if desc_str not in state.context_pieces and desc_str not in existing_descriptions:
+                            print(f"[DEBUG] Adding description: {desc_str}")
+                            state.context_pieces.append(desc_str)
+                            added_entity_names.add(entity["name"])
         # TEMP: Skip LLM synthesis to debug
         step_info = {
             "step": "context_synthesis",
