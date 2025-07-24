@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from graph_db import Neo4jDatabase
 from agentic_context_langgraph import AgenticContextRetrieval, agentic_context_retrieval
+from vector_store import VectorStore
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +21,8 @@ async def main():
     
     # Initialize database
     db = Neo4jDatabase()
+    # Initialize vector store
+    vector_store = VectorStore()
     
     # Example queries to test the system
     test_queries = [
@@ -39,6 +42,7 @@ async def main():
                 question=query,
                 llm=llm,
                 db=db,
+                vector_store=vector_store,
                 max_depth=3
             )
             
