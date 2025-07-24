@@ -10,6 +10,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import random
+from typing import Optional, List
 
 MONGODB_URI = os.getenv("MONGODB_URI")
 
@@ -57,6 +58,18 @@ class UserLogin(BaseModel):
 class OTPVerify(BaseModel):
     email: EmailStr
     otp: str
+
+class UserPreferences(BaseModel):
+    email: EmailStr
+    name: str
+    age: int
+    gender: str
+    healthGoals: List[str]
+    conditions: List[str]
+    communicationStyle: str
+    notifications: bool
+
+from fastapi import Query
 
 @app.on_event("startup")
 def startup_db_client():
@@ -121,6 +134,22 @@ def verify_login_otp(data: OTPVerify):
         return {"message": "Login successful", "user": {"name": db_user["name"], "email": db_user["email"]}}
     else:
         raise HTTPException(status_code=400, detail="Invalid OTP")
+
+@app.get("/api/user/preferences")
+def get_user_preferences(email: EmailStr = Query(...)):
+    prefs = app.mongodb["preferences"].find_one({"email": email})
+    return {"exists": bool(prefs)}
+
+@app.post("/api/user/preferences")
+def save_user_preferences(prefs: UserPreferences):
+    preferences = app.mongodb["preferences"]
+    # Upsert: update if exists, insert if not
+    preferences.update_one(
+        {"email": prefs.email},
+        {"$set": prefs.dict()},
+        upsert=True
+    )
+    return {"message": "Preferences saved"}
 
 @app.get("/")
 async def root():

@@ -18,8 +18,18 @@ export default function VerifyLoginOtpScreen() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Verification failed");
-      Alert.alert("Success", "Login successful!");
-      router.push("/");
+      // Check if user preferences exist
+      const prefsRes = await fetch(
+        `http://localhost:8000/api/user/preferences?email=${email}`
+      );
+      const prefsData = await prefsRes.json();
+      if (prefsData.exists) {
+        Alert.alert("Success", "Login successful!");
+        router.push("/");
+      } else {
+        Alert.alert("Almost there!", "Please set your preferences.");
+        router.push({ pathname: "./initial-preferences", params: { email } });
+      }
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       Alert.alert("Verification Error", error.message);
