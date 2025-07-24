@@ -25,7 +25,7 @@ export default function VerifyLoginOtpScreen() {
       const prefsData = await prefsRes.json();
       if (prefsData.exists) {
         Alert.alert("Success", "Login successful!");
-        router.push("/");
+        router.push({ pathname: "/dashboard", params: { email } });
       } else {
         Alert.alert("Almost there!", "Please set your preferences.");
         router.push({ pathname: "./initial-preferences", params: { email } });

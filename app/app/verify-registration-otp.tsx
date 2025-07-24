@@ -21,8 +21,11 @@ export default function VerifyRegistrationOtpScreen() {
       );
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Verification failed");
-      Alert.alert("Success", "Registration verified! Please login.");
-      router.push("./login");
+      Alert.alert(
+        "Success",
+        "Registration verified! Please set your preferences."
+      );
+      router.push({ pathname: "./initial-preferences", params: { email } });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       Alert.alert("Verification Error", error.message);

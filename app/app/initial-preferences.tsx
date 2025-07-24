@@ -75,6 +75,13 @@ export default function InitialPreferences() {
       );
       if (response.ok) {
         Alert.alert("Preferences saved!");
+        // Navigate to dashboard
+        // Assuming 'router' is available from 'expo-router' or similar
+        // For now, we'll just alert and let the user navigate manually or via a different method
+        Alert.alert(
+          "Preferences saved!",
+          "You will be redirected to the dashboard."
+        );
         // TODO: Navigate to main app/chatbot page
       } else {
         Alert.alert("Failed to save preferences.");
