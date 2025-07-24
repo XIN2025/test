@@ -13,6 +13,15 @@ from agentic_context_langgraph import agentic_context_retrieval, agentic_context
 from fastapi.responses import StreamingResponse
 import asyncio
 from vector_store import VectorStore
+import tempfile
+import base64
+from typing import Any
+
+# Add import for PDF processing
+try:
+    from unstructured.partition.pdf import partition_pdf
+except ImportError:
+    partition_pdf = None  # Will raise error if used without install
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -43,38 +52,99 @@ vector_store = VectorStore()
 class UploadResponse(BaseModel):
     entities: int
     relationships: int
+    images: int = 0  # Add image count
+
+def summarize_image_with_gemini(image_b64: str) -> str:
+    """
+    Use Gemini Vision to generate a summary/caption for a base64-encoded image.
+    """
+    llm = processor.llm  # Already initialized Gemini model
+    messages = [
+        SystemMessage(content="You are an expert at describing images. Provide a concise, informative summary of the image."),
+        HumanMessage(content=[
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}}
+        ])
+    ]
+    try:
+        response = llm.invoke(messages)
+        return response.content.strip()
+    except Exception as e:
+        logging.error(f"Error summarizing image: {e}")
+        return "Image summary not available."
 
 @app.post("/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):
-    """Process an uploaded text file and store entities/relationships in the graph"""
+    """Process an uploaded text or PDF file and store entities/relationships/images in the graph"""
     try:
-        # Read the file content
+        filename = file.filename or "uploaded_file"
         content = await file.read()
-        text = content.decode('utf-8')
-        
-        # Process the text
-        entities, relationships = processor.process_text(text)
-        
-        # Store in Neo4j and VectorStore
+        ext = filename.split(".")[-1].lower()
+        entities, relationships, image_summaries = [], [], []
+        if ext == "txt":
+            text = content.decode('utf-8')
+            entities, relationships = processor.process_text(text)
+        elif ext == "pdf":
+            if partition_pdf is None:
+                raise HTTPException(status_code=500, detail="unstructured library not installed on server.")
+            # Save PDF to temp file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                tmp.write(content)
+                tmp_path = tmp.name
+            # Extract elements from PDF
+            output_path = tempfile.mkdtemp()
+            elements = partition_pdf(
+                filename=tmp_path,
+                extract_images_in_pdf=True,
+                infer_table_structure=True,
+                chunking_strategy="by_title",
+                max_characters=4000,
+                new_after_n_chars=3800,
+                combine_text_under_n_chars=2000,
+                extract_image_block_output_dir=output_path,
+            )
+            # Extract text and images
+            text_chunks = []
+            for e in elements:
+                if hasattr(e, 'text') and e.text:
+                    text_chunks.append(e.text)
+            # Process all text chunks
+            for chunk in text_chunks:
+                ents, rels = processor.process_text(chunk)
+                entities.extend(ents)
+                relationships.extend(rels)
+            # Extract images and create summaries
+            import os
+            image_files = [f for f in os.listdir(output_path) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
+            for img_file in image_files:
+                img_path = os.path.join(output_path, img_file)
+                with open(img_path, "rb") as f:
+                    img_b64 = base64.b64encode(f.read()).decode('utf-8')
+                # Summarize the image using Gemini Vision
+                image_summary = summarize_image_with_gemini(img_b64)
+                image_id = f"image_{img_file}"
+                # Store in graph with summary
+                db.create_entity("Image", image_id, {"base64": img_b64, "summary": image_summary})
+                # Store in vector store using summary
+                vector_store.add_node(image_id, image_summary)
+                image_summaries.append((image_id, img_b64, image_summary))
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type. Please upload a .txt or .pdf file.")
+        # Store in Neo4j and VectorStore (for text entities)
         for entity in entities:
-            # Pass description as a dictionary for properties
             properties = {}
             if entity.get('description'):
                 properties['description'] = entity['description']
             db.create_entity(entity['type'], entity['name'], properties)
-            # Add to vector store
             node_id = entity['name']
             node_text = entity.get('description', entity['name'])
             vector_store.add_node(node_id, node_text)
-
         for rel in relationships:
             db.create_relationship(rel['from'], rel['type'], rel['to'])
-        
         return UploadResponse(
             entities=len(entities),
-            relationships=len(relationships)
+            relationships=len(relationships),
+            images=len(image_summaries)
         )
-        
     except Exception as e:
         logging.error(f"Error processing upload: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

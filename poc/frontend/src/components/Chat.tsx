@@ -220,9 +220,12 @@ export const Chat: React.FC<ChatProps> = ({
         }
       );
 
-      alert(
-        `Upload successful! Processed ${response.data.entities} entities and ${response.data.relationships} relationships`
-      );
+      const { entities, relationships, images } = response.data;
+      let msg = `Upload successful! Processed ${entities} entities and ${relationships} relationships`;
+      if (images !== undefined && images > 0) {
+        msg += `, and ${images} images`;
+      }
+      alert(msg);
       onUploadSuccess();
       onClose();
     } catch (error) {
@@ -243,10 +246,10 @@ export const Chat: React.FC<ChatProps> = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type === "text/plain") {
+      if (file.type === "text/plain" || file.type === "application/pdf") {
         handleUpload(file);
       } else {
-        alert("Please upload a text file (.txt)");
+        alert("Please upload a text file (.txt) or PDF file (.pdf)");
       }
     }
   };
@@ -584,7 +587,7 @@ export const Chat: React.FC<ChatProps> = ({
             <VStack spacing={4}>
               <Input
                 type="file"
-                accept=".txt"
+                accept=".txt,.pdf"
                 onChange={handleFileChange}
                 ref={fileInputRef}
                 display="none"
