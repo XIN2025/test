@@ -1,6 +1,6 @@
 from typing import List
 from langchain_core.messages import SystemMessage, HumanMessage
-from graph_db import Neo4jDatabase
+from poc.core.graph_db import Neo4jDatabase
 
 # You may need to pass llm and db from your main app
 async def agentic_context_retrieval(

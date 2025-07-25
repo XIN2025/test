@@ -3,7 +3,7 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import os
 from typing import List, Dict, Optional
-from graph_db import Neo4jDatabase
+from core.graph_db import Neo4jDatabase
 import logging
 
 class VectorStore:

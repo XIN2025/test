@@ -5,10 +5,10 @@ from enum import Enum
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from graph_db import Neo4jDatabase
+from core.graph_db import Neo4jDatabase
 import re
 import json
-from vector_store import VectorStore
+from core.vector_store import VectorStore
 
 
 class NodeType(Enum):

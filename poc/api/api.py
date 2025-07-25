@@ -3,16 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Union
 import logging
-from text_processor import TextProcessor
-from graph_db import Neo4jDatabase
+from core.text_processor import TextProcessor
+from core.graph_db import Neo4jDatabase
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import os
 from dotenv import load_dotenv
-from agentic_context_langgraph import agentic_context_retrieval, agentic_context_retrieval_stream
+from core.agentic_context_langgraph import agentic_context_retrieval, agentic_context_retrieval_stream
 from fastapi.responses import StreamingResponse
 import asyncio
-from vector_store import VectorStore
+from core.vector_store import VectorStore
 import tempfile
 import base64
 from typing import Any

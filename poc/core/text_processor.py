@@ -4,7 +4,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import json
 import os
 from dotenv import load_dotenv
-from graph_db import Neo4jDatabase
+from core.graph_db import Neo4jDatabase
 
 # Load environment variables
 load_dotenv()
