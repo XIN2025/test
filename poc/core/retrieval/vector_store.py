@@ -3,7 +3,8 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import os
 from typing import List, Dict, Optional
-from graph_db import Neo4jDatabase
+from core.db.graph_db import Neo4jDatabase
+import logging
 
 class VectorStore:
     def __init__(self, embedding_model: str = 'all-MiniLM-L6-v2', index_path: str = 'faiss_index.bin'):
@@ -27,6 +28,9 @@ class VectorStore:
         # Save id_map and rev_id_map as needed
 
     def add_node(self, node_id: str, text: str):
+        if not text:
+            logging.warning(f"Skipping node '{node_id}' with empty or None text for embedding.")
+            return
         embedding = self.model.encode([text])[0].astype(np.float32)
         self.index.add(np.array([embedding]))
         self.id_map[self.next_idx] = node_id
@@ -62,6 +66,7 @@ class VectorStore:
         return [self.id_map.get(idx) for idx in I[0] if idx in self.id_map]
 
     def sync_from_graph(self, db: Optional[Neo4jDatabase] = None):
+        logging.info("Starting sync of vector store from graph database...")
         if db is None:
             db = Neo4jDatabase()
         entities = db.get_all_entities()
@@ -72,8 +77,10 @@ class VectorStore:
         for ent in entities:
             node_id = ent.get('name')  # Use name as ID for now
             text = ent.get('description', ent.get('name'))
+            logging.info(f"Adding node to vector store: {node_id}")
             self.add_node(node_id, text)
         self.save_index()
+        logging.info("Finished syncing vector store from graph database.")
 
     def debug_print_nodes(self):
         print("VectorStore contents:")

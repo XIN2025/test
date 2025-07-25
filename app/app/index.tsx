@@ -20,6 +20,10 @@ export default function Index() {
         title="Register"
         onPress={() => router.push({ pathname: "./register" })}
       />
+      <Button
+        title="References"
+        onPress={() => router.push({ pathname: "./references" })}
+      />
     </View>
   );
 }
