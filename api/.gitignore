@@ -6,4 +6,4 @@ app.egg-info/**
 .DS_Store
 .env
 venv
-__pycache__
+

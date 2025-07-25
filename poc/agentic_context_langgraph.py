@@ -8,6 +8,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from graph_db import Neo4jDatabase
 import re
 import json
+from vector_store import VectorStore
 
 
 class NodeType(Enum):
@@ -33,9 +34,10 @@ class AgentState:
 
 
 class AgenticContextRetrieval:
-    def __init__(self, llm, db: Neo4jDatabase):
+    def __init__(self, llm, db: Neo4jDatabase, vector_store: VectorStore):
         self.llm = llm
         self.db = db
+        self.vector_store = vector_store
         self.graph = self._build_graph()
     
     def _build_graph(self) -> StateGraph:
@@ -78,33 +80,18 @@ class AgenticContextRetrieval:
             "discovered_nodes": list(state.discovered_nodes),
             "reasoning": state.reasoning
         }
+        # Use vector store for retrieval
+        top_k = 5  # You can make this configurable
+        retrieved_node_ids = self.vector_store.search(state.query, top_k=top_k)
+        discovered_nodes = set([nid for nid in retrieved_node_ids if nid])
+        state.discovered_nodes = discovered_nodes
+        state.reasoning = f"Found {len(discovered_nodes)} nodes using vector store RAG retrieval."
+        print(f"[STEP] similarity_search | Query: {state.query}")
+        print(f"[INFO] Discovered nodes: {state.discovered_nodes}")
+        print(f"[INFO] Reasoning: {state.reasoning}")
         if step_callback:
             step_callback(json.dumps({"step": "similarity_search", "status": "finished"}))
             step_callback(json.dumps(step_info))
-        print(f"[STEP] similarity_search | Query: {state.query}")
-        """Extract keywords and find similar nodes in the graph"""
-        # Extract keywords from query using LLM
-        keywords = await self._extract_keywords(state.query)
-        
-        # Find similar nodes in the database
-        all_entities = self.db.get_all_entities()
-        discovered_nodes = set()
-        
-        for keyword in keywords:
-            for entity in all_entities:
-                entity_name_lower = entity["name"].lower()
-                keyword_lower = keyword.lower()
-                
-                # Check for exact match, substring match, or similarity
-                if (keyword_lower in entity_name_lower or 
-                    entity_name_lower in keyword_lower or
-                    self._calculate_similarity(keyword_lower, entity_name_lower) > 0.6):
-                    discovered_nodes.add(entity["name"])
-        
-        state.discovered_nodes = discovered_nodes
-        state.reasoning = f"Found {len(discovered_nodes)} nodes matching keywords: {', '.join(keywords)}"
-        print(f"[INFO] Discovered nodes: {state.discovered_nodes}")
-        print(f"[INFO] Reasoning: {state.reasoning}")
         return asdict(state)
     
     async def _node_exploration_node(self, state: AgentState, step_callback=None) -> dict:
@@ -123,32 +110,29 @@ class AgenticContextRetrieval:
             step_callback(json.dumps({"step": "node_exploration", "status": "finished"}))
             step_callback(json.dumps(step_info))
         print(f"[STEP] node_exploration | Unexplored: {state.discovered_nodes - state.explored_nodes}")
-        """Decide which nodes to explore based on query relevance"""
+        # Decide which nodes to explore based on query relevance
         if not state.discovered_nodes:
             state.should_continue = False
+            state.reasoning = "No discovered nodes to explore."
+            print(f"[INFO] No discovered nodes. Stopping exploration.")
             return asdict(state)
-        
-        # Use LLM to decide which nodes are most relevant to explore
         unexplored_nodes = state.discovered_nodes - state.explored_nodes
-        
         if not unexplored_nodes:
             state.should_continue = False
+            state.reasoning = "No unexplored nodes left."
+            print(f"[INFO] No unexplored nodes left. Stopping exploration.")
             return asdict(state)
-        
         # Prioritize nodes based on query relevance
         prioritized_nodes = await self._prioritize_nodes(list(unexplored_nodes), state.query)
-        
         # Select the most relevant node to explore
         if prioritized_nodes:
             state.current_focus = prioritized_nodes[0]
             state.explored_nodes.add(prioritized_nodes[0])
             state.exploration_depth += 1
-            
             # Get node description and add to context
             node_info = await self._get_node_info(prioritized_nodes[0])
             if node_info:
                 state.context_pieces.append(node_info)
-        
         print(f"[INFO] Current focus: {state.current_focus}")
         print(f"[INFO] Explored nodes: {state.explored_nodes}")
         print(f"[INFO] Reasoning: {state.reasoning}")
@@ -213,22 +197,22 @@ class AgenticContextRetrieval:
         print(f"[STEP] decision_maker | Depth: {state.exploration_depth}/{state.max_depth}")
         print(f"[INFO] Should continue: {state.should_continue}")
         print(f"[INFO] Reasoning: {state.reasoning}")
-        """Decide whether to continue exploring or synthesize context"""
+        # If should_continue is already False, don't ask LLM, just return
+        if not state.should_continue:
+            state.reasoning = state.reasoning or "No more nodes to explore."
+            return asdict(state)
         # Check if we've reached max depth
         if state.exploration_depth >= state.max_depth:
             state.should_continue = False
             state.reasoning = "Reached maximum exploration depth"
             return asdict(state)
-        
         # Use LLM to decide if we should continue exploring
         decision = await self._should_continue_exploration(state)
         state.should_continue = decision
-        
         if decision:
             state.reasoning = "Decided to continue exploring for more context"
         else:
             state.reasoning = "Decided we have sufficient context"
-        
         return asdict(state)
     
     async def _context_synthesis_node(self, state: AgentState, step_callback=None) -> dict:
@@ -559,21 +543,23 @@ async def agentic_context_retrieval(
     question: str,
     llm,
     db: Neo4jDatabase,
+    vector_store,
     max_depth: int = 3
 ) -> List[str]:
     """
     Agentic workflow to retrieve context from the graph database using LangGraph.
     Implements similarity search, node exploration, relationship traversal, and iterative context gathering.
     """
-    agent = AgenticContextRetrieval(llm, db)
+    agent = AgenticContextRetrieval(llm, db, vector_store)
     return await agent.retrieve_context(question, max_depth) 
 
 async def agentic_context_retrieval_stream(
     question: str,
     llm,
     db: Neo4jDatabase,
+    vector_store,
     max_depth: int = 3
 ):
-    agent = AgenticContextRetrieval(llm, db)
+    agent = AgenticContextRetrieval(llm, db, vector_store)
     async for step in agent.retrieve_context_stream(question, max_depth):
         yield step 

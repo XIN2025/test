@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from agentic_context_langgraph import agentic_context_retrieval, agentic_context_retrieval_stream
 from fastapi.responses import StreamingResponse
 import asyncio
+from vector_store import VectorStore
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -37,6 +38,7 @@ app.add_middleware(
 
 db = Neo4jDatabase()
 processor = TextProcessor()
+vector_store = VectorStore()
 
 class UploadResponse(BaseModel):
     entities: int
@@ -53,13 +55,17 @@ async def upload_file(file: UploadFile = File(...)):
         # Process the text
         entities, relationships = processor.process_text(text)
         
-        # Store in Neo4j
+        # Store in Neo4j and VectorStore
         for entity in entities:
             # Pass description as a dictionary for properties
             properties = {}
             if entity.get('description'):
                 properties['description'] = entity['description']
             db.create_entity(entity['type'], entity['name'], properties)
+            # Add to vector store
+            node_id = entity['name']
+            node_text = entity.get('description', entity['name'])
+            vector_store.add_node(node_id, node_text)
 
         for rel in relationships:
             db.create_relationship(rel['from'], rel['type'], rel['to'])
@@ -152,7 +158,7 @@ async def query(request: QueryRequest):
         logging.debug(f"Processing question: {question}")
         
         # Use new agentic_context_langgraph for context
-        full_context = await agentic_context_retrieval(question, llm, db)
+        full_context = await agentic_context_retrieval(question, llm, db, vector_store)
 
         if not full_context:
             return QueryResponse(
@@ -191,7 +197,7 @@ Context:
 @app.get("/query-stream")
 async def query_stream(question: str = Query(...)):
     async def event_generator():
-        async for step in agentic_context_retrieval_stream(question, llm, db):
+        async for step in agentic_context_retrieval_stream(question, llm, db, vector_store):
             yield f"data: {step}\n\n"
             await asyncio.sleep(0.01)
     return StreamingResponse(event_generator(), media_type="text/event-stream")
@@ -234,6 +240,61 @@ async def clear_database():
         return {"message": "Database cleared successfully"}
     except Exception as e:
         logging.error(f"Error clearing database: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/sync-vector-store")
+async def sync_vector_store():
+    """Rebuild the FAISS vector store from all current Neo4j nodes."""
+    try:
+        vector_store.sync_from_graph(db)
+        return {"message": "Vector store synced from graph successfully."}
+    except Exception as e:
+        logging.error(f"Error syncing vector store: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class HybridQueryResponse(BaseModel):
+    answer: str
+    context: List[str]
+    vector_nodes: List[str]
+    graph_nodes: List[str]
+
+@app.post("/hybrid-query", response_model=HybridQueryResponse)
+async def hybrid_query(request: QueryRequest):
+    """Hybrid RAG: Retrieve context from both vector store and graph, merge, and answer."""
+    try:
+        question = request.question
+        # 1. Vector store semantic search
+        vector_node_ids = vector_store.search(question, top_k=5)
+        # Fetch descriptions for vector nodes from Neo4j
+        vector_context = []
+        vector_entities = db.get_all_entities()
+        for node_id in vector_node_ids:
+            for ent in vector_entities:
+                if ent["name"] == node_id:
+                    desc = ent.get("description")
+                    if desc:
+                        vector_context.append(f"ENTITY DESCRIPTION: {ent['name']}: {desc}")
+                    else:
+                        vector_context.append(f"ENTITY DESCRIPTION: {ent['name']} (no description)")
+        # 2. Graph agentic context
+        graph_context = await agentic_context_retrieval(question, llm, db, vector_store)
+        # 3. Merge and deduplicate
+        all_context = list(dict.fromkeys(vector_context + graph_context))
+        # 4. LLM answer
+        context_str = "\n".join(all_context)
+        messages = [
+            SystemMessage(content="""You are a knowledgeable assistant. When answering:\n1. Use only the provided context\n2. If context is contradictory, explain the contradiction\n3. Express uncertainty when appropriate\n4. Be concise but informative"""),
+            HumanMessage(content=f"""Based on this context, answer: {question}\n\nContext:\n{context_str}""")
+        ]
+        response = llm.invoke(messages)
+        return HybridQueryResponse(
+            answer=response.content,
+            context=all_context,
+            vector_nodes=vector_node_ids,
+            graph_nodes=[c for c in graph_context if c.startswith("ENTITY DESCRIPTION: ")]
+        )
+    except Exception as e:
+        logging.error(f"Error in hybrid_query: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 def get_node_color(node_type: str) -> str:
