@@ -1,11 +1,31 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, TouchableOpacity } from "react-native";
+import { View, Text, TextInput, Button, Alert } from "react-native";
 import { useRouter } from "expo-router";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Login failed");
+      Alert.alert("Success", "OTP sent to your email.");
+      router.push({ pathname: "./verify-login-otp", params: { email } });
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      Alert.alert("Login Error", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View
@@ -32,34 +52,11 @@ export default function LoginScreen() {
         autoCapitalize="none"
         keyboardType="email-address"
       />
-      <TextInput
-        style={{
-          width: 250,
-          borderWidth: 1,
-          borderColor: "#ccc",
-          borderRadius: 5,
-          padding: 10,
-          marginBottom: 16,
-        }}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
       <Button
-        title="Login"
-        onPress={() => {
-          /* TODO: Add login logic */
-        }}
+        title={loading ? "Logging in..." : "Login"}
+        onPress={handleLogin}
+        disabled={loading}
       />
-      <TouchableOpacity
-        onPress={() => router.push({ pathname: "./register" })}
-        style={{ marginTop: 16 }}
-      >
-        <Text style={{ color: "#007bff" }}>
-          Don't have an account? Register
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 }
