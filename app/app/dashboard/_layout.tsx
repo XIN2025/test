@@ -1,6 +1,14 @@
 import { Tabs } from "expo-router";
 import React, { useState } from "react";
 import WalkthroughModal from "../WalkthroughModal";
+// @ts-ignore
+import {
+  Heart,
+  MessageCircle,
+  ShoppingBag,
+  Pill,
+  User,
+} from "lucide-react-native";
 
 export default function DashboardTabsLayout() {
   const [showWalkthrough, setShowWalkthrough] = useState(true);
@@ -14,7 +22,63 @@ export default function DashboardTabsLayout() {
       {showWalkthrough && (
         <WalkthroughModal onFinish={handleFinishWalkthrough} />
       )}
-      <Tabs />
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: "#059669",
+          tabBarInactiveTintColor: "#64748b",
+        }}
+      >
+        <Tabs.Screen
+          name="main"
+          options={{
+            title: "Dashboard",
+            tabBarLabel: "Dashboard",
+            tabBarIcon: ({ color, size }) => (
+              <Heart color={color} size={size ?? 22} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="chat"
+          options={{
+            title: "Chat",
+            tabBarLabel: "Chat",
+            tabBarIcon: ({ color, size }) => (
+              <MessageCircle color={color} size={size ?? 22} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="orders"
+          options={{
+            title: "Orders",
+            tabBarLabel: "Orders",
+            tabBarIcon: ({ color, size }) => (
+              <ShoppingBag color={color} size={size ?? 22} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="supplements"
+          options={{
+            title: "Supplements",
+            tabBarLabel: "Supplements",
+            tabBarIcon: ({ color, size }) => (
+              <Pill color={color} size={size ?? 22} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Profile",
+            tabBarLabel: "Profile",
+            tabBarIcon: ({ color, size }) => (
+              <User color={color} size={size ?? 22} />
+            ),
+          }}
+        />
+      </Tabs>
     </>
   );
 }

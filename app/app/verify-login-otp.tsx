@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 
 export default function VerifyLoginOtpScreen() {
@@ -25,7 +25,7 @@ export default function VerifyLoginOtpScreen() {
       const prefsData = await prefsRes.json();
       if (prefsData.exists) {
         Alert.alert("Success", "Login successful!");
-        router.push({ pathname: "/dashboard", params: { email } });
+        router.push({ pathname: "./dashboard", params: { email } });
       } else {
         Alert.alert("Almost there!", "Please set your preferences.");
         router.push({ pathname: "./initial-preferences", params: { email } });
@@ -39,34 +39,46 @@ export default function VerifyLoginOtpScreen() {
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 16,
-      }}
-    >
-      <Text style={{ fontSize: 24, marginBottom: 24 }}>Verify Login OTP</Text>
-      <TextInput
-        style={{
-          width: 250,
-          borderWidth: 1,
-          borderColor: "#ccc",
-          borderRadius: 5,
-          padding: 10,
-          marginBottom: 16,
-        }}
-        placeholder="OTP"
-        value={otp}
-        onChangeText={setOtp}
-        keyboardType="numeric"
-      />
-      <Button
-        title={loading ? "Verifying..." : "Verify"}
-        onPress={handleVerify}
-        disabled={loading}
-      />
+    <View className="flex-1 justify-center items-center bg-green-50 px-4">
+      {/* Logo */}
+      <View className="items-center mb-8">
+        <View className="bg-green-600 rounded-full w-20 h-20 flex items-center justify-center mb-4">
+          <Text className="text-3xl text-white">♡</Text>
+        </View>
+        <Text className="text-3xl font-bold text-green-700">Evra</Text>
+        <Text className="text-green-600 mt-1">Your Personal Health Coach</Text>
+      </View>
+      {/* Card */}
+      <View className="bg-white w-full max-w-md rounded-xl shadow-lg p-8 items-center">
+        <Text className="text-2xl font-bold mb-2 text-center">
+          Verify Login OTP
+        </Text>
+        <Text className="text-gray-500 mb-6 text-center">
+          Enter the OTP sent to your email
+        </Text>
+        {/* OTP Input */}
+        <View className="w-full mb-4">
+          <Text className="mb-1 text-gray-700">OTP</Text>
+          <TextInput
+            className="border border-gray-300 rounded-md px-4 py-3 w-full text-base bg-gray-50 focus:border-green-500"
+            placeholder="Enter OTP"
+            value={otp}
+            onChangeText={setOtp}
+            keyboardType="numeric"
+            editable={!loading}
+          />
+        </View>
+        {/* Verify Button */}
+        <TouchableOpacity
+          className="bg-green-600 rounded-md w-full py-3 mt-2 mb-2 items-center disabled:opacity-50"
+          onPress={handleVerify}
+          disabled={loading || !otp}
+        >
+          <Text className="text-white text-lg font-semibold">
+            {loading ? "Verifying..." : "Verify"}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
