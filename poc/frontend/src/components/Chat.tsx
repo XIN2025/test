@@ -32,6 +32,8 @@ import type { Message } from "../types";
 import axios from "axios";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import "./AgentStepFade.css"; // You will need to create this CSS for fade animations
+import ImageResults from "./ImageResults";
+import type { ImageResult } from "./ImageResults";
 
 // Map step keys to user-friendly thinking messages
 const stepMessages: Record<string, string> = {
@@ -144,6 +146,8 @@ export const Chat: React.FC<ChatProps> = ({
   const [thinkingLogOpen, setThinkingLogOpen] = useState(false);
   const [pendingMessageId, setPendingMessageId] = useState<string | null>(null);
   const [thinkingStart, setThinkingStart] = useState<number | null>(null);
+  // Add state for images
+  const [images, setImages] = useState<ImageResult[]>([]);
 
   // Ref hooks
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -220,9 +224,12 @@ export const Chat: React.FC<ChatProps> = ({
         }
       );
 
-      alert(
-        `Upload successful! Processed ${response.data.entities} entities and ${response.data.relationships} relationships`
-      );
+      const { entities, relationships, images } = response.data;
+      let msg = `Upload successful! Processed ${entities} entities and ${relationships} relationships`;
+      if (images !== undefined && images > 0) {
+        msg += `, and ${images} images`;
+      }
+      alert(msg);
       onUploadSuccess();
       onClose();
     } catch (error) {
@@ -243,10 +250,10 @@ export const Chat: React.FC<ChatProps> = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type === "text/plain") {
+      if (file.type === "text/plain" || file.type === "application/pdf") {
         handleUpload(file);
       } else {
-        alert("Please upload a text file (.txt)");
+        alert("Please upload a text file (.txt) or PDF file (.pdf)");
       }
     }
   };
@@ -331,6 +338,31 @@ export const Chat: React.FC<ChatProps> = ({
   };
   const closeThinkingLog = () => setThinkingLogOpen(false);
 
+  // Function to search images after a question is asked
+  const searchImages = async (query: string) => {
+    try {
+      const response = await axios.get<ImageResult[]>(
+        "http://localhost:8000/search-images",
+        { params: { query } }
+      );
+      setImages(response.data);
+    } catch (error) {
+      setImages([]);
+    }
+  };
+
+  // Helper type guard
+  function isImageContext(
+    ctx: any
+  ): ctx is { type: string; base64: string; summary?: string; name?: string } {
+    return (
+      ctx &&
+      typeof ctx === "object" &&
+      ctx.type === "image" &&
+      typeof ctx.base64 === "string"
+    );
+  }
+
   return (
     <Box h="100%" display="flex" flexDirection="column">
       <VStack
@@ -358,169 +390,212 @@ export const Chat: React.FC<ChatProps> = ({
           },
         }}
       >
-        {messages.map((message, idx) => (
-          <Box
-            key={message.id}
-            bg={message.type === "user" ? userMessageBg : assistantMessageBg}
-            p={4}
-            borderRadius="lg"
-            shadow="md"
-            position="relative"
-          >
-            <Flex justifyContent="space-between" alignItems="center" mb={2}>
-              <HStack spacing={2}>
-                <Text fontWeight="bold">
-                  {message.type === "user" ? "You" : "Assistant"}
-                </Text>
-                {message.type === "assistant" &&
-                  message.context &&
-                  message.context.length > 0 && (
-                    <Badge
-                      colorScheme="blue"
-                      variant="solid"
-                      bg={badgeBg}
-                      color={badgeColor}
-                      borderRadius="full"
-                      px={2}
-                      display="flex"
-                      alignItems="center"
-                      cursor="pointer"
-                      onClick={() => toggleContext(message.id)}
-                    >
-                      <FiInfo style={{ marginRight: "4px" }} />
-                      {message.context.length} Context Items
-                    </Badge>
-                  )}
-              </HStack>
-              {message.type === "assistant" &&
-                message.context &&
-                message.context.length > 0 && (
-                  <IconButton
-                    aria-label="Toggle context"
-                    onClick={() => toggleContext(message.id)}
-                    variant="ghost"
-                    size="sm"
-                    icon={
-                      expandedMessage === message.id ? (
-                        <FiChevronUp />
-                      ) : (
-                        <FiChevronDown />
-                      )
-                    }
-                  />
-                )}
-            </Flex>
-            <Text
-              fontSize="md"
-              mb={message.context && expandedMessage === message.id ? 4 : 0}
+        {messages.map((msg, idx) => (
+          <Box key={msg.id} mb={4}>
+            <Box
+              key={msg.id}
+              bg={msg.type === "user" ? userMessageBg : assistantMessageBg}
+              p={4}
+              borderRadius="lg"
+              shadow="md"
+              position="relative"
             >
-              {message.content}
-            </Text>
-            {/* --- Attach View Thinking Log button to assistant message if available --- */}
-            {message.type === "assistant" &&
-              thinkingLog &&
-              idx === messages.map((m) => m.type).lastIndexOf("assistant") && (
-                <Button
-                  size="xs"
-                  mt={2}
-                  onClick={() => setThinkingLogOpen(true)}
-                  colorScheme="yellow"
-                  variant="outline"
-                >
-                  View Thinking Log
-                </Button>
-              )}
-            {/* --- End View Thinking Log button --- */}
-            {message.context && message.context.length > 0 && (
-              <Collapse in={expandedMessage === message.id}>
-                <Divider my={4} borderColor={borderColor} />
-                <Box>
-                  <Text
-                    fontWeight="bold"
-                    mb={2}
-                    fontSize="sm"
-                    color={contextTextColor}
-                  >
-                    Medical Knowledge Context:
+              <Flex justifyContent="space-between" alignItems="center" mb={2}>
+                <HStack spacing={2}>
+                  <Text fontWeight="bold">
+                    {msg.type === "user" ? "You" : "Assistant"}
                   </Text>
-                  <VStack
-                    align="stretch"
-                    spacing={2}
-                    bg={contextBg}
-                    p={3}
-                    borderRadius="md"
-                    fontSize="sm"
+                  {msg.type === "assistant" &&
+                    msg.context &&
+                    msg.context.length > 0 && (
+                      <Badge
+                        colorScheme="blue"
+                        variant="solid"
+                        bg={badgeBg}
+                        color={badgeColor}
+                        borderRadius="full"
+                        px={2}
+                        display="flex"
+                        alignItems="center"
+                        cursor="pointer"
+                        onClick={() => toggleContext(msg.id)}
+                      >
+                        <FiInfo style={{ marginRight: "4px" }} />
+                        {msg.context.length} Context Items
+                      </Badge>
+                    )}
+                </HStack>
+                {msg.type === "assistant" &&
+                  msg.context &&
+                  msg.context.length > 0 && (
+                    <IconButton
+                      aria-label="Toggle context"
+                      onClick={() => toggleContext(msg.id)}
+                      variant="ghost"
+                      size="sm"
+                      icon={
+                        expandedMessage === msg.id ? (
+                          <FiChevronUp />
+                        ) : (
+                          <FiChevronDown />
+                        )
+                      }
+                    />
+                  )}
+              </Flex>
+              <Text
+                fontSize="md"
+                mb={msg.context && expandedMessage === msg.id ? 4 : 0}
+              >
+                {msg.content}
+              </Text>
+              {/* --- Attach View Thinking Log button to assistant message if available --- */}
+              {msg.type === "assistant" &&
+                thinkingLog &&
+                idx ===
+                  messages.map((m) => m.type).lastIndexOf("assistant") && (
+                  <Button
+                    size="xs"
+                    mt={2}
+                    onClick={() => setThinkingLogOpen(true)}
+                    colorScheme="yellow"
+                    variant="outline"
                   >
-                    {/* Display description for all entities referenced in context, even if not present in context array */}
-                    {(() => {
-                      // Render all description items at the top
-                      const rendered: React.ReactNode[] = [];
-                      message.context.forEach((ctx, idx) => {
-                        if (ctx.startsWith("ENTITY DESCRIPTION:")) {
-                          // Format: ENTITY DESCRIPTION: Name: Description
-                          const match = ctx.match(
-                            /^ENTITY DESCRIPTION: ([^:]+):\s*(.*)$/
-                          );
-                          const entityName = match ? match[1] : "";
-                          const description = match ? match[2] : ctx;
-                          rendered.push(
-                            <Box
-                              key={`entity-desc-${entityName}`}
-                              p={2}
-                              borderRadius="sm"
-                              borderLeft="3px solid"
-                              borderLeftColor="green.400"
-                              bg={entityDescBg}
-                              mb={1}
-                            >
-                              <Badge colorScheme="green" mr={2}>
+                    View Thinking Log
+                  </Button>
+                )}
+              {/* --- End View Thinking Log button --- */}
+              {msg.context && msg.context.length > 0 && (
+                <Collapse in={expandedMessage === msg.id}>
+                  <Divider my={4} borderColor={borderColor} />
+                  <Box>
+                    <Text
+                      fontWeight="bold"
+                      mb={2}
+                      fontSize="sm"
+                      color={contextTextColor}
+                    >
+                      Medical Knowledge Context:
+                    </Text>
+                    <VStack
+                      align="stretch"
+                      spacing={2}
+                      bg={contextBg}
+                      p={3}
+                      borderRadius="md"
+                      fontSize="sm"
+                    >
+                      {/* Display description for all entities referenced in context, even if not present in context array */}
+                      {(() => {
+                        // Render all description items at the top
+                        const rendered: React.ReactNode[] = [];
+                        msg.context.forEach((ctx, idx) => {
+                          if (ctx.startsWith("ENTITY DESCRIPTION:")) {
+                            // Format: ENTITY DESCRIPTION: Name: Description
+                            const match = ctx.match(
+                              /^ENTITY DESCRIPTION: ([^:]+):\s*(.*)$/
+                            );
+                            const entityName = match ? match[1] : "";
+                            const description = match ? match[2] : ctx;
+                            rendered.push(
+                              <Box
+                                key={`entity-desc-${entityName}`}
+                                p={2}
+                                borderRadius="sm"
+                                borderLeft="3px solid"
+                                borderLeftColor="green.400"
+                                bg={entityDescBg}
+                                mb={1}
+                              >
+                                <Badge colorScheme="green" mr={2}>
+                                  <Text
+                                    as="span"
+                                    fontWeight="bold"
+                                    color={entityNameColor}
+                                  >
+                                    {entityName}
+                                  </Text>
+                                </Badge>
                                 <Text
                                   as="span"
                                   fontWeight="bold"
-                                  color={entityNameColor}
+                                  color={entityDescText}
+                                  mr={1}
                                 >
-                                  {entityName}
+                                  Entity Description:
                                 </Text>
-                              </Badge>
+                                <Text as="span" color={entityDescText}>
+                                  {description}
+                                </Text>
+                              </Box>
+                            );
+                          }
+                        });
+                        // Render other context items below entity descriptions
+                        msg.context.forEach((ctx, idx) => {
+                          if (!ctx.startsWith("ENTITY DESCRIPTION:")) {
+                            rendered.push(
                               <Text
-                                as="span"
-                                fontWeight="bold"
-                                color={entityDescText}
-                                mr={1}
+                                key={idx}
+                                color={contextTextColor}
+                                p={2}
+                                borderRadius="sm"
+                                borderLeft="3px solid"
+                                borderLeftColor="blue.400"
+                                bg={messageContextBg}
                               >
-                                Entity Description:
+                                {ctx}
                               </Text>
-                              <Text as="span" color={entityDescText}>
-                                {description}
-                              </Text>
-                            </Box>
-                          );
+                            );
+                          }
+                        });
+                        return rendered;
+                      })()}
+                      {msg.context.map(
+                        (
+                          ctx:
+                            | string
+                            | {
+                                type: string;
+                                base64: string;
+                                summary?: string;
+                                name?: string;
+                              },
+                          i: number
+                        ) => {
+                          if (typeof ctx === "string") {
+                            return (
+                              <Box key={i} fontSize="sm" color="gray.500">
+                                {ctx}
+                              </Box>
+                            );
+                          } else if (isImageContext(ctx)) {
+                            return (
+                              <Box key={i} mt={2} mb={2}>
+                                <img
+                                  src={`data:image/png;base64,${ctx.base64}`}
+                                  alt={ctx.summary || ctx.name}
+                                  style={{
+                                    maxWidth: 300,
+                                    maxHeight: 200,
+                                    border: "1px solid #ccc",
+                                  }}
+                                />
+                                <Box fontSize="sm" color="gray.600" mt={1}>
+                                  {ctx.summary}
+                                </Box>
+                              </Box>
+                            );
+                          } else {
+                            return null;
+                          }
                         }
-                      });
-                      // Render other context items below entity descriptions
-                      message.context.forEach((ctx, idx) => {
-                        if (!ctx.startsWith("ENTITY DESCRIPTION:")) {
-                          rendered.push(
-                            <Text
-                              key={idx}
-                              color={contextTextColor}
-                              p={2}
-                              borderRadius="sm"
-                              borderLeft="3px solid"
-                              borderLeftColor="blue.400"
-                              bg={messageContextBg}
-                            >
-                              {ctx}
-                            </Text>
-                          );
-                        }
-                      });
-                      return rendered;
-                    })()}
-                  </VStack>
-                </Box>
-              </Collapse>
-            )}
+                      )}
+                    </VStack>
+                  </Box>
+                </Collapse>
+              )}
+            </Box>
           </Box>
         ))}
         {/* --- Agent thinking step as a chat bubble at the end --- */}
@@ -543,6 +618,7 @@ export const Chat: React.FC<ChatProps> = ({
           )}
         </TransitionGroup>
         {/* --- End agent thinking step --- */}
+        <ImageResults images={images} />
       </VStack>
 
       <Box p={4} borderTop="1px" borderColor={borderColor}>
@@ -584,7 +660,7 @@ export const Chat: React.FC<ChatProps> = ({
             <VStack spacing={4}>
               <Input
                 type="file"
-                accept=".txt"
+                accept=".txt,.pdf"
                 onChange={handleFileChange}
                 ref={fileInputRef}
                 display="none"

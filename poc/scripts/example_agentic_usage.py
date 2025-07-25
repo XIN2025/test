@@ -2,9 +2,7 @@ import asyncio
 import os
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from graph_db import Neo4jDatabase
-from agentic_context_langgraph import AgenticContextRetrieval, agentic_context_retrieval
-from vector_store import VectorStore
+from core import Neo4jDatabase, AgenticContextRetrieval, agentic_context_retrieval, VectorStore
 
 # Load environment variables
 load_dotenv()

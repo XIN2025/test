@@ -6,6 +6,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from dotenv import load_dotenv
+from poc.config.config import *
 
 load_dotenv()
 
