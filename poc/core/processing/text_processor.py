@@ -4,7 +4,8 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import json
 import os
 from dotenv import load_dotenv
-from core.graph_db import Neo4jDatabase
+from core.db.graph_db import Neo4jDatabase
+from core.processing.prompts import ENTITY_EXTRACTION_SYSTEM_PROMPT, ENTITY_EXTRACTION_HUMAN_PROMPT, RELATIONSHIP_EXTRACTION_SYSTEM_PROMPT, RELATIONSHIP_EXTRACTION_HUMAN_PROMPT
 
 # Load environment variables
 load_dotenv()
@@ -15,6 +16,9 @@ if not GOOGLE_API_KEY:
     raise ValueError("GOOGLE_API_KEY not found in environment variables. Please check your .env file.")
 
 class TextProcessor:
+    """
+    Processes plain text to extract entities and relationships. For PDF, use PDFProcessor.
+    """
     def __init__(self, max_iterations: int = 3) -> None:
         self.nlp = spacy.load("en_core_web_sm")
         self.db = Neo4jDatabase()
@@ -57,8 +61,6 @@ class TextProcessor:
                 "description": description
             })
         
-        print
-
         # Second pass: Check existing entities from Neo4j and previous iterations
         all_existing = existing_entities or self.get_existing_entities()
         text_lower = text.lower()
@@ -103,29 +105,8 @@ class TextProcessor:
     def _identify_potential_entities(self, text: str, existing_entities: list[dict]) -> list[dict]:
         """Use LLM to identify potential entities missed by SpaCy"""
         try:
-            system_prompt = """You are an entity extraction expert. Analyze the text and identify potential entities that might have been missed.
-            Focus on:
-            - Technical terms and concepts
-            - Product names
-            - Organizations
-            - Complex person names
-            - Locations
-            Return ONLY a JSON array of entities without any markdown formatting."""
-
-            human_content = f"""Text: {text}
-
-Already identified entities: {[e["name"] for e in existing_entities]}
-
-Required JSON Format:
-[
-    {{"name": "Entity Name", "type": "PERSON/ORG/PRODUCT/LOCATION/CONCEPT"}}
-]
-
-Rules:
-1. Only include entities NOT in the already identified list
-2. Focus on entities that might be missed by traditional NLP
-3. Return only the raw JSON array
-4. Ensure proper JSON formatting"""
+            system_prompt = ENTITY_EXTRACTION_SYSTEM_PROMPT
+            human_content = ENTITY_EXTRACTION_HUMAN_PROMPT(text, existing_entities)
 
             messages = [
                 SystemMessage(content=system_prompt),
@@ -157,42 +138,8 @@ Rules:
             if db_context:
                 context.extend(db_context)
 
-            system_prompt = """You are a relationship extraction expert. Your task is to identify explicit and implicit relationships between entities in text and return them in valid JSON format.
-            Common relationship types include:
-            - FOUNDED (person founded company)
-            - LEADS/CEO_OF (person leads/manages company)
-            - HEADQUARTERED_IN (company located in place)
-            - ACQUIRED (company acquired company)
-            - DEVELOPED (company/person created product)
-            - INVESTED_IN (company invested in company)
-            - PARTNERED_WITH (company partnered with company)
-            - PART_OF (component is part of system)
-            - USES (entity uses tool/technology)
-            - RELATED_TO (general relationship)
-            
-            IMPORTANT: Return ONLY the raw JSON array without any markdown formatting."""
-            
-            human_content = f"""Analyze the following text and extract relationships between entities. This is iteration {iteration} of the analysis.
-
-Text: {text}
-
-Available Entities: {', '.join(entity_names)}
-
-Additional Context:
-{chr(10).join(context) if context else "No additional context available"}
-
-Required JSON Format:
-[
-    {{"from": "Entity1", "type": "RELATIONSHIP_TYPE", "to": "Entity2"}}
-]
-
-Rules:
-1. Include both explicit and implicit relationships from the text
-2. Use UPPERCASE for relationship types
-3. Entities must be from the provided list
-4. Consider the additional context provided
-5. Look for relationships that might have been missed in previous iterations
-6. Return only the raw JSON array"""
+            system_prompt = RELATIONSHIP_EXTRACTION_SYSTEM_PROMPT
+            human_content = RELATIONSHIP_EXTRACTION_HUMAN_PROMPT(text, entity_names, context, iteration)
 
             messages = [
                 SystemMessage(content=system_prompt),

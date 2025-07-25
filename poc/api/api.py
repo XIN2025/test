@@ -3,16 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Union
 import logging
-from core.text_processor import TextProcessor
-from core.graph_db import Neo4jDatabase
+from core import TextProcessor, PDFProcessor, Neo4jDatabase, VectorStore, agentic_context_retrieval, agentic_context_retrieval_stream
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import os
 from dotenv import load_dotenv
-from core.agentic_context_langgraph import agentic_context_retrieval, agentic_context_retrieval_stream
 from fastapi.responses import StreamingResponse
 import asyncio
-from core.vector_store import VectorStore
 import tempfile
 import base64
 from typing import Any
@@ -233,7 +230,7 @@ async def query(request: QueryRequest):
         question = request.question
         logging.debug(f"Processing question: {question}")
         
-        # Use new agentic_context_langgraph for context
+        # Use new agentic_context_retrieval for context
         full_context = await agentic_context_retrieval(question, llm, db, vector_store)
 
         if not full_context:

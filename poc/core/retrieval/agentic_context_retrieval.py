@@ -5,10 +5,11 @@ from enum import Enum
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from core.graph_db import Neo4jDatabase
+from core.db.graph_db import Neo4jDatabase
 import re
 import json
-from core.vector_store import VectorStore
+from core.retrieval.vector_store import VectorStore
+from core.processing.prompts import KEYWORD_EXTRACTION_SYSTEM_PROMPT, NODE_PRIORITIZATION_SYSTEM_PROMPT, RELATIONSHIP_FILTERING_SYSTEM_PROMPT, EXPLORATION_DECISION_SYSTEM_PROMPT, CONTEXT_SYNTHESIS_SYSTEM_PROMPT
 
 
 class NodeType(Enum):
@@ -291,9 +292,7 @@ class AgenticContextRetrieval:
     async def _extract_keywords(self, query: str) -> List[str]:
         """Extract relevant keywords from the query"""
         messages = [
-            SystemMessage(content="""You are a keyword extraction expert. Extract the most important keywords, entities, and concepts from the given query. 
-            Focus on names, organizations, concepts, and specific terms that would be useful for searching a knowledge graph.
-            Return only a comma-separated list of keywords, no explanations."""),
+            SystemMessage(content=KEYWORD_EXTRACTION_SYSTEM_PROMPT),
             HumanMessage(content=f"Query: {query}")
         ]
         
@@ -329,9 +328,7 @@ class AgenticContextRetrieval:
             return []
         
         messages = [
-            SystemMessage(content="""You are a node prioritization expert. Given a list of node names and a query, 
-            rank the nodes by their relevance to the query. Consider semantic similarity, context, and importance.
-            Return only the node names in order of relevance, separated by commas."""),
+            SystemMessage(content=NODE_PRIORITIZATION_SYSTEM_PROMPT),
             HumanMessage(content=f"Query: {query}\nNodes: {', '.join(nodes)}")
         ]
         
@@ -396,9 +393,7 @@ class AgenticContextRetrieval:
             rel_descriptions.append(desc)
         
         messages = [
-            SystemMessage(content="""You are a relationship filtering expert. Given a list of relationships and a query, 
-            identify which relationships are most relevant to answering the query. Consider the context and importance.
-            Return only the relevant relationship descriptions, one per line."""),
+            SystemMessage(content=RELATIONSHIP_FILTERING_SYSTEM_PROMPT),
             HumanMessage(content=f"Query: {query}\nCurrent focus: {current_node}\nRelationships:\n" + "\n".join(rel_descriptions))
         ]
         
@@ -428,10 +423,7 @@ class AgenticContextRetrieval:
         context_summary = "\n".join(state.context_pieces[-5:])  # Last 5 pieces
         
         messages = [
-            SystemMessage(content="""You are an exploration decision expert. Given the current context and query, 
-            decide if we should continue exploring the knowledge graph for more information.
-            Consider if the current context is sufficient to answer the query.
-            Respond with only 'yes' or 'no'."""),
+            SystemMessage(content=EXPLORATION_DECISION_SYSTEM_PROMPT),
             HumanMessage(content=f"Query: {state.query}\nCurrent context:\n{context_summary}\nExploration depth: {state.exploration_depth}/{state.max_depth}")
         ]
         
@@ -448,9 +440,7 @@ class AgenticContextRetrieval:
             return []
         
         messages = [
-            SystemMessage(content="""You are a context synthesis expert. Given a list of context pieces and a query, 
-            synthesize and rank the most relevant information. Remove redundancy, resolve contradictions, and order by relevance.
-            Return only the most relevant context statements, one per line."""),
+            SystemMessage(content=CONTEXT_SYNTHESIS_SYSTEM_PROMPT),
             HumanMessage(content=f"Query: {query}\nContext pieces:\n" + "\n".join(context_pieces))
         ]
         
