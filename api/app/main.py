@@ -1,8 +1,11 @@
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from .services.db import get_db, close_db
+from .services.graph_db import get_graph_db, close_graph_db
+from .services.vector_store import get_vector_store
 from .routers.auth import auth_router
 from .routers.user import user_router
+from .routers.chat import chat_router
 from .services.email_utils import send_email
 
 app = FastAPI()
@@ -18,13 +21,21 @@ app.add_middleware(
 @app.on_event("startup")
 def startup_db_client():
     get_db()
+    # Initialize graph RAG services
+    try:
+        get_graph_db()
+        get_vector_store()
+    except Exception as e:
+        print(f"Warning: Graph RAG services initialization failed: {e}")
 
 @app.on_event("shutdown")
 def shutdown_db_client():
     close_db()
+    close_graph_db()
 
 app.include_router(auth_router)
 app.include_router(user_router)
+app.include_router(chat_router)
 
 @app.get("/")
 async def root():

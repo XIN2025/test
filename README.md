@@ -1,175 +1,169 @@
 # MedicalRag-Evra-POC
 
-A modular, full-stack project for medical RAG (Retrieval-Augmented Generation) and agentic workflows, featuring a production-ready backend, a modern frontend, and a POC area for rapid experimentation.
+A comprehensive medical RAG (Retrieval-Augmented Generation) system with graph database integration, vector search, and mobile app support.
 
----
+## 🚀 New Features
 
-## Table of Contents
+### Graph RAG + Vector Store System
 
-- [Project Structure](#project-structure)
-- [Setup & Installation](#setup--installation)
-- [Backend (api/)](#backend-api)
-- [Frontend (app/)](#frontend-app)
-- [POC & Experiments (poc/)](#poc--experiments-poc)
-- [Development & Testing](#development--testing)
-- [Docker Support](#docker-support)
-- [Contributing](#contributing)
-- [License](#license)
+- **Intelligent Document Processing**: Upload PDF and text documents for automatic entity and relationship extraction
+- **Neo4j Graph Database**: Store and query complex medical knowledge graphs
+- **FAISS Vector Store**: Fast similarity search for relevant context retrieval
+- **LangGraph Integration**: Advanced conversation workflows with automatic query classification
+- **Mobile Document Upload**: Upload and process documents directly from the mobile app
 
----
+### Enhanced Chat System
 
-## Project Structure
+- **Query-Based Intelligence**: Automatically switches between RAG and conversational modes
+- **Follow-up Questions**: AI generates contextual follow-up questions for better user engagement
+- **Real-time Processing**: Stream responses for better user experience
+- **Context-Aware Responses**: Leverages uploaded documents for accurate, relevant answers
 
-```plaintext
+## 🏗️ Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Mobile App    │    │   FastAPI       │    │   Neo4j         │
+│   (React Native)│◄──►│   Backend       │◄──►│   Graph DB      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                              │
+                              ▼
+                       ┌─────────────────┐
+                       │   FAISS         │
+                       │   Vector Store  │
+                       └─────────────────┘
+```
+
+## 📁 Project Structure
+
+```
 MedicalRag-Evra-POC/
-│
-├── api/         # Production backend (FastAPI, DB, Auth, etc.)
-├── app/         # Frontend (React/Expo/TypeScript)
-├── poc/         # POC, experiments, agentic workflows, analysis
-└── ...          # Root configs, lockfiles, etc.
+├── api/                          # FastAPI Backend
+│   ├── app/
+│   │   ├── services/
+│   │   │   ├── graph_db.py       # Neo4j database service
+│   │   │   ├── vector_store.py   # FAISS vector store
+│   │   │   ├── document_processor.py # Document processing
+│   │   │   └── chat_service.py   # LangGraph chat system
+│   │   └── routers/
+│   │       └── chat.py           # Chat and upload endpoints
+│   └── test_graph_rag.py         # System test script
+├── app/                          # React Native Mobile App
+│   └── app/dashboard/
+│       └── chat.tsx              # Enhanced chat interface
+├── poc/                          # Original POC (reference)
+└── setup_graph_rag.md            # Setup guide
 ```
 
----
+## 🛠️ Quick Start
 
-## Setup & Installation
-
-### Prerequisites
-
-- Python 3.9+ (for backend and POC)
-- Node.js 18+ and npm (for frontend)
-- Docker (optional, for containerized deployment)
-
-### Quickstart
-
-```bash
-# Clone the repo
-git clone <repo-url>
-cd MedicalRag-Evra-POC
-
-# Backend setup
-cd api
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-
-# Frontend setup
-cd ../app
-npm install
-
-# POC setup (optional)
-cd ../poc
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
----
-
-## Backend (api/)
-
-Production-ready FastAPI backend with:
-
-- User authentication (JWT, OTP, etc.)
-- User management
-- Email utilities
-- Configurable via `config.py`
-- Docker support
-
-**Run locally:**
+### 1. Backend Setup
 
 ```bash
 cd api
-uvicorn app.main:app --reload
+pip install -e .
+python -m spacy download en_core_web_sm
 ```
 
-**Testing:**
+Create `.env` file:
 
-```bash
-pytest
+```env
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
+GOOGLE_API_KEY=your_google_api_key
 ```
 
-**Key files/folders:**
-
-- `app/` - Main FastAPI app, routers, schemas, services
-- `scripts/` - Dev/prod server scripts
-- `tests/` - Pytest-based tests
-- `Dockerfile` - Containerization
-
----
-
-## Frontend (app/)
-
-Modern React/Expo/TypeScript frontend for user interaction.
-
-- Dashboard, chat, onboarding, profile, etc.
-- Mobile-first, supports Expo Go
-
-**Run locally:**
+### 2. Mobile App Setup
 
 ```bash
 cd app
-npm start
+npm install
 ```
 
-**Key files/folders:**
-
-- `app/` - All main screens and components
-- `assets/` - Fonts, images
-- `package.json` - Scripts and dependencies
-
----
-
-## POC & Experiments (poc/)
-
-A sandbox for rapid prototyping, agentic workflows, and data analysis.
-
-- Agentic context and LangGraph experiments
-- Vector store and text processing
-- Graph DB utilities
-- Analysis scripts and sample data
-
-**Run POC scripts:**
+### 3. Test the System
 
 ```bash
-cd poc
-python main.py
+cd api
+python test_graph_rag.py
 ```
 
-**Key files/folders:**
+## 🔧 API Endpoints
 
-- `agentic_context.py`, `agentic_context_langgraph.py` - Agentic workflow logic
-- `vector_store.py`, `text_processor.py` - Data processing
-- `analysis-comparison/` - Data analysis scripts and reports
+### Chat & Document Management
 
----
+- `POST /chat/send` - Send chat message with follow-up questions
+- `POST /chat/stream` - Stream chat responses
+- `POST /chat/upload` - Upload PDF/TXT documents
+- `GET /chat/graph-stats` - Get graph statistics
+- `GET /chat/graph-data` - Get all graph data
 
-## Development & Testing
+## 📱 Mobile App Features
 
-- Use virtual environments for Python parts.
-- Use `pytest` for backend and POC testing.
-- Use `npm test` for frontend testing (if configured).
-- Linting and formatting are recommended (see `eslint.config.js`, etc.).
+- **Document Upload**: Upload PDF and text files directly from the app
+- **Real-time Chat**: Interactive chat with AI health assistant
+- **Follow-up Suggestions**: AI-generated contextual questions
+- **Document Management**: Track uploaded documents and their processing status
 
----
+## 🧠 How It Works
 
-## Docker Support
+### 1. Document Processing
 
-- Backend can be built and run via Docker:
-  ```bash
-  cd api
-  docker build -t medicalrag-backend .
-  docker run -p 8000:8000 medicalrag-backend
-  ```
-- Add Docker Compose for full-stack orchestration (optional).
+1. User uploads PDF/TXT document
+2. System extracts text and identifies entities/relationships
+3. Data stored in Neo4j graph database
+4. Vector embeddings created for similarity search
 
----
+### 2. Intelligent Chat
 
-## Contributing
+1. User asks a question
+2. System classifies query (RAG vs conversational)
+3. If RAG: Retrieves relevant context from graph + vector store
+4. Generates response with follow-up questions
+5. Returns contextual, accurate answers
 
-Pull requests and issues are welcome! Please see CONTRIBUTING.md (if available) for guidelines.
+### 3. Knowledge Graph
 
----
+- **Entities**: People, organizations, medical concepts, locations
+- **Relationships**: Professional connections, medical conditions, treatments
+- **Vector Search**: Semantic similarity for context retrieval
 
-## License
+## 🎯 Use Cases
 
-[MIT](LICENSE) (or your license here)
+- **Medical Document Analysis**: Upload patient records, research papers, medical guidelines
+- **Health Information Retrieval**: Ask questions about uploaded medical documents
+- **Knowledge Discovery**: Explore relationships between medical entities
+- **Conversational AI**: Natural health-related conversations
+
+## 🔍 Key Technologies
+
+- **Backend**: FastAPI, Neo4j, FAISS, LangChain, LangGraph
+- **Frontend**: React Native, Expo
+- **AI/ML**: Google Gemini, spaCy, Sentence Transformers
+- **Document Processing**: Unstructured, PDF extraction
+
+## 📚 Documentation
+
+- [Setup Guide](setup_graph_rag.md) - Detailed installation and configuration
+- [API Documentation](api/README.md) - Backend API reference
+- [Mobile App Guide](app/README.md) - Mobile app development
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+For issues and questions:
+
+1. Check the [setup guide](setup_graph_rag.md)
+2. Run the test script: `python api/test_graph_rag.py`
+3. Review the troubleshooting section in the setup guide
