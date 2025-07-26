@@ -6,6 +6,7 @@ import json
 import logging
 from ..services.document_processor import DocumentProcessor
 from ..services.progress_tracker import ProgressTracker
+from ..config import MAX_FILE_SIZE
 
 logger = logging.getLogger(__name__)
 upload_router = APIRouter(prefix="/upload", tags=["upload"])
@@ -42,6 +43,10 @@ async def upload_document(
     try:
         # Read file content immediately before the request handler completes
         content = await file.read()
+        if len(content) > MAX_FILE_SIZE:
+            logger.error(f"File too large: {len(content)} bytes")
+            progress_tracker.update_progress(upload_id, 0, "File too large", "failed")
+            raise HTTPException(status_code=400, detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB")
         logger.info(f"Read {len(content)} bytes from file {file.filename}")
         
         # Start processing in background with the file content
