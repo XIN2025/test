@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   Pill,
   User,
+  Target,
 } from "lucide-react-native";
 
 export default function DashboardTabsLayout() {
@@ -46,6 +47,16 @@ export default function DashboardTabsLayout() {
             tabBarLabel: "Chat",
             tabBarIcon: ({ color, size }) => (
               <MessageCircle color={color} size={size ?? 22} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="goals"
+          options={{
+            title: "Goals",
+            tabBarLabel: "Goals",
+            tabBarIcon: ({ color, size }) => (
+              <Target color={color} size={size ?? 22} />
             ),
           }}
         />
