@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
 // @ts-ignore
@@ -133,15 +134,15 @@ export default function OrdersPage() {
   };
 
   return (
-    <LinearGradient
-      colors={["#ecfdf5", "#f0fdfa"]}
-      className="flex-1"
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      <ScrollView contentContainerClassName="pb-8">
-        {/* Header */}
-        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4">
+    <SafeAreaView className="flex-1">
+      <LinearGradient
+        colors={["#ecfdf5", "#f0fdfa"]}
+        className="flex-1"
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Fixed Header */}
+        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 z-10">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center mr-3">
@@ -157,161 +158,164 @@ export default function OrdersPage() {
           </View>
         </View>
 
-        <View className="px-4 space-y-6 mt-4">
-          {/* Status Filters */}
-          <View className="flex-row space-x-2">
-            {statusFilters.map((filter) => (
-              <TouchableOpacity
-                key={filter.id}
-                onPress={() => setSelectedStatus(filter.id)}
-                className={`flex-row items-center px-3 py-2 rounded-full border ${
-                  selectedStatus === filter.id
-                    ? "bg-emerald-600 border-emerald-600"
-                    : "bg-white border-gray-200"
-                }`}
-              >
-                <filter.icon
-                  size={16}
-                  color={selectedStatus === filter.id ? "#fff" : "#64748b"}
-                  className="mr-1"
-                />
-                <Text
-                  className={`text-sm font-medium ${
+        {/* Scrollable Content */}
+        <ScrollView contentContainerClassName="pb-8" className="flex-1">
+          <View className="px-4 space-y-6 mt-4">
+            {/* Status Filters */}
+            <View className="flex-row space-x-2">
+              {statusFilters.map((filter) => (
+                <TouchableOpacity
+                  key={filter.id}
+                  onPress={() => setSelectedStatus(filter.id)}
+                  className={`flex-row items-center px-3 py-2 rounded-full border ${
                     selectedStatus === filter.id
-                      ? "text-white"
-                      : "text-gray-700"
+                      ? "bg-emerald-600 border-emerald-600"
+                      : "bg-white border-gray-200"
                   }`}
                 >
-                  {filter.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                  <filter.icon
+                    size={16}
+                    color={selectedStatus === filter.id ? "#fff" : "#64748b"}
+                    className="mr-1"
+                  />
+                  <Text
+                    className={`text-sm font-medium ${
+                      selectedStatus === filter.id
+                        ? "text-white"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {filter.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-          {/* Orders List */}
-          {filteredOrders.map((order) => {
-            const StatusIcon = getStatusIcon(order.status);
-            return (
-              <Card key={order.id} className="border-0">
-                <View className="p-4">
-                  {/* Order Header */}
-                  <View className="flex-row items-center justify-between mb-3">
-                    <View>
-                      <Text className="font-semibold text-gray-800">
-                        {order.orderNumber}
-                      </Text>
-                      <Text className="text-sm text-gray-600">
-                        {order.date}
-                      </Text>
-                    </View>
-                    <View className="items-end">
-                      <Text className="font-semibold text-emerald-600">
-                        ${order.total.toFixed(2)}
-                      </Text>
-                      <View className="flex-row items-center mt-1">
-                        <StatusIcon
-                          size={14}
-                          color={getStatusColor(order.status)
-                            .replace("text-", "")
-                            .replace("-600", "")}
-                          className="mr-1"
-                        />
-                        <Text
-                          className={`text-xs font-medium ${getStatusColor(
-                            order.status
-                          )}`}
-                        >
-                          {getStatusText(order.status)}
+            {/* Orders List */}
+            {filteredOrders.map((order) => {
+              const StatusIcon = getStatusIcon(order.status);
+              return (
+                <Card key={order.id} className="border-0">
+                  <View className="p-4">
+                    {/* Order Header */}
+                    <View className="flex-row items-center justify-between mb-3">
+                      <View>
+                        <Text className="font-semibold text-gray-800">
+                          {order.orderNumber}
+                        </Text>
+                        <Text className="text-sm text-gray-600">
+                          {order.date}
                         </Text>
                       </View>
-                    </View>
-                  </View>
-
-                  {/* Order Items */}
-                  <View className="space-y-2 mb-3">
-                    {order.items.map((item) => (
-                      <View
-                        key={item.id}
-                        className="flex-row items-center justify-between p-2 bg-gray-50 rounded-lg"
-                      >
-                        <View className="flex-row items-center">
-                          <View className="w-8 h-8 bg-gray-200 rounded items-center justify-center mr-2">
-                            <Package size={16} color="#64748b" />
-                          </View>
-                          <View>
-                            <Text className="font-medium text-gray-800">
-                              {item.name}
-                            </Text>
-                            <Text className="text-xs text-gray-600">
-                              Qty: {item.quantity}
-                            </Text>
-                          </View>
+                      <View className="items-end">
+                        <Text className="font-semibold text-emerald-600">
+                          ${order.total.toFixed(2)}
+                        </Text>
+                        <View className="flex-row items-center mt-1">
+                          <StatusIcon
+                            size={14}
+                            color={getStatusColor(order.status)
+                              .replace("text-", "")
+                              .replace("-600", "")}
+                            className="mr-1"
+                          />
+                          <Text
+                            className={`text-xs font-medium ${getStatusColor(
+                              order.status
+                            )}`}
+                          >
+                            {getStatusText(order.status)}
+                          </Text>
                         </View>
-                        <Text className="font-medium text-gray-800">
-                          ${(item.price * item.quantity).toFixed(2)}
-                        </Text>
                       </View>
-                    ))}
-                  </View>
-
-                  {/* Tracking Info */}
-                  {order.trackingNumber && (
-                    <View className="p-3 bg-emerald-50 rounded-lg mb-3">
-                      <Text className="text-sm font-medium text-emerald-800 mb-1">
-                        Tracking Information
-                      </Text>
-                      <Text className="text-xs text-emerald-700">
-                        Tracking #: {order.trackingNumber}
-                      </Text>
-                      {order.estimatedDelivery && (
-                        <Text className="text-xs text-emerald-700">
-                          Estimated Delivery: {order.estimatedDelivery}
-                        </Text>
-                      )}
                     </View>
-                  )}
 
-                  {/* Action Buttons */}
-                  <View className="flex-row space-x-2">
-                    <TouchableOpacity className="flex-1 bg-emerald-600 py-2 rounded-lg">
-                      <Text className="text-white text-center font-medium">
-                        Track Order
-                      </Text>
-                    </TouchableOpacity>
-                    {order.status === "delivered" && (
-                      <TouchableOpacity className="flex-1 bg-gray-100 py-2 rounded-lg">
-                        <Text className="text-gray-700 text-center font-medium">
-                          Reorder
+                    {/* Order Items */}
+                    <View className="space-y-2 mb-3">
+                      {order.items.map((item) => (
+                        <View
+                          key={item.id}
+                          className="flex-row items-center justify-between p-2 bg-gray-50 rounded-lg"
+                        >
+                          <View className="flex-row items-center">
+                            <View className="w-8 h-8 bg-gray-200 rounded items-center justify-center mr-2">
+                              <Package size={16} color="#64748b" />
+                            </View>
+                            <View>
+                              <Text className="font-medium text-gray-800">
+                                {item.name}
+                              </Text>
+                              <Text className="text-xs text-gray-600">
+                                Qty: {item.quantity}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text className="font-medium text-gray-800">
+                            ${(item.price * item.quantity).toFixed(2)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Tracking Info */}
+                    {order.trackingNumber && (
+                      <View className="p-3 bg-emerald-50 rounded-lg mb-3">
+                        <Text className="text-sm font-medium text-emerald-800 mb-1">
+                          Tracking Information
+                        </Text>
+                        <Text className="text-xs text-emerald-700">
+                          Tracking #: {order.trackingNumber}
+                        </Text>
+                        {order.estimatedDelivery && (
+                          <Text className="text-xs text-emerald-700">
+                            Estimated Delivery: {order.estimatedDelivery}
+                          </Text>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Action Buttons */}
+                    <View className="flex-row space-x-2">
+                      <TouchableOpacity className="flex-1 bg-emerald-600 py-2 rounded-lg">
+                        <Text className="text-white text-center font-medium">
+                          Track Order
                         </Text>
                       </TouchableOpacity>
-                    )}
-                    <TouchableOpacity className="bg-gray-100 p-2 rounded-lg">
-                      <ArrowRight size={16} color="#64748b" />
-                    </TouchableOpacity>
+                      {order.status === "delivered" && (
+                        <TouchableOpacity className="flex-1 bg-gray-100 py-2 rounded-lg">
+                          <Text className="text-gray-700 text-center font-medium">
+                            Reorder
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity className="bg-gray-100 p-2 rounded-lg">
+                        <ArrowRight size={16} color="#64748b" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
+                </Card>
+              );
+            })}
+
+            {/* Empty State */}
+            {filteredOrders.length === 0 && (
+              <Card className="border-0">
+                <View className="p-8 items-center">
+                  <ShoppingBag size={48} color="#d1d5db" className="mb-4" />
+                  <Text className="text-lg font-semibold text-gray-800 mb-2">
+                    No Orders Found
+                  </Text>
+                  <Text className="text-sm text-gray-600 text-center">
+                    {selectedStatus === "all"
+                      ? "You haven't placed any orders yet."
+                      : `No ${selectedStatus} orders found.`}
+                  </Text>
                 </View>
               </Card>
-            );
-          })}
-
-          {/* Empty State */}
-          {filteredOrders.length === 0 && (
-            <Card className="border-0">
-              <View className="p-8 items-center">
-                <ShoppingBag size={48} color="#d1d5db" className="mb-4" />
-                <Text className="text-lg font-semibold text-gray-800 mb-2">
-                  No Orders Found
-                </Text>
-                <Text className="text-sm text-gray-600 text-center">
-                  {selectedStatus === "all"
-                    ? "You haven't placed any orders yet."
-                    : `No ${selectedStatus} orders found.`}
-                </Text>
-              </View>
-            </Card>
-          )}
-        </View>
-      </ScrollView>
-    </LinearGradient>
+            )}
+          </View>
+        </ScrollView>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
