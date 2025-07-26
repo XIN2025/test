@@ -110,9 +110,41 @@ async def stream_upload_progress(upload_id: str):
         }
     )
 
+@upload_router.get("/all-progress")
+async def get_all_upload_progress():
+    """Get progress for all active upload sessions"""
+    all_progress = progress_tracker.get_all_progress()
+    stats = progress_tracker.get_stats()
+    
+    return {
+        "uploads": all_progress,
+        "stats": stats
+    }
+
+@upload_router.delete("/progress/{upload_id}")
+async def remove_upload_session(upload_id: str):
+    """Remove an upload session (cleanup)"""
+    success = progress_tracker.remove_upload(upload_id)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Upload session not found")
+    
+    return {"success": True, "message": "Upload session removed"}
+
 async def process_document_background(upload_id: str, filename: str, content: bytes, file_extension: str):
-    """Background task to process uploaded document"""
+    """Background task to process uploaded document with real-time progress updates"""
     logger.info(f"Starting background processing for upload {upload_id}")
+    
+    def progress_callback(percentage: int, message: str):
+        """Callback function to update progress"""
+        progress_tracker.update_progress(
+            upload_id, 
+            percentage, 
+            message, 
+            "processing"
+        )
+        logger.info(f"Progress update for {upload_id}: {percentage}% - {message}")
+    
     try:
         # Initialize document processor
         try:
@@ -122,19 +154,19 @@ async def process_document_background(upload_id: str, filename: str, content: by
             logger.error(f"Failed to initialize document processor: {e}")
             raise Exception(f"Failed to initialize document processor: {str(e)}")
 
-        # Process document based on type
+        # Initial progress update
+        progress_tracker.update_progress(upload_id, 20, "Starting document analysis...", "processing")
+
+        # Process document based on type with progress callback
         if file_extension == 'pdf':
-            progress_tracker.update_progress(upload_id, 20, "Processing PDF document...", "processing")
-            result = processor.process_pdf_file(content, filename)
+            result = processor.process_pdf_file(content, filename, progress_callback)
         elif file_extension in ['docx', 'doc']:
-            progress_tracker.update_progress(upload_id, 20, "Processing Word document...", "processing")
             # For now, treat as text file since we don't have Word processing
             text_content = content.decode('utf-8')
-            result = processor.process_text_file(text_content, filename)
+            result = processor.process_text_file(text_content, filename, progress_callback)
         else:  # txt file
-            progress_tracker.update_progress(upload_id, 20, "Processing text document...", "processing")
             text_content = content.decode('utf-8')
-            result = processor.process_text_file(text_content, filename)
+            result = processor.process_text_file(text_content, filename, progress_callback)
 
         # Check if processing was successful
         if not result.get('success'):
@@ -143,21 +175,11 @@ async def process_document_background(upload_id: str, filename: str, content: by
         entities = result.get('entities', [])
         relationships = result.get('relationships', [])
 
-        # Update progress with entity/relationship counts
-        progress_tracker.update_progress(
-            upload_id,
-            80,
-            f"Extracted {len(entities)} entities and {len(relationships)} relationships...",
-            "processing",
-            entities_count=len(entities),
-            relationships_count=len(relationships)
-        )
-
-        # Complete
+        # Final progress update with completion
         progress_tracker.update_progress(
             upload_id,
             100,
-            f"Processing complete! Extracted {len(entities)} entities and {len(relationships)} relationships",
+            f"Analysis complete! Extracted {len(entities)} entities and {len(relationships)} relationships",
             "completed",
             entities_count=len(entities),
             relationships_count=len(relationships)
@@ -167,4 +189,10 @@ async def process_document_background(upload_id: str, filename: str, content: by
 
     except Exception as e:
         logger.error(f"Error processing document for upload {upload_id}: {e}")
-        progress_tracker.update_progress(upload_id, 0, f"Processing failed: {str(e)}", "failed", error_message=str(e)) 
+        progress_tracker.update_progress(
+            upload_id, 
+            0, 
+            f"Processing failed: {str(e)}", 
+            "failed", 
+            error_message=str(e)
+        ) 

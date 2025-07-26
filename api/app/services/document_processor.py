@@ -1,12 +1,13 @@
 import os
 import tempfile
 import base64
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Callable
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import spacy
 import json
 import logging
+import time
 from ..config import GOOGLE_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 from .graph_db import get_graph_db
 from .vector_store import get_vector_store
@@ -31,19 +32,38 @@ class DocumentProcessor:
         self.graph_db = get_graph_db()
         self.vector_store = get_vector_store()
 
-    def process_text_file(self, content: str, filename: str) -> Dict:
-        """Process a text file and extract entities and relationships"""
+    def process_text_file(self, content: str, filename: str, progress_callback: Optional[Callable] = None) -> Dict:
+        """Process a text file and extract entities and relationships with progress updates"""
         logger.info(f"Processing text file: {filename}")
         
         try:
+            # Update progress: Starting text analysis
+            if progress_callback:
+                progress_callback(30, "Extracting text from document...")
+                time.sleep(0.5)  # Small delay for UI feedback
+            
             # Extract entities and relationships
-            entities, relationships = self._extract_entities_and_relationships(content)
+            if progress_callback:
+                progress_callback(50, "Analyzing document structure...")
+                time.sleep(0.5)
+            
+            entities, relationships = self._extract_entities_and_relationships(content, progress_callback)
+            
+            # Update progress: Storing in database
+            if progress_callback:
+                progress_callback(80, "Storing data in knowledge base...")
+                time.sleep(0.5)
             
             # Store in graph database
             self._store_in_graph(entities, relationships)
             
             # Update vector store
             self._update_vector_store(entities)
+            
+            # Update progress: Finalizing
+            if progress_callback:
+                progress_callback(95, "Finalizing analysis...")
+                time.sleep(0.5)
             
             return {
                 "success": True,
@@ -61,16 +81,21 @@ class DocumentProcessor:
                 "error": str(e)
             }
 
-    def process_pdf_file(self, file_content: bytes, filename: str) -> Dict:
-        """Process a PDF file and extract entities and relationships"""
+    def process_pdf_file(self, file_content: bytes, filename: str, progress_callback: Optional[Callable] = None) -> Dict:
+        """Process a PDF file and extract entities and relationships with progress updates"""
         logger.info(f"Processing PDF file: {filename}")
         
         try:
+            # Update progress: Starting PDF processing
+            if progress_callback:
+                progress_callback(25, "Extracting text from PDF...")
+                time.sleep(0.5)
+            
             # Extract text from PDF
             text_content = self._extract_text_from_pdf(file_content)
             
             # Process the extracted text
-            return self.process_text_file(text_content, filename)
+            return self.process_text_file(text_content, filename, progress_callback)
         except Exception as e:
             logger.error(f"Error processing PDF file {filename}: {e}")
             return {
@@ -115,10 +140,15 @@ class DocumentProcessor:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
-    def _extract_entities_and_relationships(self, text: str) -> Tuple[List[Dict], List[Dict]]:
-        """Extract entities and relationships from text using LLM"""
+    def _extract_entities_and_relationships(self, text: str, progress_callback: Optional[Callable] = None) -> Tuple[List[Dict], List[Dict]]:
+        """Extract entities and relationships from text using LLM with progress updates"""
         entities = []
         relationships = []
+        
+        # Update progress: Entity extraction
+        if progress_callback:
+            progress_callback(60, "Identifying medical entities...")
+            time.sleep(0.5)
         
         # Use LLM to extract entities
         entity_prompt = f"""
@@ -148,6 +178,11 @@ class DocumentProcessor:
             # Fallback to spaCy if available
             if nlp:
                 entities = self._extract_entities_spacy(text)
+        
+        # Update progress: Relationship extraction
+        if progress_callback:
+            progress_callback(70, "Extracting relationships and connections...")
+            time.sleep(0.5)
         
         # Use LLM to extract relationships
         if entities:

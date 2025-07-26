@@ -293,17 +293,26 @@ export default function ChatPage() {
       setUploadProgress({
         uploadId: "temp-id",
         filename: file.name,
-        percentage: 0,
-        message: "Starting upload...",
+        percentage: 5,
+        message: "Preparing file for upload...",
         status: "processing",
         entitiesCount: 0,
         relationshipsCount: 0,
       });
 
-      // Step 3: Upload file to server
+      // Step 3: Simulate file preparation
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setUploadProgress((prev) =>
         prev
-          ? { ...prev, message: "Uploading file to server...", percentage: 10 }
+          ? { ...prev, message: "Reading file content...", percentage: 10 }
+          : null
+      );
+
+      // Step 4: Upload file to server
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setUploadProgress((prev) =>
+        prev
+          ? { ...prev, message: "Uploading file to server...", percentage: 15 }
           : null
       );
 
@@ -315,24 +324,38 @@ export default function ChatPage() {
           ? {
               ...prev,
               uploadId,
-              message: "File uploaded, processing...",
-              percentage: 20,
+              message: "File uploaded successfully, starting analysis...",
+              percentage: 25,
             }
           : null
       );
 
-      // Step 4: Monitor progress
+      // Step 5: Monitor progress with enhanced messaging
       let successMessageAdded = false;
       const progressInterval = setInterval(async () => {
         try {
           const progress = await monitorUploadProgress(uploadId);
+
+          // Enhanced progress messages based on percentage
+          let enhancedMessage = progress.message;
+          if (progress.percentage <= 30) {
+            enhancedMessage = "Extracting text from document...";
+          } else if (progress.percentage <= 50) {
+            enhancedMessage = "Analyzing document structure...";
+          } else if (progress.percentage <= 70) {
+            enhancedMessage = "Identifying medical entities...";
+          } else if (progress.percentage <= 90) {
+            enhancedMessage = "Extracting relationships and connections...";
+          } else if (progress.percentage < 100) {
+            enhancedMessage = "Finalizing analysis...";
+          }
 
           setUploadProgress((prev) =>
             prev
               ? {
                   ...prev,
                   percentage: progress.percentage,
-                  message: progress.message,
+                  message: enhancedMessage,
                   status: progress.status,
                   entitiesCount: progress.entities_count || 0,
                   relationshipsCount: progress.relationships_count || 0,
@@ -348,6 +371,18 @@ export default function ChatPage() {
             setUploadingUploadId(null);
 
             if (progress.status === "completed") {
+              // Show completion message briefly
+              setUploadProgress((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      message:
+                        "Analysis complete! Document processed successfully.",
+                      percentage: 100,
+                    }
+                  : null
+              );
+
               // Only add success message if we haven't already for this upload
               if (!successMessageAdded && lastSuccessUploadId !== uploadId) {
                 setLastSuccessUploadId(uploadId);
@@ -398,6 +433,8 @@ export default function ChatPage() {
           console.error("Progress monitoring error:", error);
           clearInterval(progressInterval);
           setIsUploading(false);
+          setUploadingFileId(null);
+          setUploadingUploadId(null);
           setUploadProgress(null);
 
           const errorMessage: Message = {
@@ -556,49 +593,108 @@ export default function ChatPage() {
                   <Text className="text-sm font-medium text-blue-800">
                     {uploadProgress.filename}
                   </Text>
-                  <Text className="text-xs text-blue-600">
+                  <Text className="text-xs text-blue-600 font-semibold">
                     {uploadProgress.percentage}%
                   </Text>
                 </View>
 
-                <Text className="text-xs text-blue-700 mb-2">
+                <Text className="text-xs text-blue-700 mb-3 font-medium">
                   {uploadProgress.message}
                 </Text>
 
-                {/* Progress Bar */}
-                <View className="w-full bg-blue-200 rounded-full h-2 mb-2">
+                {/* Enhanced Progress Bar */}
+                <View className="w-full bg-blue-200 rounded-full h-3 mb-3 overflow-hidden">
                   <View
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadProgress.percentage}%` }}
+                    className={`h-3 rounded-full transition-all duration-500 ease-out ${
+                      uploadProgress.status === "processing"
+                        ? "bg-gradient-to-r from-blue-500 to-blue-600"
+                        : uploadProgress.status === "completed"
+                        ? "bg-gradient-to-r from-green-500 to-green-600"
+                        : "bg-gradient-to-r from-red-500 to-red-600"
+                    }`}
+                    style={{
+                      width: `${uploadProgress.percentage}%`,
+                      shadowColor:
+                        uploadProgress.status === "processing"
+                          ? "#3b82f6"
+                          : "#10b981",
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }}
                   />
+                  {/* Pulsing effect during processing */}
+                  {uploadProgress.status === "processing" &&
+                    uploadProgress.percentage > 0 &&
+                    uploadProgress.percentage < 100 && (
+                      <View
+                        className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full opacity-70"
+                        style={{
+                          right: `${Math.max(
+                            0,
+                            100 - uploadProgress.percentage
+                          )}%`,
+                          transform: [{ translateX: 6 }],
+                        }}
+                      />
+                    )}
                 </View>
 
-                {/* Stats */}
+                {/* Stats with better styling */}
                 {uploadProgress.entitiesCount > 0 && (
-                  <View className="flex-row justify-between">
-                    <Text className="text-xs text-blue-600">
-                      Entities: {uploadProgress.entitiesCount}
-                    </Text>
-                    <Text className="text-xs text-blue-600">
-                      Relationships: {uploadProgress.relationshipsCount}
-                    </Text>
+                  <View className="flex-row justify-between bg-blue-100 rounded-lg p-2 mb-2">
+                    <View className="flex-row items-center">
+                      <View className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
+                      <Text className="text-xs text-blue-700 font-medium">
+                        Entities: {uploadProgress.entitiesCount}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                      <Text className="text-xs text-green-700 font-medium">
+                        Relationships: {uploadProgress.relationshipsCount}
+                      </Text>
+                    </View>
                   </View>
                 )}
 
-                {/* Status */}
-                <View className="flex-row items-center mt-2">
-                  <View
-                    className={`w-2 h-2 rounded-full mr-2 ${
-                      uploadProgress.status === "processing"
-                        ? "bg-yellow-500"
-                        : uploadProgress.status === "completed"
-                        ? "bg-green-500"
-                        : "bg-red-500"
-                    }`}
-                  />
-                  <Text className="text-xs text-blue-600 capitalize">
-                    {uploadProgress.status}
-                  </Text>
+                {/* Enhanced Status Indicator */}
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <View
+                      className={`w-3 h-3 rounded-full mr-2 ${
+                        uploadProgress.status === "processing"
+                          ? "bg-yellow-500 animate-pulse"
+                          : uploadProgress.status === "completed"
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                      }`}
+                    />
+                    <Text
+                      className={`text-xs font-medium capitalize ${
+                        uploadProgress.status === "processing"
+                          ? "text-yellow-700"
+                          : uploadProgress.status === "completed"
+                          ? "text-green-700"
+                          : "text-red-700"
+                      }`}
+                    >
+                      {uploadProgress.status === "processing"
+                        ? "Processing..."
+                        : uploadProgress.status}
+                    </Text>
+                  </View>
+
+                  {/* Processing indicator */}
+                  {uploadProgress.status === "processing" && (
+                    <View className="flex-row items-center">
+                      <ActivityIndicator size="small" color="#3b82f6" />
+                      <Text className="text-xs text-blue-600 ml-1">
+                        Working...
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </View>
