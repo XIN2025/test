@@ -31,5 +31,5 @@ LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 
 # File Upload Configuration
 MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # 10MB
-ALLOWED_EXTENSIONS = {".txt", ".pdf"}
+ALLOWED_EXTENSIONS = {".txt", ".pdf", ".docx", ".doc"}
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads") 

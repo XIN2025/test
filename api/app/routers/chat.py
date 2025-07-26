@@ -54,7 +54,7 @@ async def upload_document(
     file: UploadFile = File(...),
     description: Optional[str] = Form(None)
 ):
-    """Upload and process a document (text or PDF)"""
+    """Upload and process a document (text, PDF, or Word)"""
     try:
         # Validate file type
         file_extension = "." + file.filename.split(".")[-1].lower()
@@ -77,6 +77,11 @@ async def upload_document(
         
         if file_extension == ".pdf":
             result = document_processor.process_pdf_file(file_content, file.filename)
+        elif file_extension in [".docx", ".doc"]:
+            # For now, treat Word documents as text files
+            # In the future, you can add proper Word document parsing
+            text_content = file_content.decode('utf-8')
+            result = document_processor.process_text_file(text_content, file.filename)
         else:  # .txt
             text_content = file_content.decode('utf-8')
             result = document_processor.process_text_file(text_content, file.filename)
