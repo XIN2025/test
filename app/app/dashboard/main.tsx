@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,6 +16,7 @@ import {
   User,
   Settings,
   Bell,
+  Target,
 } from "lucide-react-native";
 import Card from "@/components/ui/card";
 // @ts-ignore
@@ -214,6 +215,59 @@ export default function MainDashboard() {
                     </Text>
                   </View>
                 ))}
+              </View>
+            </Card>
+
+            {/* Weekly Goals Summary */}
+            <Card className="border-0">
+              <View className="p-4">
+                <View className="flex-row items-center justify-between mb-3">
+                  <View className="flex-row items-center">
+                    <Target size={20} color="#059669" className="mr-2" />
+                    <Text className="text-lg font-semibold text-gray-800">
+                      Weekly Goals
+                    </Text>
+                  </View>
+                  <TouchableOpacity className="bg-emerald-100 px-3 py-1 rounded-full">
+                    <Text className="text-xs text-emerald-700 font-medium">
+                      3/5
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View className="space-y-2">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center flex-1">
+                      <View className="w-2 h-2 bg-emerald-500 rounded-full mr-2" />
+                      <Text className="text-sm text-gray-700 flex-1">
+                        Complete 5 workouts
+                      </Text>
+                    </View>
+                    <Text className="text-xs text-gray-500">3/5</Text>
+                  </View>
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center flex-1">
+                      <View className="w-2 h-2 bg-emerald-500 rounded-full mr-2" />
+                      <Text className="text-sm text-gray-700 flex-1">
+                        Drink 8 glasses daily
+                      </Text>
+                    </View>
+                    <Text className="text-xs text-gray-500">42/56</Text>
+                  </View>
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center flex-1">
+                      <View className="w-2 h-2 bg-gray-300 rounded-full mr-2" />
+                      <Text className="text-sm text-gray-700 flex-1">
+                        Read 30 min daily
+                      </Text>
+                    </View>
+                    <Text className="text-xs text-gray-500">180/210</Text>
+                  </View>
+                </View>
+                <TouchableOpacity className="mt-3 bg-emerald-50 p-2 rounded-lg">
+                  <Text className="text-center text-sm text-emerald-700 font-medium">
+                    View All Goals
+                  </Text>
+                </TouchableOpacity>
               </View>
             </Card>
 
