@@ -95,7 +95,7 @@ export default function MainDashboard() {
         <ScrollView contentContainerClassName="pb-8" className="flex-1">
           <View className="px-4 space-y-6 mt-4">
             {/* Health Score */}
-            <Card className="bg-gradient-to-r from-emerald-500 to-teal-600 border-0 mb-2">
+            <Card className="bg-emerald-600 border-0 mb-2">
               <View className="flex-row items-center justify-between p-6">
                 <View>
                   <Text className="text-lg font-semibold text-white">
