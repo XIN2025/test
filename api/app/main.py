@@ -6,6 +6,7 @@ from .services.vector_store import get_vector_store
 from .routers.auth import auth_router
 from .routers.user import user_router
 from .routers.chat import chat_router
+from .routers.upload import upload_router
 from .services.email_utils import send_email
 
 app = FastAPI()
@@ -36,6 +37,7 @@ def shutdown_db_client():
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(chat_router)
+app.include_router(upload_router)
 
 @app.get("/")
 async def root():
