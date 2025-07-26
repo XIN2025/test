@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
@@ -21,103 +23,448 @@ import {
   Send,
   Mic,
   Paperclip,
+  Upload,
+  FileText,
+  X,
 } from "lucide-react-native";
 import Card from "@/components/ui/card";
 // @ts-ignore
 import { tw } from "nativewind";
+import * as DocumentPicker from "expo-document-picker";
 
 interface Message {
   id: string;
   text: string;
   sender: "user" | "bot";
   suggestions?: string[];
+  isLoading?: boolean;
+}
+
+interface UploadedFile {
+  name: string;
+  type: string;
+  size: number;
+}
+
+interface UploadProgress {
+  uploadId: string;
+  filename: string;
+  percentage: number;
+  message: string;
+  status: "processing" | "completed" | "failed";
+  entitiesCount: number;
+  relationshipsCount: number;
 }
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Hello John! I'm your personal health coach. How are you feeling today?",
+      text: "Hello! I'm your AI health assistant. I can help you with health-related questions and analyze documents you upload. How can I assist you today?",
       sender: "bot",
       suggestions: [
-        "I'm feeling great!",
-        "A bit tired",
-        "Having some concerns",
-        "Just checking in",
+        "Tell me about nutrition",
+        "Upload a medical document",
+        "How to improve sleep?",
+        "What exercises are good for me?",
       ],
     },
   ]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
+    null
+  );
+  const [uploadingFileId, setUploadingFileId] = useState<string | null>(null);
+  const [uploadingUploadId, setUploadingUploadId] = useState<string | null>(
+    null
+  );
+  const [lastSuccessUploadId, setLastSuccessUploadId] = useState<string | null>(
+    null
+  );
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // API Configuration - Change this to your actual API URL
+  const API_BASE_URL = "http://localhost:8000";
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+  }, [messages, uploadProgress]);
 
-  const handleSendMessage = (text: string) => {
+  const generateUniqueId = () => {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  const handleSendMessage = async (text: string) => {
     if (!text.trim()) return;
+
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       text: text.trim(),
       sender: "user",
     };
+
     setMessages((prev) => [...prev, userMessage]);
     setInputText("");
     setIsTyping(true);
-    setTimeout(() => {
-      const botResponses = [
-        {
-          text: "That's wonderful to hear! Your positive energy is great for your overall health. Have you been keeping up with your daily water intake?",
-          suggestions: [
-            "Yes, drinking plenty!",
-            "Need to drink more",
-            "What's the recommended amount?",
-          ],
-        },
-        {
-          text: "I understand you're feeling tired. Let's look at some factors that might help. How was your sleep last night?",
-          suggestions: [
-            "Slept well",
-            "Had trouble sleeping",
-            "Woke up multiple times",
-            "Less than 6 hours",
-          ],
-        },
-        {
-          text: "I'm here to help with any health concerns you have. What's been on your mind? Remember, for serious medical issues, please consult with your doctor.",
-          suggestions: [
-            "Feeling stressed",
-            "Diet questions",
-            "Exercise concerns",
-            "Medication reminders",
-          ],
-        },
-        {
-          text: "Great to see you checking in! Regular communication helps me provide better health guidance. Based on your recent data, your heart rate and activity levels look good. Any specific areas you'd like to focus on today?",
-          suggestions: [
-            "Nutrition tips",
-            "Exercise routine",
-            "Sleep improvement",
-            "Stress management",
-          ],
-        },
-      ];
-      const randomResponse =
-        botResponses[Math.floor(Math.random() * botResponses.length)];
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: randomResponse.text,
+
+    // Add loading message
+    const loadingMessage: Message = {
+      id: generateUniqueId(),
+      text: "",
+      sender: "bot",
+      isLoading: true,
+    };
+    setMessages((prev) => [...prev, loadingMessage]);
+
+    try {
+      const formData = new FormData();
+      formData.append("message", text.trim());
+
+      const response = await fetch(`${API_BASE_URL}/chat/send`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Remove loading message and add response
+        setMessages((prev) => prev.filter((msg) => !msg.isLoading));
+
+        const botMessage: Message = {
+          id: generateUniqueId(),
+          text: data.response,
+          sender: "bot",
+          suggestions: data.follow_up_questions || [],
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      } else {
+        throw new Error(data.error || "Failed to get response");
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      setMessages((prev) => prev.filter((msg) => !msg.isLoading));
+
+      const errorMessage: Message = {
+        id: generateUniqueId(),
+        text: "I apologize, but I'm having trouble processing your request right now. Please try again later.",
         sender: "bot",
-        suggestions: randomResponse.suggestions,
+        suggestions: ["Try again", "Ask something else"],
       };
-      setMessages((prev) => [...prev, botMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1200);
+    }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    handleSendMessage(suggestion);
+    if (suggestion === "Upload a medical document") {
+      handleDocumentUpload();
+    } else {
+      handleSendMessage(suggestion);
+    }
+  };
+
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          "application/pdf",
+          "text/plain",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/msword",
+        ],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        return file;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error picking document:", error);
+      Alert.alert("Error", "Failed to pick document. Please try again.");
+      return null;
+    }
+  };
+
+  const uploadFileToServer = async (
+    file: DocumentPicker.DocumentPickerAsset
+  ) => {
+    try {
+      const formData = new FormData();
+
+      // Use the File object for web, and uri for native
+      if (file.file) {
+        // Web: file.file is a real File object
+        formData.append("file", file.file, file.name);
+      } else {
+        // Native: use uri
+        formData.append("file", {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType || "application/octet-stream",
+        } as any);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/upload/document`, {
+        method: "POST",
+        body: formData,
+        // Do NOT set Content-Type here! The browser will set it with the correct boundary.
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      return result.upload_id;
+    } catch (error) {
+      console.error("Upload error details:", error);
+      throw error;
+    }
+  };
+
+  const monitorUploadProgress = async (uploadId: string) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/upload/progress/${uploadId}`
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to get progress: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.progress;
+    } catch (error) {
+      console.error("Progress monitoring error:", error);
+      throw error;
+    }
+  };
+
+  const handleDocumentUpload = async () => {
+    try {
+      // Step 1: Pick document
+      const file = await pickDocument();
+      if (!file) {
+        return; // User cancelled
+      }
+
+      // Check if file is already being uploaded
+      if (uploadingFileId === file.name) {
+        Alert.alert(
+          "Upload in Progress",
+          "This file is already being uploaded. Please wait for it to complete."
+        );
+        return;
+      }
+
+      // Check if file is already uploaded
+      if (uploadedFiles.some((f) => f.name === file.name)) {
+        Alert.alert(
+          "File Already Uploaded",
+          "This file has already been uploaded."
+        );
+        return;
+      }
+
+      // Test if backend is reachable
+      try {
+        const testResponse = await fetch(`${API_BASE_URL}/`);
+        console.log("Backend test response:", testResponse.status);
+      } catch (testError) {
+        console.error("Backend not reachable:", testError);
+        Alert.alert(
+          "Connection Error",
+          "Cannot connect to the backend server. Please make sure the API server is running on port 8000."
+        );
+        return;
+      }
+
+      // Step 2: Start upload process
+      setIsUploading(true);
+      setUploadingFileId(file.name);
+      setUploadingUploadId("temp-id"); // Use a temporary ID for monitoring
+      setUploadProgress({
+        uploadId: "temp-id",
+        filename: file.name,
+        percentage: 5,
+        message: "Preparing file for upload...",
+        status: "processing",
+        entitiesCount: 0,
+        relationshipsCount: 0,
+      });
+
+      // Step 3: Simulate file preparation
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setUploadProgress((prev) =>
+        prev
+          ? { ...prev, message: "Reading file content...", percentage: 10 }
+          : null
+      );
+
+      // Step 4: Upload file to server
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setUploadProgress((prev) =>
+        prev
+          ? { ...prev, message: "Uploading file to server...", percentage: 15 }
+          : null
+      );
+
+      const uploadId = await uploadFileToServer(file);
+
+      setUploadingUploadId(uploadId);
+      setUploadProgress((prev) =>
+        prev
+          ? {
+              ...prev,
+              uploadId,
+              message: "File uploaded successfully, starting analysis...",
+              percentage: 25,
+            }
+          : null
+      );
+
+      // Step 5: Monitor progress with enhanced messaging
+      let successMessageAdded = false;
+      const progressInterval = setInterval(async () => {
+        try {
+          const progress = await monitorUploadProgress(uploadId);
+
+          // Enhanced progress messages based on percentage
+          let enhancedMessage = progress.message;
+          if (progress.percentage <= 30) {
+            enhancedMessage = "Extracting text from document...";
+          } else if (progress.percentage <= 50) {
+            enhancedMessage = "Analyzing document structure...";
+          } else if (progress.percentage <= 70) {
+            enhancedMessage = "Identifying medical entities...";
+          } else if (progress.percentage <= 90) {
+            enhancedMessage = "Extracting relationships and connections...";
+          } else if (progress.percentage < 100) {
+            enhancedMessage = "Finalizing analysis...";
+          }
+
+          setUploadProgress((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  percentage: progress.percentage,
+                  message: enhancedMessage,
+                  status: progress.status,
+                  entitiesCount: progress.entities_count || 0,
+                  relationshipsCount: progress.relationships_count || 0,
+                }
+              : null
+          );
+
+          // Stop monitoring if completed or failed
+          if (progress.status === "completed" || progress.status === "failed") {
+            clearInterval(progressInterval);
+            setIsUploading(false);
+            setUploadingFileId(null);
+            setUploadingUploadId(null);
+
+            if (progress.status === "completed") {
+              // Show completion message briefly
+              setUploadProgress((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      message:
+                        "Analysis complete! Document processed successfully.",
+                      percentage: 100,
+                    }
+                  : null
+              );
+
+              // Only add success message if we haven't already for this upload
+              if (!successMessageAdded && lastSuccessUploadId !== uploadId) {
+                setLastSuccessUploadId(uploadId);
+                successMessageAdded = true;
+                const successMessage: Message = {
+                  id: generateUniqueId(),
+                  text: `✅ Document uploaded successfully! I've analyzed your medical document and extracted ${progress.entities_count} entities and ${progress.relationships_count} relationships. You can now ask me questions about the content.`,
+                  sender: "bot",
+                  suggestions: [
+                    "What entities were found?",
+                    "Show me the relationships",
+                    "Ask about specific content",
+                  ],
+                };
+                setMessages((prev) => [...prev, successMessage]);
+              }
+
+              // Add to uploaded files list
+              setUploadedFiles((prev) => {
+                if (prev.some((f) => f.name === file.name)) return prev;
+                return [
+                  ...prev,
+                  {
+                    name: file.name,
+                    type: file.mimeType || "unknown",
+                    size: file.size || 0,
+                  },
+                ];
+              });
+            } else {
+              // Add error message
+              const errorMessage: Message = {
+                id: generateUniqueId(),
+                text: `❌ Document processing failed: ${
+                  progress.error_message || "Unknown error"
+                }`,
+                sender: "bot",
+              };
+              setMessages((prev) => [...prev, errorMessage]);
+            }
+
+            // Clear progress after a delay
+            setTimeout(() => {
+              setUploadProgress(null);
+            }, 3000);
+          }
+        } catch (error) {
+          console.error("Progress monitoring error:", error);
+          clearInterval(progressInterval);
+          setIsUploading(false);
+          setUploadingFileId(null);
+          setUploadingUploadId(null);
+          setUploadProgress(null);
+
+          const errorMessage: Message = {
+            id: generateUniqueId(),
+            text: "❌ Error monitoring upload progress. Please try again.",
+            sender: "bot",
+          };
+          setMessages((prev) => [...prev, errorMessage]);
+        }
+      }, 1000); // Check progress every second
+    } catch (error) {
+      console.error("Upload error:", error);
+      setIsUploading(false);
+      setUploadingFileId(null);
+      setUploadingUploadId(null);
+      setUploadProgress(null);
+
+      const errorMessage: Message = {
+        id: generateUniqueId(),
+        text: `❌ Upload failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }. Please check if the backend server is running and try again.`,
+        sender: "bot",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    }
+  };
+
+  const removeUploadedFile = (fileName: string) => {
+    setUploadedFiles((prev) => prev.filter((file) => file.name !== fileName));
   };
 
   return (
@@ -128,165 +475,328 @@ export default function ChatPage() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        {/* Fixed Header */}
-        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 z-10">
+        {/* Header */}
+        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center mr-3">
-                <Bot size={20} color="#fff" />
+                <MessageCircle size={20} color="#fff" />
               </View>
               <View>
                 <Text className="font-semibold text-gray-800">
-                  Health Coach AI
+                  AI Health Assistant
                 </Text>
-                <Text className="text-sm text-emerald-600">
-                  Online • Ready to help
+                <Text className="text-sm text-gray-600">
+                  Chat with AI • Upload documents
                 </Text>
               </View>
             </View>
           </View>
         </View>
 
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={80}
-        >
-          {/* Messages */}
-          <ScrollView
-            ref={scrollViewRef}
-            className="flex-1 px-4 py-4"
-            contentContainerClassName="pb-4"
-          >
-            {messages.map((message) => (
+        {/* Uploaded Files Section */}
+        {uploadedFiles.length > 0 && (
+          <View className="bg-white border-b border-gray-100 px-4 py-2">
+            <Text className="text-sm font-medium text-gray-700 mb-2">
+              Uploaded Documents:
+            </Text>
+            {uploadedFiles.map((file, index) => (
               <View
-                key={message.id}
-                className={`flex ${
-                  message.sender === "user" ? "items-end" : "items-start"
-                } mb-3`}
+                key={file.name + "-" + index}
+                className="flex-row items-center justify-between bg-gray-50 rounded-lg p-2 mb-1"
               >
-                <View
-                  className={`flex-row items-start max-w-[80%] ${
-                    message.sender === "user" ? "flex-row-reverse" : ""
-                  }`}
-                >
-                  <View
-                    className={`w-8 h-8 rounded-full items-center justify-center ${
-                      message.sender === "user"
-                        ? "bg-emerald-600 ml-2"
-                        : "bg-gray-200 mr-2"
-                    }`}
+                <View className="flex-row items-center flex-1">
+                  <FileText size={16} color="#059669" className="mr-2" />
+                  <Text
+                    className="text-sm text-gray-700 flex-1"
+                    numberOfLines={1}
                   >
-                    {message.sender === "user" ? (
-                      <User size={16} color="#fff" />
-                    ) : (
-                      <Bot size={16} color="#64748b" />
-                    )}
-                  </View>
-                  <View className="flex-1">
-                    <Card
-                      className={
-                        message.sender === "user"
-                          ? "bg-emerald-600"
-                          : "bg-white border-gray-200 p-3"
-                      }
-                    >
-                      <Text
-                        className={`text-sm ${
-                          message.sender === "user"
-                            ? "text-white"
-                            : "text-gray-800"
-                        }`}
-                      >
-                        {message.text}
-                      </Text>
-                    </Card>
-                    {message.suggestions && message.sender === "bot" && (
-                      <View className="flex-row flex-wrap mt-2">
-                        {message.suggestions.map((suggestion, idx) => (
-                          <TouchableOpacity
-                            key={idx}
-                            onPress={() => handleSuggestionClick(suggestion)}
-                            className="bg-white border border-emerald-200 rounded-full px-3 py-1 mr-2 mb-2"
-                          >
-                            <Text className="text-xs text-emerald-700">
-                              {suggestion}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View>
+                    {file.name}
+                  </Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => removeUploadedFile(file.name)}
+                  className="ml-2"
+                >
+                  <X size={16} color="#ef4444" />
+                </TouchableOpacity>
               </View>
             ))}
-            {isTyping && (
-              <View className="flex-row items-center mb-3">
-                <View className="w-8 h-8 bg-gray-200 rounded-full items-center justify-center mr-2">
-                  <Bot size={16} color="#64748b" />
-                </View>
-                <Card className="p-3 bg-white">
-                  <View className="flex-row space-x-1">
-                    <View className="w-2 h-2 bg-gray-400 rounded-full" />
-                    <View className="w-2 h-2 bg-gray-400 rounded-full" />
-                    <View className="w-2 h-2 bg-gray-400 rounded-full" />
+          </View>
+        )}
+
+        {/* Messages */}
+        <ScrollView
+          ref={scrollViewRef}
+          className="flex-1 px-4 py-4"
+          showsVerticalScrollIndicator={false}
+        >
+          {messages.map((message) => (
+            <View
+              key={message.id}
+              className={`mb-4 ${
+                message.sender === "user" ? "items-end" : "items-start"
+              }`}
+            >
+              <View
+                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  message.sender === "user"
+                    ? "bg-emerald-600"
+                    : "bg-white shadow-sm border border-gray-100"
+                }`}
+              >
+                {message.isLoading ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator size="small" color="#059669" />
+                    <Text className="text-gray-500 ml-2">
+                      AI is thinking...
+                    </Text>
                   </View>
-                </Card>
+                ) : (
+                  <Text
+                    className={`text-sm ${
+                      message.sender === "user" ? "text-white" : "text-gray-800"
+                    }`}
+                  >
+                    {message.text}
+                  </Text>
+                )}
               </View>
-            )}
-          </ScrollView>
-          {/* Input Area */}
-          <View className="bg-white border-t border-gray-100 px-4 py-3">
-            <View className="flex-row items-center">
-              <TouchableOpacity className="p-2">
-                <Paperclip size={18} color="#64748b" />
-              </TouchableOpacity>
-              <View className="flex-1 mx-2">
-                <TextInput
-                  placeholder="Type your message..."
-                  value={inputText}
-                  onChangeText={setInputText}
-                  onSubmitEditing={() => handleSendMessage(inputText)}
-                  className="h-10 px-3 bg-gray-50 rounded-full border border-gray-200 text-gray-800"
-                  returnKeyType="send"
-                />
-              </View>
-              <TouchableOpacity
-                onPress={() => handleSendMessage(inputText)}
-                disabled={!inputText.trim()}
-                className={`p-2 ${!inputText.trim() ? "opacity-50" : ""}`}
-              >
-                <Send size={18} color="#059669" />
-              </TouchableOpacity>
-              <TouchableOpacity className="p-2 ml-1">
-                <Mic size={18} color="#64748b" />
-              </TouchableOpacity>
+
+              {/* Suggestions */}
+              {message.sender === "bot" &&
+                message.suggestions &&
+                message.suggestions.length > 0 &&
+                !message.isLoading && (
+                  <View className="mt-3 flex-row flex-wrap">
+                    {message.suggestions.map((suggestion, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        onPress={() => handleSuggestionClick(suggestion)}
+                        className="bg-white border border-gray-200 rounded-full px-3 py-2 mr-2 mb-2"
+                      >
+                        <Text className="text-sm text-gray-700">
+                          {suggestion}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
             </View>
-            {/* Quick Actions */}
-            <View className="flex-row mt-3">
-              <TouchableOpacity
-                onPress={() => handleSendMessage("How's my health today?")}
-                className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 mr-2"
-              >
-                <Text className="text-xs text-emerald-700">Health Check</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() =>
-                  handleSendMessage("Any supplement recommendations?")
-                }
-                className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 mr-2"
-              >
-                <Text className="text-xs text-emerald-700">Supplements</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleSendMessage("Book a doctor appointment")}
-                className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1"
-              >
-                <Text className="text-xs text-emerald-700">
-                  Book Appointment
+          ))}
+
+          {/* Upload Progress */}
+          {uploadProgress && (
+            <View className="mb-4 items-start">
+              <View className="max-w-[80%] rounded-2xl px-4 py-3 bg-blue-50 border border-blue-200">
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-sm font-medium text-blue-800">
+                    {uploadProgress.filename}
+                  </Text>
+                  <Text className="text-xs text-blue-600 font-semibold">
+                    {uploadProgress.percentage}%
+                  </Text>
+                </View>
+
+                <Text className="text-xs text-blue-700 mb-3 font-medium">
+                  {uploadProgress.message}
                 </Text>
-              </TouchableOpacity>
+
+                {/* Enhanced Progress Bar */}
+                <View className="w-full bg-blue-200 rounded-full h-3 mb-3 overflow-hidden">
+                  <View
+                    className={`h-3 rounded-full transition-all duration-500 ease-out ${
+                      uploadProgress.status === "processing"
+                        ? "bg-gradient-to-r from-blue-500 to-blue-600"
+                        : uploadProgress.status === "completed"
+                        ? "bg-gradient-to-r from-green-500 to-green-600"
+                        : "bg-gradient-to-r from-red-500 to-red-600"
+                    }`}
+                    style={{
+                      width: `${uploadProgress.percentage}%`,
+                      shadowColor:
+                        uploadProgress.status === "processing"
+                          ? "#3b82f6"
+                          : "#10b981",
+                      shadowOffset: { width: 0, height: 0 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }}
+                  />
+                  {/* Pulsing effect during processing */}
+                  {uploadProgress.status === "processing" &&
+                    uploadProgress.percentage > 0 &&
+                    uploadProgress.percentage < 100 && (
+                      <View
+                        className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full opacity-70"
+                        style={{
+                          right: `${Math.max(
+                            0,
+                            100 - uploadProgress.percentage
+                          )}%`,
+                          transform: [{ translateX: 6 }],
+                        }}
+                      />
+                    )}
+                </View>
+
+                {/* Stats with better styling */}
+                {uploadProgress.entitiesCount > 0 && (
+                  <View className="flex-row justify-between bg-blue-100 rounded-lg p-2 mb-2">
+                    <View className="flex-row items-center">
+                      <View className="w-2 h-2 bg-blue-500 rounded-full mr-2" />
+                      <Text className="text-xs text-blue-700 font-medium">
+                        Entities: {uploadProgress.entitiesCount}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                      <Text className="text-xs text-green-700 font-medium">
+                        Relationships: {uploadProgress.relationshipsCount}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Enhanced Status Indicator */}
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <View
+                      className={`w-3 h-3 rounded-full mr-2 ${
+                        uploadProgress.status === "processing"
+                          ? "bg-yellow-500 animate-pulse"
+                          : uploadProgress.status === "completed"
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                      }`}
+                    />
+                    <Text
+                      className={`text-xs font-medium capitalize ${
+                        uploadProgress.status === "processing"
+                          ? "text-yellow-700"
+                          : uploadProgress.status === "completed"
+                          ? "text-green-700"
+                          : "text-red-700"
+                      }`}
+                    >
+                      {uploadProgress.status === "processing"
+                        ? "Processing..."
+                        : uploadProgress.status}
+                    </Text>
+                  </View>
+
+                  {/* Processing indicator */}
+                  {uploadProgress.status === "processing" && (
+                    <View className="flex-row items-center">
+                      <ActivityIndicator size="small" color="#3b82f6" />
+                      <Text className="text-xs text-blue-600 ml-1">
+                        Working...
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
             </View>
+          )}
+        </ScrollView>
+
+        {/* Input Section */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="bg-white border-t border-gray-100 px-4 py-4"
+        >
+          <View className="flex-row items-center">
+            {/* Upload Button */}
+            <TouchableOpacity
+              onPress={handleDocumentUpload}
+              disabled={isUploading}
+              className="mr-3 p-2"
+            >
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#059669" />
+              ) : (
+                <Upload size={24} color="#059669" />
+              )}
+            </TouchableOpacity>
+
+            {/* Text Input */}
+            <View className="flex-1 bg-gray-50 rounded-full px-4 py-2 mr-3">
+              <TextInput
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder="Type your message..."
+                className="text-gray-800"
+                multiline
+                maxLength={500}
+                editable={!isUploading}
+              />
+            </View>
+
+            {/* Send Button */}
+            <TouchableOpacity
+              onPress={() => handleSendMessage(inputText)}
+              disabled={!inputText.trim() || isTyping || isUploading}
+              className={`p-2 rounded-full ${
+                inputText.trim() && !isTyping && !isUploading
+                  ? "bg-emerald-600"
+                  : "bg-gray-300"
+              }`}
+            >
+              <Send
+                size={20}
+                color={
+                  inputText.trim() && !isTyping && !isUploading
+                    ? "#fff"
+                    : "#9ca3af"
+                }
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Quick Actions */}
+          <View className="flex-row mt-3">
+            <TouchableOpacity
+              onPress={() => handleSendMessage("How's my health today?")}
+              className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 mr-2"
+              disabled={isUploading}
+            >
+              <Text
+                className={`text-xs ${
+                  isUploading ? "text-gray-400" : "text-emerald-700"
+                }`}
+              >
+                Health Check
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                handleSendMessage("Any supplement recommendations?")
+              }
+              className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 mr-2"
+              disabled={isUploading}
+            >
+              <Text
+                className={`text-xs ${
+                  isUploading ? "text-gray-400" : "text-emerald-700"
+                }`}
+              >
+                Supplements
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleSendMessage("Book a doctor appointment")}
+              className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1"
+              disabled={isUploading}
+            >
+              <Text
+                className={`text-xs ${
+                  isUploading ? "text-gray-400" : "text-emerald-700"
+                }`}
+              >
+                Book Appointment
+              </Text>
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </LinearGradient>
