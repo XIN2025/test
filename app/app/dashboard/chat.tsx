@@ -189,7 +189,7 @@ export default function ChatPage() {
                     }
                   >
                     <Text
-                      className={`text-sm ${
+                      className={`text-sm px-3 py-2 ${
                         message.sender === "user"
                           ? "text-white"
                           : "text-gray-800"
