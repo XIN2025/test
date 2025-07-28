@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
@@ -33,106 +34,45 @@ import WeeklyGoalsSummary from "@/components/WeeklyGoalsSummary";
 import GoalProgressTracker from "@/components/GoalProgressTracker";
 import WeeklyReflection from "@/components/WeeklyReflection";
 import HabitGoalIntegration from "@/components/HabitGoalIntegration";
+import { useGoals } from "@/hooks/useGoals";
+import { Goal, GoalPriority, GoalCategory } from "@/types/goals";
 // @ts-ignore
 import { tw } from "nativewind";
 
-interface Goal {
-  id: string;
-  title: string;
-  description: string;
-  priority: "high" | "medium" | "low";
-  category: "health" | "fitness" | "nutrition" | "mental" | "personal";
-  targetValue?: number;
-  currentValue?: number;
-  unit?: string;
-  completed: boolean;
-  notes: string[];
-  createdAt: Date;
-  dueDate: Date;
-}
-
-interface WeeklyProgress {
-  weekStart: Date;
-  weekEnd: Date;
-  goals: Goal[];
-  reflection: string;
-  rating: number;
-}
+// Mock user email - replace with actual user authentication
+const MOCK_USER_EMAIL = "user@example.com";
 
 export default function GoalsScreen() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [goals, setGoals] = useState<Goal[]>([]);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-  const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgress | null>(
-    null
-  );
   const [showReflection, setShowReflection] = useState(false);
+
+  // Use the goals hook for backend integration
+  const {
+    goals,
+    loading,
+    error,
+    stats,
+    createGoal,
+    updateGoal,
+    deleteGoal,
+    updateGoalProgress,
+    addGoalNote,
+    saveWeeklyReflection,
+    loadGoals,
+  } = useGoals({ userEmail: MOCK_USER_EMAIL });
 
   // Form state for adding/editing goals
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    priority: "medium" as "high" | "medium" | "low",
-    category: "health" as
-      | "health"
-      | "fitness"
-      | "nutrition"
-      | "mental"
-      | "personal",
+    priority: "medium" as GoalPriority,
+    category: "health" as GoalCategory,
     targetValue: "",
     unit: "",
     dueDate: new Date(),
   });
-
-  // Sample data for demonstration
-  useEffect(() => {
-    const sampleGoals: Goal[] = [
-      {
-        id: "1",
-        title: "Complete 5 workouts",
-        description: "Hit the gym or do home workouts 5 times this week",
-        priority: "high",
-        category: "fitness",
-        targetValue: 5,
-        currentValue: 3,
-        unit: "workouts",
-        completed: false,
-        notes: ["Great start on Monday!", "Missed Wednesday due to work"],
-        createdAt: new Date(),
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: "2",
-        title: "Drink 8 glasses of water daily",
-        description: "Maintain proper hydration throughout the week",
-        priority: "high",
-        category: "health",
-        targetValue: 56,
-        currentValue: 42,
-        unit: "glasses",
-        completed: false,
-        notes: ["Doing well so far!"],
-        createdAt: new Date(),
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: "3",
-        title: "Read 30 minutes daily",
-        description: "Dedicate time to reading for personal growth",
-        priority: "medium",
-        category: "mental",
-        targetValue: 210,
-        currentValue: 180,
-        unit: "minutes",
-        completed: false,
-        notes: ["Enjoying the new book!"],
-        createdAt: new Date(),
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    ];
-    setGoals(sampleGoals);
-  }, []);
 
   const getWeekDates = (date: Date) => {
     const start = new Date(date);
@@ -176,79 +116,122 @@ export default function GoalsScreen() {
     }
   };
 
-  // This function is now handled by GoalProgressTracker component
-  // Keeping for potential future use
   const getProgressPercentage = (goal: Goal) => {
-    if (!goal.targetValue || !goal.currentValue) return 0;
-    return Math.min((goal.currentValue / goal.targetValue) * 100, 100);
+    if (!goal.target_value || !goal.current_value) return 0;
+    return Math.min((goal.current_value / goal.target_value) * 100, 100);
   };
 
-  const handleAddGoal = () => {
+  const handleAddGoal = async () => {
     if (!formData.title.trim()) {
       Alert.alert("Error", "Please enter a goal title");
       return;
     }
 
-    const newGoal: Goal = {
-      id: Date.now().toString(),
-      title: formData.title,
-      description: formData.description,
-      priority: formData.priority,
-      category: formData.category,
-      targetValue: formData.targetValue
-        ? parseFloat(formData.targetValue)
-        : undefined,
-      currentValue: 0,
-      unit: formData.unit,
-      completed: false,
-      notes: [],
-      createdAt: new Date(),
-      dueDate: formData.dueDate,
-    };
+    try {
+      await createGoal({
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        category: formData.category,
+        target_value: formData.targetValue
+          ? parseFloat(formData.targetValue)
+          : undefined,
+        unit: formData.unit,
+        due_date: formData.dueDate.toISOString(),
+      });
 
-    setGoals([...goals, newGoal]);
-    setShowAddGoal(false);
-    setFormData({
-      title: "",
-      description: "",
-      priority: "medium",
-      category: "health",
-      targetValue: "",
-      unit: "",
-      dueDate: new Date(),
-    });
+      setShowAddGoal(false);
+      setFormData({
+        title: "",
+        description: "",
+        priority: "medium",
+        category: "health",
+        targetValue: "",
+        unit: "",
+        dueDate: new Date(),
+      });
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to create goal"
+      );
+    }
   };
 
-  const handleUpdateProgress = (goalId: string, newValue: number) => {
-    setGoals(
-      goals.map((goal) =>
-        goal.id === goalId
-          ? {
-              ...goal,
-              currentValue: newValue,
-              completed: newValue >= (goal.targetValue || 0),
-            }
-          : goal
-      )
-    );
+  const handleUpdateProgress = async (goalId: string, newValue: number) => {
+    try {
+      await updateGoalProgress(goalId, newValue);
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to update progress"
+      );
+    }
   };
 
-  const handleToggleComplete = (goalId: string) => {
-    setGoals(
-      goals.map((goal) =>
-        goal.id === goalId ? { ...goal, completed: !goal.completed } : goal
-      )
-    );
+  const handleToggleComplete = async (goalId: string) => {
+    try {
+      const goal = goals.find((g) => g.id === goalId);
+      if (!goal) return;
+
+      await updateGoal(goalId, { completed: !goal.completed });
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to update goal"
+      );
+    }
   };
 
-  const handleAddNote = (goalId: string, note: string) => {
+  const handleAddNote = async (goalId: string, note: string) => {
     if (!note.trim()) return;
 
-    setGoals(
-      goals.map((goal) =>
-        goal.id === goalId ? { ...goal, notes: [...goal.notes, note] } : goal
-      )
-    );
+    try {
+      await addGoalNote(goalId, note);
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to add note"
+      );
+    }
+  };
+
+  const handleWeekChange = (direction: "prev" | "next") => {
+    const newDate = new Date(currentWeek);
+    if (direction === "prev") {
+      newDate.setDate(newDate.getDate() - 7);
+    } else {
+      newDate.setDate(newDate.getDate() + 7);
+    }
+    setCurrentWeek(newDate);
+
+    // Load goals for the new week
+    const { start } = getWeekDates(newDate);
+    loadGoals(start.toISOString());
+  };
+
+  const handleSaveReflection = async (
+    reflection: string,
+    rating: number,
+    nextWeekGoals: string[]
+  ) => {
+    try {
+      const { start, end } = getWeekDates(currentWeek);
+      await saveWeeklyReflection({
+        week_start: start.toISOString(),
+        week_end: end.toISOString(),
+        rating,
+        reflection,
+        next_week_goals: nextWeekGoals,
+      });
+      setShowReflection(false);
+      Alert.alert("Success", "Weekly reflection saved successfully");
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to save reflection"
+      );
+    }
   };
 
   const { start: weekStart, end: weekEnd } = getWeekDates(currentWeek);
@@ -256,6 +239,24 @@ export default function GoalsScreen() {
   const totalGoals = goals.length;
   const completionRate =
     totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
+
+  if (loading && goals.length === 0) {
+    return (
+      <SafeAreaView className="flex-1">
+        <LinearGradient
+          colors={["#ecfdf5", "#f0fdfa"]}
+          className="flex-1"
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#059669" />
+            <Text className="text-gray-600 mt-4">Loading goals...</Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1">
@@ -290,17 +291,19 @@ export default function GoalsScreen() {
           </View>
         </View>
 
+        {error && (
+          <View className="bg-red-50 border border-red-200 mx-4 mt-4 p-3 rounded-lg">
+            <Text className="text-red-700 text-sm">{error}</Text>
+          </View>
+        )}
+
         <ScrollView contentContainerClassName="pb-8" className="flex-1">
           <View className="px-4 space-y-6 mt-4">
             {/* Week Navigation */}
             <Card className="border-0">
               <View className="flex-row items-center justify-between p-4">
                 <TouchableOpacity
-                  onPress={() => {
-                    const newDate = new Date(currentWeek);
-                    newDate.setDate(newDate.getDate() - 7);
-                    setCurrentWeek(newDate);
-                  }}
+                  onPress={() => handleWeekChange("prev")}
                   className="p-2"
                 >
                   <ChevronLeft size={20} color="#059669" />
@@ -314,11 +317,7 @@ export default function GoalsScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => {
-                    const newDate = new Date(currentWeek);
-                    newDate.setDate(newDate.getDate() + 7);
-                    setCurrentWeek(newDate);
-                  }}
+                  onPress={() => handleWeekChange("next")}
                   className="p-2"
                 >
                   <ChevronRight size={20} color="#059669" />
@@ -375,8 +374,8 @@ export default function GoalsScreen() {
               goals={goals.map((goal) => ({
                 id: goal.id,
                 title: goal.title,
-                currentValue: goal.currentValue || 0,
-                targetValue: goal.targetValue || 1,
+                currentValue: goal.current_value || 0,
+                targetValue: goal.target_value || 1,
                 completed: goal.completed,
                 category: goal.category,
               }))}
@@ -417,12 +416,6 @@ export default function GoalsScreen() {
                         >
                           {goal.priority.toUpperCase()} PRIORITY
                         </Text>
-                        {goal.targetValue && (
-                          <Text className="text-xs text-gray-500 ml-2">
-                            {goal.currentValue || 0}/{goal.targetValue}{" "}
-                            {goal.unit}
-                          </Text>
-                        )}
                       </View>
                     </View>
                     <TouchableOpacity
@@ -438,12 +431,12 @@ export default function GoalsScreen() {
                   </View>
 
                   {/* Use GoalProgressTracker component for measurable goals */}
-                  {goal.targetValue && (
+                  {goal.target_value && (
                     <GoalProgressTracker
                       goalId={goal.id}
                       title=""
-                      currentValue={goal.currentValue || 0}
-                      targetValue={goal.targetValue}
+                      currentValue={goal.current_value || 0}
+                      targetValue={goal.target_value}
                       unit={goal.unit || ""}
                       onProgressUpdate={handleUpdateProgress}
                       showQuickActions={true}
@@ -699,15 +692,7 @@ export default function GoalsScreen() {
             weekEnd={weekEnd}
             completedGoals={completedGoals}
             totalGoals={totalGoals}
-            onSave={(reflection, rating, nextWeekGoals) => {
-              // Handle saving reflection
-              console.log("Reflection saved:", {
-                reflection,
-                rating,
-                nextWeekGoals,
-              });
-              setShowReflection(false);
-            }}
+            onSave={handleSaveReflection}
             onClose={() => setShowReflection(false)}
           />
         )}
