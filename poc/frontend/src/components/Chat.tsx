@@ -449,6 +449,40 @@ export const Chat: React.FC<ChatProps> = ({
               >
                 {msg.content}
               </Text>
+
+              {/* Display images directly in the assistant response area */}
+              {msg.type === "assistant" &&
+                msg.context &&
+                msg.context.length > 0 && (
+                  <Box mt={3}>
+                    {msg.context
+                      .filter((ctx) => isImageContext(ctx))
+                      .map((img, idx) => (
+                        <Box key={`response-image-${idx}`} mb={3}>
+                          <img
+                            src={`data:image/png;base64,${img.base64}`}
+                            alt={img.summary || img.name || "Image"}
+                            style={{
+                              maxWidth: "100%",
+                              maxHeight: 300,
+                              border: "1px solid #ccc",
+                              borderRadius: "8px",
+                              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                            }}
+                          />
+                          <Text
+                            fontSize="sm"
+                            color="gray.600"
+                            mt={1}
+                            textAlign="center"
+                          >
+                            {img.summary || img.name || "[Image]"}
+                          </Text>
+                        </Box>
+                      ))}
+                  </Box>
+                )}
+
               {/* --- Attach View Thinking Log button to assistant message if available --- */}
               {msg.type === "assistant" &&
                 thinkingLog &&
@@ -490,7 +524,10 @@ export const Chat: React.FC<ChatProps> = ({
                         // Render all description items at the top
                         const rendered: React.ReactNode[] = [];
                         msg.context.forEach((ctx, idx) => {
-                          if (ctx.startsWith("ENTITY DESCRIPTION:")) {
+                          if (
+                            typeof ctx === "string" &&
+                            ctx.startsWith("ENTITY DESCRIPTION:")
+                          ) {
                             // Format: ENTITY DESCRIPTION: Name: Description
                             const match = ctx.match(
                               /^ENTITY DESCRIPTION: ([^:]+):\s*(.*)$/
@@ -529,14 +566,30 @@ export const Chat: React.FC<ChatProps> = ({
                                 </Text>
                               </Box>
                             );
-                          }
-                        });
-                        // Render other context items below entity descriptions
-                        msg.context.forEach((ctx, idx) => {
-                          if (!ctx.startsWith("ENTITY DESCRIPTION:")) {
+                          } else if (isImageContext(ctx)) {
+                            // Render images
+                            rendered.push(
+                              <Box key={`image-${idx}`} mt={2} mb={2}>
+                                <img
+                                  src={`data:image/png;base64,${ctx.base64}`}
+                                  alt={ctx.summary || ctx.name || "Image"}
+                                  style={{
+                                    maxWidth: 300,
+                                    maxHeight: 200,
+                                    border: "1px solid #ccc",
+                                    borderRadius: "4px",
+                                  }}
+                                />
+                                <Box fontSize="sm" color="gray.600" mt={1}>
+                                  {ctx.summary || ctx.name || "[Image]"}
+                                </Box>
+                              </Box>
+                            );
+                          } else if (typeof ctx === "string") {
+                            // Render other text context items
                             rendered.push(
                               <Text
-                                key={idx}
+                                key={`text-${idx}`}
                                 color={contextTextColor}
                                 p={2}
                                 borderRadius="sm"
@@ -551,46 +604,6 @@ export const Chat: React.FC<ChatProps> = ({
                         });
                         return rendered;
                       })()}
-                      {msg.context.map(
-                        (
-                          ctx:
-                            | string
-                            | {
-                                type: string;
-                                base64: string;
-                                summary?: string;
-                                name?: string;
-                              },
-                          i: number
-                        ) => {
-                          if (typeof ctx === "string") {
-                            return (
-                              <Box key={i} fontSize="sm" color="gray.500">
-                                {ctx}
-                              </Box>
-                            );
-                          } else if (isImageContext(ctx)) {
-                            return (
-                              <Box key={i} mt={2} mb={2}>
-                                <img
-                                  src={`data:image/png;base64,${ctx.base64}`}
-                                  alt={ctx.summary || ctx.name}
-                                  style={{
-                                    maxWidth: 300,
-                                    maxHeight: 200,
-                                    border: "1px solid #ccc",
-                                  }}
-                                />
-                                <Box fontSize="sm" color="gray.600" mt={1}>
-                                  {ctx.summary}
-                                </Box>
-                              </Box>
-                            );
-                          } else {
-                            return null;
-                          }
-                        }
-                      )}
                     </VStack>
                   </Box>
                 </Collapse>

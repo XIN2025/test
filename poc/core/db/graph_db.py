@@ -37,10 +37,16 @@ class Neo4jDatabase:
         with self.driver.session() as session:
             cypher_query = """
             MATCH (e)
-            RETURN labels(e)[0] as type, e.name as name, e.description as description
+            RETURN labels(e)[0] as type, e.name as name, e.description as description, e.base64 as base64, e.summary as summary
             """
             result = session.run(cypher_query)
-            return [{"type": record["type"], "name": record["name"], "description": record.get("description")} for record in result]
+            return [{
+                "type": record["type"],
+                "name": record["name"],
+                "description": record.get("description"),
+                "base64": record.get("base64"),
+                "summary": record.get("summary"),
+            } for record in result]
 
     def create_entity(self, entity_type: str, name: str, properties: dict = None) -> None:
         with self.driver.session() as session:

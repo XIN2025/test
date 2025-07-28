@@ -70,6 +70,11 @@ class AgenticContextRetrieval:
         
         return workflow.compile(checkpointer=MemorySaver())
     
+    def _query_requests_image(self, query: str) -> bool:
+        image_keywords = ["image", "diagram", "picture", "figure", "visual", "graph", "chart", "photo"]
+        query_lower = query.lower()
+        return any(word in query_lower for word in image_keywords)
+
     async def _similarity_search_node(self, state: AgentState, step_callback=None) -> dict:
         if isinstance(state, dict):
             state = AgentState(**state)
@@ -86,7 +91,13 @@ class AgenticContextRetrieval:
         retrieved_node_ids = self.vector_store.search(state.query, top_k=top_k)
         discovered_nodes = set([nid for nid in retrieved_node_ids if nid])
         state.discovered_nodes = discovered_nodes
-        state.reasoning = f"Found {len(discovered_nodes)} nodes using vector store RAG retrieval."
+        # --- Add image nodes if query requests image ---
+        if self._query_requests_image(state.query):
+            all_entities = self.db.get_all_entities()
+            image_node_names = [e["name"] for e in all_entities if e.get("type", "").lower() == "image"]
+            state.discovered_nodes.update(image_node_names)
+            print(f"[INFO] Query requests image. Added image nodes: {image_node_names}")
+        state.reasoning = f"Found {len(state.discovered_nodes)} nodes using vector store RAG retrieval."
         print(f"[STEP] similarity_search | Query: {state.query}")
         print(f"[INFO] Discovered nodes: {state.discovered_nodes}")
         print(f"[INFO] Reasoning: {state.reasoning}")
@@ -137,6 +148,28 @@ class AgenticContextRetrieval:
         print(f"[INFO] Current focus: {state.current_focus}")
         print(f"[INFO] Explored nodes: {state.explored_nodes}")
         print(f"[INFO] Reasoning: {state.reasoning}")
+
+        # Print all explored nodes with details at once
+        if state.explored_nodes:
+            all_entities = self.db.get_all_entities()
+            print("[INFO] All explored nodes so far:")
+            for i, node_name in enumerate(sorted(state.explored_nodes), 1):
+                node_details = None
+                for entity in all_entities:
+                    if entity["name"].lower() == node_name.lower():
+                        node_details = entity
+                        break
+                if node_details:
+                    node_type = node_details.get("type", "Unknown")
+                    description = node_details.get("description", "No description available")
+                    print(f"  {i}. Title: {node_details['name']}")
+                    print(f"     Type: {node_type}")
+                    print(f"     Description: {description}")
+                else:
+                    print(f"  {i}. Title: {node_name}")
+                    print(f"     Type: Unknown")
+                    print(f"     Description: Not found in database")
+            print()
         return asdict(state)
     
     async def _relationship_exploration_node(self, state: AgentState, step_callback=None) -> dict:
@@ -223,6 +256,40 @@ class AgenticContextRetrieval:
             step_callback(json.dumps({"step": "context_synthesis", "status": "started"}))
         print(f"[STEP] context_synthesis | Synthesizing context...")
         print(f"[INFO] Context pieces: {len(state.context_pieces)}")
+        
+        # Print comprehensive summary of all explored nodes at the end
+        print("\n" + "="*80)
+        print("CONTEXT RETRIEVAL SUMMARY - ALL EXPLORED NODES")
+        print("="*80)
+        print(f"Query: {state.query}")
+        print(f"Exploration Depth: {state.exploration_depth}/{state.max_depth}")
+        print(f"Total Context Pieces: {len(state.context_pieces)}")
+        print()
+        
+        print("DISCOVERED NODES:")
+        for i, node in enumerate(sorted(state.discovered_nodes), 1):
+            print(f"  {i}. {node}")
+        print()
+        
+        print("EXPLORED NODES:")
+        for i, node in enumerate(sorted(state.explored_nodes), 1):
+            print(f"  {i}. {node}")
+        print()
+        
+        print("EXPLORED RELATIONSHIPS:")
+        for i, rel in enumerate(sorted(state.explored_relationships), 1):
+            print(f"  {i}. {rel}")
+        print()
+        
+        print("CONTEXT PIECES:")
+        for i, piece in enumerate(state.context_pieces, 1):
+            if isinstance(piece, dict):
+                print(f"  {i}. [IMAGE] {piece.get('name', 'Unknown')}: {piece.get('summary', 'No summary')}")
+            else:
+                print(f"  {i}. {piece}")
+        print("="*80)
+        print()
+        
         # Add descriptions for all discovered nodes if not already present
         def normalize_name(name):
             return name.lower().replace("dr. ", "").strip()
@@ -249,7 +316,11 @@ class AgenticContextRetrieval:
                             "summary": description,
                             "base64": entity.get("base64", "")
                         }
-                        if desc_obj not in state.context_pieces:
+                        # Only add the image object if not already present
+                        if not any(
+                            isinstance(piece, dict) and piece.get("type") == "image" and piece.get("name") == entity["name"]
+                            for piece in state.context_pieces
+                        ):
                             print(f"[DEBUG] Adding image context: {desc_obj}")
                             state.context_pieces.append(desc_obj)
                             added_entity_names.add(entity["name"])
@@ -323,15 +394,20 @@ class AgenticContextRetrieval:
         return intersection / union if union > 0 else 0.0
     
     async def _prioritize_nodes(self, nodes: List[str], query: str) -> List[str]:
-        """Prioritize nodes based on relevance to the query"""
         if not nodes:
             return []
-        
+        # --- Prefer image nodes if query requests image ---
+        if self._query_requests_image(query):
+            all_entities = self.db.get_all_entities()
+            image_nodes = [n for n in nodes if any(e["name"] == n and e.get("type", "").lower() == "image" for e in all_entities)]
+            other_nodes = [n for n in nodes if n not in image_nodes]
+            # Optionally, you can return image_nodes first, then LLM-prioritized others
+            return image_nodes + other_nodes
+        # --- Otherwise, use LLM-based prioritization as before ---
         messages = [
             SystemMessage(content=NODE_PRIORITIZATION_SYSTEM_PROMPT),
             HumanMessage(content=f"Query: {query}\nNodes: {', '.join(nodes)}")
         ]
-        
         try:
             response = self.llm.invoke(messages)
             ranked_nodes = [n.strip() for n in response.content.split(',') if n.strip()]

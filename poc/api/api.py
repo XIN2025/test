@@ -239,9 +239,71 @@ async def query(request: QueryRequest):
                 context=[]
             )
 
+        # Print all explored nodes with details before sending response
+        print("\n" + "="*80)
+        print("QUERY RESPONSE - ALL EXPLORED NODES DETAILS")
+        print("="*80)
+        print(f"Query: {question}")
+        print()
+        
+        # Get all entities from database to match with context
+        all_entities = db.get_all_entities()
+        
+        # Extract node names from context pieces
+        explored_node_names = set()
+        for piece in full_context:
+            if isinstance(piece, str):
+                # Look for entity descriptions
+                if piece.startswith("ENTITY DESCRIPTION: "):
+                    # Extract entity name from description
+                    entity_name = piece.split(": ")[1].split(":")[0] if ": " in piece else piece.split(": ")[1]
+                    explored_node_names.add(entity_name)
+                # Also look for relationship patterns
+                elif " " in piece and not piece.startswith("ENTITY DESCRIPTION:"):
+                    # This might be a relationship, extract node names
+                    parts = piece.split()
+                    if len(parts) >= 3:
+                        explored_node_names.add(parts[0])
+                        explored_node_names.add(parts[-1])
+            elif isinstance(piece, dict) and piece.get("type") == "image":
+                explored_node_names.add(piece.get("name", "Unknown"))
+        
+        # Print details for each explored node
+        print("EXPLORED NODES WITH DETAILS:")
+        print("-" * 60)
+        for i, node_name in enumerate(sorted(explored_node_names), 1):
+            # Find matching entity in database
+            node_details = None
+            for entity in all_entities:
+                if entity["name"].lower() == node_name.lower():
+                    node_details = entity
+                    break
+            
+            if node_details:
+                node_type = node_details.get("type", "Unknown")
+                description = node_details.get("description", "No description available")
+                print(f"{i}. Title: {node_details['name']}")
+                print(f"   Type: {node_type}")
+                print(f"   Description: {description}")
+            else:
+                print(f"{i}. Title: {node_name}")
+                print(f"   Type: Unknown")
+                print(f"   Description: Not found in database")
+            print()
+        
+        print("CONTEXT PIECES:")
+        print("-" * 60)
+        for i, piece in enumerate(full_context, 1):
+            if isinstance(piece, dict):
+                print(f"{i}. [IMAGE] {piece.get('name', 'Unknown')}: {piece.get('summary', 'No summary')}")
+            else:
+                print(f"{i}. {piece}")
+        print("="*80)
+        print()
+
         # Format context for final LLM query (only use text parts)
         context_str = "\n".join([
-            c if isinstance(c, str) else c.get("summary", "[Image]")
+            c if isinstance(c, str) else (c.get("summary") or "[Image]")
             for c in full_context
         ])
 
