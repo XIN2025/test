@@ -2,13 +2,13 @@ import os
 import tempfile
 import base64
 from typing import List, Dict, Tuple, Optional, Callable
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import spacy
 import json
 import logging
 import time
-from ..config import GOOGLE_API_KEY, LLM_MODEL, LLM_TEMPERATURE
+from ..config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 from .graph_db import get_graph_db
 from .vector_store import get_vector_store
 
@@ -23,11 +23,10 @@ except OSError:
 
 class DocumentProcessor:
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(
+        self.llm = ChatOpenAI(
             model=LLM_MODEL,
-            google_api_key=GOOGLE_API_KEY,
-            temperature=LLM_TEMPERATURE,
-            convert_system_message_to_human=True
+            openai_api_key=OPENAI_API_KEY,
+            temperature=LLM_TEMPERATURE
         )
         self.graph_db = get_graph_db()
         self.vector_store = get_vector_store()
