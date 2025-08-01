@@ -1,22 +1,25 @@
 FROM python:3.12-slim
 
-# Install uv and required build tools
-RUN apt-get update && apt-get install -y curl build-essential && \
-  curl -sSf https://astral.sh/uv/install.sh | sh
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# Install uv for faster dependency management
+RUN pip install uv
 
-# Copy project files
+# Copy dependency files
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies using uv
-RUN uv pip install -r requirements.txt && uv sync --production
+# Install dependencies
+RUN uv sync --frozen
 
-# Copy the rest of the application
+# Copy the rest of the code
 COPY . .
 
 # Expose FastAPI port
 EXPOSE 8000
 
-# Run with Uvicorn in production
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8000", "--workers", "1"]
+# Start FastAPI app
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

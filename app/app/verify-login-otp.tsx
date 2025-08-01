@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import EvraLogo from "../components/EvraLogo";
 
 export default function VerifyLoginOtpScreen() {
   const { email } = useLocalSearchParams();
@@ -42,9 +43,7 @@ export default function VerifyLoginOtpScreen() {
     <View className="flex-1 justify-center items-center bg-green-50 px-4">
       {/* Logo */}
       <View className="items-center mb-8">
-        <View className="bg-green-600 rounded-full w-20 h-20 flex items-center justify-center mb-4">
-          <Text className="text-3xl text-white">♡</Text>
-        </View>
+        <EvraLogo size={64} />
         <Text className="text-3xl font-bold text-green-700">Evra</Text>
         <Text className="text-green-600 mt-1">Your Personal Health Coach</Text>
       </View>

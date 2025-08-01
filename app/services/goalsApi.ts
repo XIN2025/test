@@ -7,8 +7,10 @@ import {
   WeeklyReflection,
   GoalStats,
 } from "../types/goals";
+import Constants from "expo-constants";
 
-const API_BASE_URL = "http://localhost:8000"; // Update this to your backend URL
+const API_BASE_URL =
+  Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000"; // Update this to your backend URL
 
 interface ApiResponse<T> {
   success: boolean;
