@@ -10,7 +10,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - EXPO_PUBLIC_API_URL=http://api:8000
+      - EXPO_PUBLIC_API_URL=https://api.evra.opengig.work
     restart: on-failure:5
     networks:
       - app_network
