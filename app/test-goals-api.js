@@ -1,7 +1,7 @@
 // Test script for Goals API
 // Run this in the browser console or as a Node.js script
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8000";
 const TEST_USER_EMAIL = "test@example.com";
 
 // Helper function to make API requests

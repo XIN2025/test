@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
+import Constants from "expo-constants";
 
 export default function VerifyLoginOtpScreen() {
   const { email } = useLocalSearchParams();
@@ -12,7 +13,8 @@ export default function VerifyLoginOtpScreen() {
   const handleVerify = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/verify-login-otp", {
+      const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
+      const response = await fetch(`${API_BASE_URL}/verify-login-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp }),
@@ -21,7 +23,7 @@ export default function VerifyLoginOtpScreen() {
       if (!response.ok) throw new Error(data.detail || "Verification failed");
       // Check if user preferences exist
       const prefsRes = await fetch(
-        `http://localhost:8000/api/user/preferences?email=${email}`
+        `${API_BASE_URL}/api/user/preferences?email=${email}`
       );
       const prefsData = await prefsRes.json();
       if (prefsData.exists) {
