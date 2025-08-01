@@ -18,6 +18,20 @@ interface ApiResponse {
   success?: boolean;
 }
 
+// TypeScript interfaces
+interface LoginFormData {
+  email: string;
+}
+
+interface ValidationErrors {
+  email?: string;
+}
+
+interface ApiResponse {
+  detail?: string;
+  success?: boolean;
+}
+
 export default function LoginScreen() {
   const [formData, setFormData] = useState<LoginFormData>({ email: "" });
   const [errors, setErrors] = useState<ValidationErrors>({});

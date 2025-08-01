@@ -18,6 +18,10 @@ RUN uv sync --frozen
 # Copy the rest of the code
 COPY . .
 
+# Set environment variables for CORS
+ENV CORS_ORIGINS=https://web.evra.opengig.work
+ENV ALLOWED_HOSTS=api.evra.opengig.work,localhost,127.0.0.1
+
 # Expose FastAPI port
 EXPOSE 8000
 

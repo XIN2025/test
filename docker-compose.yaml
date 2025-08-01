@@ -28,6 +28,8 @@ services:
     environment:
       - ENVIRONMENT=production
       - PORT=8000
+      - CORS_ORIGINS=https://web.evra.opengig.work
+      - ALLOWED_HOSTS=api.evra.opengig.work,localhost,127.0.0.1
     restart: unless-stopped
     networks:
       - app_network

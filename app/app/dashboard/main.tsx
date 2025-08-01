@@ -133,14 +133,32 @@ export default function MainDashboard() {
 
               {/* Health Score - Right Side */}
               <View className="w-1/2 pl-2 items-center justify-center">
-                <View className="w-40 h-40 rounded-full bg-gradient-to-r from-orange-300 to-yellow-200 items-center justify-center">
-                  <View className="w-32 h-32 rounded-full bg-gradient-to-r from-orange-500 to-yellow-400 items-center justify-center">
+                <LinearGradient
+                  colors={["#fed7aa", "#fde68a"]}
+                  style={{
+                    width: 160,
+                    height: 160,
+                    borderRadius: 80,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <LinearGradient
+                    colors={["#f97316", "#f59e0b"]}
+                    style={{
+                      width: 128,
+                      height: 128,
+                      borderRadius: 64,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     <Text className="text-white text-sm font-medium">
                       Health Score
                     </Text>
                     <Text className="text-white text-4xl font-bold">84</Text>
-                  </View>
-                </View>
+                  </LinearGradient>
+                </LinearGradient>
               </View>
             </View>
 

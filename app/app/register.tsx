@@ -20,6 +20,22 @@ interface ApiResponse {
   success?: boolean;
 }
 
+// TypeScript interfaces
+interface RegisterFormData {
+  name: string;
+  email: string;
+}
+
+interface ValidationErrors {
+  name?: string;
+  email?: string;
+}
+
+interface ApiResponse {
+  detail?: string;
+  success?: boolean;
+}
+
 export default function RegisterScreen() {
   const [formData, setFormData] = useState<RegisterFormData>({
     name: "",
