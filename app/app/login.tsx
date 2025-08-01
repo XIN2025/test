@@ -3,40 +3,108 @@ import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
 
+// TypeScript interfaces
+interface LoginFormData {
+  email: string;
+}
+
+interface ValidationErrors {
+  email?: string;
+}
+
+interface ApiResponse {
+  detail?: string;
+  success?: boolean;
+}
+
 export default function LoginScreen() {
-  const [email, setEmail] = useState("");
+  const [formData, setFormData] = useState<LoginFormData>({ email: "" });
+  const [errors, setErrors] = useState<ValidationErrors>({});
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // Validation functions
+  const validateEmail = (email: string): string | undefined => {
+    if (!email.trim()) {
+      return "Email is required";
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return "Please enter a valid email address";
+    }
+    return undefined;
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {};
+
+    const emailError = validateEmail(formData.email);
+    if (emailError) {
+      newErrors.email = emailError;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Form handlers
+  const handleInputChange = (field: keyof LoginFormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
   const handleLogin = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch("http://localhost:8000/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: formData.email.trim() }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Login failed");
+
+      const data: ApiResponse = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Login failed. Please try again.");
+      }
+
       Alert.alert("Success", "OTP sent to your email.");
-      router.push({ pathname: "./verify-login-otp", params: { email } });
+      router.push({
+        pathname: "./verify-login-otp",
+        params: { email: formData.email.trim() },
+      });
     } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      Alert.alert("Login Error", error.message);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "An unexpected error occurred. Please try again.";
+      Alert.alert("Login Error", errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
+  const isFormValid =
+    formData.email.trim().length > 0 && Object.keys(errors).length === 0;
+
   return (
     <View className="flex-1 justify-center items-center bg-green-50 px-4">
       {/* Logo */}
       <View className="items-center mb-8">
-        <View className="bg-green-600 rounded-full w-20 h-20 flex items-center justify-center mb-4">
-          <EvraLogo size={64} />
-        </View>
-        <Text className="text-3xl font-bold text-green-700">Evra</Text>
-        <Text className="text-green-600 mt-1">Your Personal Health Coach</Text>
+        <EvraLogo size={64} className="mb-4" />
+        <Text className="text-3xl font-bold" style={{ color: "#059669" }}>
+          Evra
+        </Text>
+        <Text className="mt-1" style={{ color: "#059669" }}>
+          Your Agent for Better Health
+        </Text>
       </View>
       {/* Card */}
       <View className="bg-white w-full max-w-md rounded-xl shadow-lg p-8 items-center">
@@ -50,20 +118,30 @@ export default function LoginScreen() {
         <View className="w-full mb-4">
           <Text className="mb-1 text-gray-700">Email</Text>
           <TextInput
-            className="border border-gray-300 rounded-md px-4 py-3 w-full text-base bg-gray-50 focus:border-green-500"
+            className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 ${
+              errors.email ? "border-red-500" : "border-gray-300"
+            }`}
             placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
+            value={formData.email}
+            onChangeText={(value) => handleInputChange("email", value)}
             autoCapitalize="none"
             keyboardType="email-address"
             editable={!loading}
+            autoComplete="email"
+            textContentType="emailAddress"
           />
+          {errors.email && (
+            <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>
+          )}
         </View>
         {/* Sign In Button */}
         <TouchableOpacity
-          className="bg-green-600 rounded-md w-full py-3 mt-2 mb-2 items-center disabled:opacity-50"
+          className={`rounded-md w-full py-3 mt-2 mb-2 items-center ${
+            !isFormValid || loading ? "opacity-50" : ""
+          }`}
+          style={{ backgroundColor: "#059669" }}
           onPress={handleLogin}
-          disabled={loading || !email}
+          disabled={!isFormValid || loading}
         >
           <Text className="text-white text-lg font-semibold">
             {loading ? "Sending OTP..." : "Sign In"}
@@ -73,7 +151,8 @@ export default function LoginScreen() {
         <Text className="mt-2 text-gray-700 text-center">
           Don't have an account?{" "}
           <Text
-            className="text-green-600 font-semibold"
+            className="font-semibold"
+            style={{ color: "#059669" }}
             onPress={() => router.push("./register")}
           >
             Sign Up

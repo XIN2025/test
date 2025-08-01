@@ -47,6 +47,7 @@ export default function GoalsScreen() {
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [showReflection, setShowReflection] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Use the goals hook for backend integration
   const {
@@ -141,6 +142,7 @@ export default function GoalsScreen() {
       });
 
       setShowAddGoal(false);
+      setShowSuggestions(false);
       setFormData({
         title: "",
         description: "",
@@ -261,7 +263,7 @@ export default function GoalsScreen() {
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#ecfdf5", "#f0fdfa"]}
+        colors={["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -270,7 +272,10 @@ export default function GoalsScreen() {
         <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center mr-3">
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: "#114131" }}
+              >
                 <Target size={20} color="#fff" />
               </View>
               <View>
@@ -284,7 +289,8 @@ export default function GoalsScreen() {
             </View>
             <TouchableOpacity
               onPress={() => setShowAddGoal(true)}
-              className="w-8 h-8 bg-emerald-600 rounded-full items-center justify-center"
+              className="w-8 h-8 rounded-full items-center justify-center"
+              style={{ backgroundColor: "#114131" }}
             >
               <Plus size={16} color="#fff" />
             </TouchableOpacity>
@@ -342,13 +348,19 @@ export default function GoalsScreen() {
                 </View>
                 <View className="h-3 bg-gray-200 rounded-full">
                   <View
-                    className="h-3 bg-emerald-500 rounded-full"
-                    style={{ width: `${completionRate}%` }}
+                    className="h-3 rounded-full"
+                    style={{
+                      backgroundColor: "#114131",
+                      width: `${completionRate}%`,
+                    }}
                   />
                 </View>
                 <View className="flex-row justify-between mt-3">
                   <View className="items-center">
-                    <Text className="text-2xl font-bold text-emerald-600">
+                    <Text
+                      className="text-2xl font-bold"
+                      style={{ color: "#114131" }}
+                    >
                       {completedGoals}
                     </Text>
                     <Text className="text-xs text-gray-600">Completed</Text>
@@ -581,6 +593,46 @@ export default function GoalsScreen() {
                 multiline
               />
 
+              {/* Show Suggestions Button */}
+              <TouchableOpacity
+                onPress={() => setShowSuggestions(!showSuggestions)}
+                className="mb-3 p-2 bg-gray-100 rounded-lg"
+              >
+                <Text className="text-sm text-gray-600 text-center">
+                  {showSuggestions ? "Hide Suggestions" : "Show Suggestions"}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Goal Suggestions */}
+              {showSuggestions && (
+                <View className="mb-4">
+                  <Text className="text-sm font-medium text-gray-700 mb-2">
+                    SUGGESTIONS
+                  </Text>
+                  <View className="space-y-2">
+                    {[
+                      "Sleep 8 hours a day",
+                      "Follow recommended diet",
+                      "Exercise 4 times a week for 75 min each",
+                      "Meditate for 20 min daily",
+                      "Connect with social group twice a week after work",
+                    ].map((suggestion, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        onPress={() => {
+                          setFormData({ ...formData, title: suggestion });
+                        }}
+                        className="bg-gray-50 border border-gray-200 rounded-lg p-3"
+                      >
+                        <Text className="text-sm text-gray-700">
+                          {suggestion}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
               <View className="flex-row justify-between mb-3">
                 <Text className="text-sm font-medium text-gray-700">
                   Priority:
@@ -592,9 +644,14 @@ export default function GoalsScreen() {
                       onPress={() => setFormData({ ...formData, priority })}
                       className={`px-3 py-1 rounded mr-1 ${
                         formData.priority === priority
-                          ? "bg-emerald-600"
+                          ? "bg-gray-200"
                           : "bg-gray-200"
                       }`}
+                      style={
+                        formData.priority === priority
+                          ? { backgroundColor: "#114131" }
+                          : {}
+                      }
                     >
                       <Text
                         className={`text-xs ${
@@ -629,9 +686,14 @@ export default function GoalsScreen() {
                       onPress={() => setFormData({ ...formData, category })}
                       className={`px-2 py-1 rounded mr-1 ${
                         formData.category === category
-                          ? "bg-emerald-600"
+                          ? "bg-gray-200"
                           : "bg-gray-200"
                       }`}
+                      style={
+                        formData.category === category
+                          ? { backgroundColor: "#114131" }
+                          : {}
+                      }
                     >
                       <Text
                         className={`text-xs ${
@@ -669,14 +731,18 @@ export default function GoalsScreen() {
 
               <View className="flex-row">
                 <TouchableOpacity
-                  onPress={() => setShowAddGoal(false)}
+                  onPress={() => {
+                    setShowAddGoal(false);
+                    setShowSuggestions(false);
+                  }}
                   className="flex-1 bg-gray-300 px-4 py-2 rounded-lg mr-2"
                 >
                   <Text className="text-center text-gray-700">Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleAddGoal}
-                  className="flex-1 bg-emerald-600 px-4 py-2 rounded-lg ml-2"
+                  className="flex-1 px-4 py-2 rounded-lg ml-2"
+                  style={{ backgroundColor: "#114131" }}
                 >
                   <Text className="text-center text-white">Add Goal</Text>
                 </TouchableOpacity>

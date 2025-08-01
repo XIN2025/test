@@ -109,7 +109,7 @@ export default function SupplementsPage() {
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#ecfdf5", "#f0fdfa"]}
+        colors={["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -118,7 +118,10 @@ export default function SupplementsPage() {
         <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 z-10">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center mr-3">
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: "#114131" }}
+              >
                 <Pill size={20} color="#fff" />
               </View>
               <View>

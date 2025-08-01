@@ -91,7 +91,7 @@ export default function OrdersPage() {
   const getStatusColor = (status: Order["status"]) => {
     switch (status) {
       case "delivered":
-        return "text-emerald-600";
+        return "text-green-700";
       case "shipped":
         return "text-blue-600";
       case "processing":
@@ -136,7 +136,7 @@ export default function OrdersPage() {
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#ecfdf5", "#f0fdfa"]}
+        colors={["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -145,7 +145,10 @@ export default function OrdersPage() {
         <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 z-10">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center mr-3">
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: "#114131" }}
+              >
                 <ShoppingBag size={20} color="#fff" />
               </View>
               <View>
@@ -169,9 +172,15 @@ export default function OrdersPage() {
                   onPress={() => setSelectedStatus(filter.id)}
                   className={`flex-row items-center px-3 py-2 rounded-full border ${
                     selectedStatus === filter.id
-                      ? "bg-emerald-600 border-emerald-600"
+                      ? "bg-white border-gray-200"
                       : "bg-white border-gray-200"
                   }`}
+                  style={{
+                    backgroundColor:
+                      selectedStatus === filter.id ? "#059669" : "#ffffff",
+                    borderColor:
+                      selectedStatus === filter.id ? "#059669" : "#e5e7eb",
+                  }}
                 >
                   <filter.icon
                     size={16}
@@ -208,7 +217,10 @@ export default function OrdersPage() {
                         </Text>
                       </View>
                       <View className="items-end">
-                        <Text className="font-semibold text-emerald-600">
+                        <Text
+                          className="font-semibold"
+                          style={{ color: "#059669" }}
+                        >
                           ${order.total.toFixed(2)}
                         </Text>
                         <View className="flex-row items-center mt-1">
@@ -259,15 +271,24 @@ export default function OrdersPage() {
 
                     {/* Tracking Info */}
                     {order.trackingNumber && (
-                      <View className="p-3 bg-emerald-50 rounded-lg mb-3">
-                        <Text className="text-sm font-medium text-emerald-800 mb-1">
+                      <View
+                        className="p-3 rounded-lg mb-3"
+                        style={{ backgroundColor: "#f0fdf4" }}
+                      >
+                        <Text
+                          className="text-sm font-medium mb-1"
+                          style={{ color: "#166534" }}
+                        >
                           Tracking Information
                         </Text>
-                        <Text className="text-xs text-emerald-700">
+                        <Text className="text-xs" style={{ color: "#15803d" }}>
                           Tracking #: {order.trackingNumber}
                         </Text>
                         {order.estimatedDelivery && (
-                          <Text className="text-xs text-emerald-700">
+                          <Text
+                            className="text-xs"
+                            style={{ color: "#15803d" }}
+                          >
                             Estimated Delivery: {order.estimatedDelivery}
                           </Text>
                         )}
@@ -276,7 +297,10 @@ export default function OrdersPage() {
 
                     {/* Action Buttons */}
                     <View className="flex-row space-x-2">
-                      <TouchableOpacity className="flex-1 bg-emerald-600 py-2 rounded-lg">
+                      <TouchableOpacity
+                        className="flex-1 py-2 rounded-lg"
+                        style={{ backgroundColor: "#059669" }}
+                      >
                         <Text className="text-white text-center font-medium">
                           Track Order
                         </Text>

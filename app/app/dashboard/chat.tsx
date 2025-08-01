@@ -470,7 +470,7 @@ export default function ChatPage() {
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#ecfdf5", "#f0fdfa"]}
+        colors={["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -479,7 +479,10 @@ export default function ChatPage() {
         <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center mr-3">
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: "#114131" }}
+              >
                 <MessageCircle size={20} color="#fff" />
               </View>
               <View>
@@ -506,7 +509,7 @@ export default function ChatPage() {
                 className="flex-row items-center justify-between bg-gray-50 rounded-lg p-2 mb-1"
               >
                 <View className="flex-row items-center flex-1">
-                  <FileText size={16} color="#059669" className="mr-2" />
+                  <FileText size={16} color="#114131" className="mr-2" />
                   <Text
                     className="text-sm text-gray-700 flex-1"
                     numberOfLines={1}
@@ -541,13 +544,18 @@ export default function ChatPage() {
               <View
                 className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                   message.sender === "user"
-                    ? "bg-emerald-600"
+                    ? "bg-white shadow-sm border border-gray-100"
                     : "bg-white shadow-sm border border-gray-100"
                 }`}
+                style={
+                  message.sender === "user"
+                    ? { backgroundColor: "#114131" }
+                    : {}
+                }
               >
                 {message.isLoading ? (
                   <View className="flex-row items-center">
-                    <ActivityIndicator size="small" color="#059669" />
+                    <ActivityIndicator size="small" color="#114131" />
                     <Text className="text-gray-500 ml-2">
                       AI is thinking...
                     </Text>
@@ -714,9 +722,9 @@ export default function ChatPage() {
               className="mr-3 p-2"
             >
               {isUploading ? (
-                <ActivityIndicator size="small" color="#059669" />
+                <ActivityIndicator size="small" color="#114131" />
               ) : (
-                <Upload size={24} color="#059669" />
+                <Upload size={24} color="#114131" />
               )}
             </TouchableOpacity>
 
@@ -739,9 +747,14 @@ export default function ChatPage() {
               disabled={!inputText.trim() || isTyping || isUploading}
               className={`p-2 rounded-full ${
                 inputText.trim() && !isTyping && !isUploading
-                  ? "bg-emerald-600"
+                  ? "bg-gray-300"
                   : "bg-gray-300"
               }`}
+              style={
+                inputText.trim() && !isTyping && !isUploading
+                  ? { backgroundColor: "#114131" }
+                  : {}
+              }
             >
               <Send
                 size={20}
@@ -754,49 +767,78 @@ export default function ChatPage() {
             </TouchableOpacity>
           </View>
 
-          {/* Quick Actions */}
-          <View className="flex-row mt-3">
-            <TouchableOpacity
-              onPress={() => handleSendMessage("How's my health today?")}
-              className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 mr-2"
-              disabled={isUploading}
-            >
-              <Text
-                className={`text-xs ${
-                  isUploading ? "text-gray-400" : "text-emerald-700"
-                }`}
+          {/* Chat Suggestions */}
+          <View className="mt-3">
+            <Text className="text-xs font-medium text-gray-600 mb-2">
+              CHAT SUGGESTIONS
+            </Text>
+            <View className="flex-row flex-wrap">
+              <TouchableOpacity
+                onPress={() => handleSendMessage("Book Rx delivery")}
+                className="border border-gray-200 rounded-full px-3 py-1 mr-2 mb-2"
+                style={{ backgroundColor: "#e6f4f1" }}
+                disabled={isUploading}
               >
-                Health Check
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() =>
-                handleSendMessage("Any supplement recommendations?")
-              }
-              className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1 mr-2"
-              disabled={isUploading}
-            >
-              <Text
-                className={`text-xs ${
-                  isUploading ? "text-gray-400" : "text-emerald-700"
-                }`}
+                <Text
+                  className={`text-xs ${isUploading ? "text-gray-400" : ""}`}
+                  style={!isUploading ? { color: "#114131" } : {}}
+                >
+                  Book Rx delivery
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleSendMessage("Book meal delivery")}
+                className="border border-gray-200 rounded-full px-3 py-1 mr-2 mb-2"
+                style={{ backgroundColor: "#e6f4f1" }}
+                disabled={isUploading}
               >
-                Supplements
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => handleSendMessage("Book a doctor appointment")}
-              className="bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1"
-              disabled={isUploading}
-            >
-              <Text
-                className={`text-xs ${
-                  isUploading ? "text-gray-400" : "text-emerald-700"
-                }`}
+                <Text
+                  className={`text-xs ${isUploading ? "text-gray-400" : ""}`}
+                  style={!isUploading ? { color: "#114131" } : {}}
+                >
+                  Book meal delivery
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleSendMessage("Book fitness class")}
+                className="border border-gray-200 rounded-full px-3 py-1 mr-2 mb-2"
+                style={{ backgroundColor: "#e6f4f1" }}
+                disabled={isUploading}
               >
-                Book Appointment
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  className={`text-xs ${isUploading ? "text-gray-400" : ""}`}
+                  style={!isUploading ? { color: "#114131" } : {}}
+                >
+                  Book fitness class
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleSendMessage("Book supplement delivery")}
+                className="border border-gray-200 rounded-full px-3 py-1 mr-2 mb-2"
+                style={{ backgroundColor: "#e6f4f1" }}
+                disabled={isUploading}
+              >
+                <Text
+                  className={`text-xs ${isUploading ? "text-gray-400" : ""}`}
+                  style={!isUploading ? { color: "#114131" } : {}}
+                >
+                  Book supplement delivery
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleSendMessage("Book appointment")}
+                className="border border-gray-200 rounded-full px-3 py-1 mb-2"
+                style={{ backgroundColor: "#e6f4f1" }}
+                disabled={isUploading}
+              >
+                <Text
+                  className={`text-xs ${isUploading ? "text-gray-400" : ""}`}
+                  style={!isUploading ? { color: "#114131" } : {}}
+                >
+                  Book appointment
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </LinearGradient>

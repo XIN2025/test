@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 // @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
 // @ts-ignore
@@ -23,6 +24,7 @@ import Card from "@/components/ui/card";
 import { tw } from "nativewind";
 
 export default function MainDashboard() {
+  const router = useRouter();
   const healthMetrics = [
     {
       icon: Heart,
@@ -64,7 +66,7 @@ export default function MainDashboard() {
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#ecfdf5", "#f0fdfa"]}
+        colors={["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -73,7 +75,10 @@ export default function MainDashboard() {
         <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 z-10">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center mr-3">
+              <View
+                className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                style={{ backgroundColor: "#114131" }}
+              >
                 <Heart size={20} color="#fff" />
               </View>
               <View>
@@ -95,53 +100,55 @@ export default function MainDashboard() {
         {/* Scrollable Content */}
         <ScrollView contentContainerClassName="pb-8" className="flex-1">
           <View className="px-4 space-y-6 mt-4">
-            {/* Health Score */}
-            <Card className="bg-emerald-600 border-0 mb-2">
-              <View className="flex-row items-center justify-between p-6">
-                <View>
-                  <Text className="text-lg font-semibold text-white">
-                    Health Score
-                  </Text>
-                  <Text className="text-emerald-100 text-sm">
-                    Based on your daily activities
-                  </Text>
-                </View>
-                <View className="items-end">
-                  <Text className="text-3xl font-bold text-white">85</Text>
-                  <Text className="text-emerald-100 text-sm">Good</Text>
-                </View>
+            {/* Health Score and Quick Actions Row */}
+            <View className="flex-row justify-between mb-6">
+              {/* Quick Actions - Left Side */}
+              <View className="w-1/2 pr-2">
+                <TouchableOpacity
+                  onPress={() => router.push("./chat")}
+                  className="mb-3"
+                >
+                  <Card className="border-0">
+                    <View className="items-center p-4">
+                      <MessageCircle
+                        size={32}
+                        color="#114131"
+                        className="mb-2"
+                      />
+                      <Text className="text-sm font-medium text-gray-800">
+                        Chat with EVRA
+                      </Text>
+                    </View>
+                  </Card>
+                </TouchableOpacity>
+                <Card className="border-0">
+                  <View className="items-center p-4">
+                    <Calendar size={32} color="#114131" className="mb-2" />
+                    <Text className="text-sm font-medium text-gray-800">
+                      Book Appointment
+                    </Text>
+                  </View>
+                </Card>
               </View>
-              {/* Simulated progress bar */}
-              <View className="h-2 bg-emerald-400 rounded-full mx-6 mb-4">
-                <View className="h-2 bg-white rounded-full w-[85%]" />
-              </View>
-            </Card>
 
-            {/* Quick Actions */}
-            <View className="flex-row justify-between mb-2">
-              <Card className="border-0 flex-1 mr-2">
-                <View className="items-center p-4">
-                  <MessageCircle size={32} color="#059669" className="mb-2" />
-                  <Text className="text-sm font-medium text-gray-800">
-                    Chat with AI Coach
-                  </Text>
+              {/* Health Score - Right Side */}
+              <View className="w-1/2 pl-2 items-center justify-center">
+                <View className="w-40 h-40 rounded-full bg-gradient-to-r from-orange-300 to-yellow-200 items-center justify-center">
+                  <View className="w-32 h-32 rounded-full bg-gradient-to-r from-orange-500 to-yellow-400 items-center justify-center">
+                    <Text className="text-white text-sm font-medium">
+                      Health Score
+                    </Text>
+                    <Text className="text-white text-4xl font-bold">84</Text>
+                  </View>
                 </View>
-              </Card>
-              <Card className="border-0 flex-1 ml-2">
-                <View className="items-center p-4">
-                  <Calendar size={32} color="#059669" className="mb-2" />
-                  <Text className="text-sm font-medium text-gray-800">
-                    Book Appointment
-                  </Text>
-                </View>
-              </Card>
+              </View>
             </View>
 
             {/* Health Metrics */}
             <Card className="border-0">
               <View className="p-4">
                 <View className="flex-row items-center mb-3">
-                  <TrendingUp size={20} color="#059669" className="mr-2" />
+                  <TrendingUp size={20} color="#114131" className="mr-2" />
                   <Text className="text-lg font-semibold text-gray-800">
                     Today's Metrics
                   </Text>
@@ -170,7 +177,7 @@ export default function MainDashboard() {
                       <Text
                         className={`text-xs ${
                           metric.status === "normal" || metric.status === "good"
-                            ? "text-emerald-600"
+                            ? "text-green-700"
                             : "text-amber-600"
                         }`}
                       >
@@ -186,7 +193,7 @@ export default function MainDashboard() {
             <Card className="border-0">
               <View className="p-4">
                 <View className="flex-row items-center mb-3">
-                  <Pill size={20} color="#059669" className="mr-2" />
+                  <Pill size={20} color="#114131" className="mr-2" />
                   <Text className="text-lg font-semibold text-gray-800">
                     Today's Tasks
                   </Text>
@@ -195,13 +202,14 @@ export default function MainDashboard() {
                   <View key={index} className="flex-row items-center mb-2">
                     <View
                       className={`w-4 h-4 rounded-full border-2 items-center justify-center mr-3 ${
-                        item.completed
-                          ? "bg-emerald-500 border-emerald-500"
-                          : "border-gray-300"
+                        item.completed ? "border-gray-300" : "border-gray-300"
                       }`}
                     >
                       {item.completed && (
-                        <View className="w-2 h-2 bg-white rounded-full" />
+                        <View
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: "#114131" }}
+                        />
                       )}
                     </View>
                     <Text
@@ -223,13 +231,19 @@ export default function MainDashboard() {
               <View className="p-4">
                 <View className="flex-row items-center justify-between mb-3">
                   <View className="flex-row items-center">
-                    <Target size={20} color="#059669" className="mr-2" />
+                    <Target size={20} color="#114131" className="mr-2" />
                     <Text className="text-lg font-semibold text-gray-800">
                       Weekly Goals
                     </Text>
                   </View>
-                  <TouchableOpacity className="bg-emerald-100 px-3 py-1 rounded-full">
-                    <Text className="text-xs text-emerald-700 font-medium">
+                  <TouchableOpacity
+                    className="px-3 py-1 rounded-full"
+                    style={{ backgroundColor: "#e6f4f1" }}
+                  >
+                    <Text
+                      className="text-xs font-medium"
+                      style={{ color: "#114131" }}
+                    >
                       3/5
                     </Text>
                   </TouchableOpacity>
@@ -237,7 +251,10 @@ export default function MainDashboard() {
                 <View className="space-y-2">
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center flex-1">
-                      <View className="w-2 h-2 bg-emerald-500 rounded-full mr-2" />
+                      <View
+                        className="w-2 h-2 rounded-full mr-2"
+                        style={{ backgroundColor: "#114131" }}
+                      />
                       <Text className="text-sm text-gray-700 flex-1">
                         Complete 5 workouts
                       </Text>
@@ -246,7 +263,10 @@ export default function MainDashboard() {
                   </View>
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center flex-1">
-                      <View className="w-2 h-2 bg-emerald-500 rounded-full mr-2" />
+                      <View
+                        className="w-2 h-2 rounded-full mr-2"
+                        style={{ backgroundColor: "#114131" }}
+                      />
                       <Text className="text-sm text-gray-700 flex-1">
                         Drink 8 glasses daily
                       </Text>
@@ -263,8 +283,14 @@ export default function MainDashboard() {
                     <Text className="text-xs text-gray-500">180/210</Text>
                   </View>
                 </View>
-                <TouchableOpacity className="mt-3 bg-emerald-50 p-2 rounded-lg">
-                  <Text className="text-center text-sm text-emerald-700 font-medium">
+                <TouchableOpacity
+                  className="mt-3 p-2 rounded-lg"
+                  style={{ backgroundColor: "#e6f4f1" }}
+                >
+                  <Text
+                    className="text-center text-sm font-medium"
+                    style={{ color: "#114131" }}
+                  >
                     View All Goals
                   </Text>
                 </TouchableOpacity>
@@ -273,11 +299,17 @@ export default function MainDashboard() {
 
             {/* Recent Insights */}
             <Card className="border-0">
-              <View className="p-4 bg-emerald-50 rounded-lg">
-                <Text className="text-sm text-emerald-800 font-medium mb-1">
+              <View
+                className="p-4 rounded-lg"
+                style={{ backgroundColor: "#e6f4f1" }}
+              >
+                <Text
+                  className="text-sm font-medium mb-1"
+                  style={{ color: "#114131" }}
+                >
                   Great progress on your sleep schedule! 🌙
                 </Text>
-                <Text className="text-xs text-emerald-700">
+                <Text className="text-xs" style={{ color: "#114131" }}>
                   You've maintained 7+ hours of sleep for 5 consecutive days.
                   Keep it up!
                 </Text>

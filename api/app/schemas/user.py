@@ -14,7 +14,6 @@ class OTPVerify(BaseModel):
 
 class UserPreferences(BaseModel):
     email: EmailStr
-    name: str
     age: int
     gender: str
     healthGoals: List[str]

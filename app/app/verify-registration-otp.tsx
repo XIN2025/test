@@ -40,8 +40,12 @@ export default function VerifyRegistrationOtpScreen() {
       {/* Logo */}
       <View className="items-center mb-8">
         <EvraLogo size={64} />
-        <Text className="text-3xl font-bold text-green-700">Evra</Text>
-        <Text className="text-green-600 mt-1">Your Personal Health Coach</Text>
+        <Text className="text-3xl font-bold" style={{ color: "#059669" }}>
+          Evra
+        </Text>
+        <Text className="mt-1" style={{ color: "#059669" }}>
+          Your Agent for Better Health
+        </Text>
       </View>
       {/* Card */}
       <View className="bg-white w-full max-w-md rounded-xl shadow-lg p-8 items-center">
@@ -65,7 +69,8 @@ export default function VerifyRegistrationOtpScreen() {
         </View>
         {/* Verify Button */}
         <TouchableOpacity
-          className="bg-green-600 rounded-md w-full py-3 mt-2 mb-2 items-center disabled:opacity-50"
+          className="rounded-md w-full py-3 mt-2 mb-2 items-center disabled:opacity-50"
+          style={{ backgroundColor: "#059669" }}
           onPress={handleVerify}
           disabled={loading || !otp}
         >
