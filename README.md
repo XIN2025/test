@@ -1,4 +1,4 @@
-# MedicalRag-Evra-POC
+# EVRA
 
 A comprehensive medical RAG (Retrieval-Augmented Generation) system with graph database integration, vector search, and mobile app support.
 
