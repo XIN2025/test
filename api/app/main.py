@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from .services.db import get_db, close_db
 from .services.graph_db import get_graph_db, close_graph_db
 from .services.vector_store import get_vector_store
@@ -10,7 +11,24 @@ from .routers.upload import upload_router
 from .routers.goals import goals_router
 from .services.email_utils import send_email
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    get_db()
+    # Initialize graph RAG services
+    try:
+        get_graph_db()
+        get_vector_store()
+    except Exception as e:
+        print(f"Warning: Graph RAG services initialization failed: {e}")
+    
+    yield
+    
+    # Shutdown
+    close_db()
+    close_graph_db()
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,21 +37,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-def startup_db_client():
-    get_db()
-    # Initialize graph RAG services
-    try:
-        get_graph_db()
-        get_vector_store()
-    except Exception as e:
-        print(f"Warning: Graph RAG services initialization failed: {e}")
-
-@app.on_event("shutdown")
-def shutdown_db_client():
-    close_db()
-    close_graph_db()
 
 app.include_router(auth_router)
 app.include_router(user_router)

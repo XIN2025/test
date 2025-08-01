@@ -27,6 +27,7 @@ dependencies = [
     "PyPDF2>=3.0.0",
     "python-docx>=0.8.11",
     "aiohttp>=3.8.0",
+    "pydantic[email]>=2.11.3",
 ]
 
 [project.optional-dependencies]
