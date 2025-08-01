@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
+import Constants from "expo-constants";
 
 export default function VerifyRegistrationOtpScreen() {
   const { email } = useLocalSearchParams();
@@ -12,8 +13,9 @@ export default function VerifyRegistrationOtpScreen() {
   const handleVerify = async () => {
     setLoading(true);
     try {
+      const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
       const response = await fetch(
-        "http://localhost:8000/verify-registration-otp",
+        `${API_BASE_URL}/verify-registration-otp`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

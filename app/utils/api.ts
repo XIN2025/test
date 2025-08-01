@@ -24,8 +24,10 @@ export class ApiException extends Error {
   }
 }
 
+import Constants from "expo-constants";
+
 // Base API configuration
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
 
 // Generic API request function
 export const apiRequest = async <T = any>(

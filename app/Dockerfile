@@ -16,7 +16,7 @@ COPY . .
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV EXPO_PUBLIC_API_URL=http://api:8000
+ENV API_BASE_URL=https://api.evra.opengig.work
 ENV PORT=3000
 
 # Expose port

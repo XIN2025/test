@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Constants from "expo-constants";
 // @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
 // @ts-ignore
@@ -86,8 +87,8 @@ export default function ChatPage() {
   );
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // API Configuration - Change this to your actual API URL
-  const API_BASE_URL = "http://localhost:8000";
+  // API Configuration
+  const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -322,11 +323,11 @@ export default function ChatPage() {
       setUploadProgress((prev) =>
         prev
           ? {
-              ...prev,
-              uploadId,
-              message: "File uploaded successfully, starting analysis...",
-              percentage: 25,
-            }
+            ...prev,
+            uploadId,
+            message: "File uploaded successfully, starting analysis...",
+            percentage: 25,
+          }
           : null
       );
 
@@ -353,13 +354,13 @@ export default function ChatPage() {
           setUploadProgress((prev) =>
             prev
               ? {
-                  ...prev,
-                  percentage: progress.percentage,
-                  message: enhancedMessage,
-                  status: progress.status,
-                  entitiesCount: progress.entities_count || 0,
-                  relationshipsCount: progress.relationships_count || 0,
-                }
+                ...prev,
+                percentage: progress.percentage,
+                message: enhancedMessage,
+                status: progress.status,
+                entitiesCount: progress.entities_count || 0,
+                relationshipsCount: progress.relationships_count || 0,
+              }
               : null
           );
 
@@ -375,11 +376,11 @@ export default function ChatPage() {
               setUploadProgress((prev) =>
                 prev
                   ? {
-                      ...prev,
-                      message:
-                        "Analysis complete! Document processed successfully.",
-                      percentage: 100,
-                    }
+                    ...prev,
+                    message:
+                      "Analysis complete! Document processed successfully.",
+                    percentage: 100,
+                  }
                   : null
               );
 
@@ -416,9 +417,8 @@ export default function ChatPage() {
               // Add error message
               const errorMessage: Message = {
                 id: generateUniqueId(),
-                text: `❌ Document processing failed: ${
-                  progress.error_message || "Unknown error"
-                }`,
+                text: `❌ Document processing failed: ${progress.error_message || "Unknown error"
+                  }`,
                 sender: "bot",
               };
               setMessages((prev) => [...prev, errorMessage]);
@@ -454,9 +454,8 @@ export default function ChatPage() {
 
       const errorMessage: Message = {
         id: generateUniqueId(),
-        text: `❌ Upload failed: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }. Please check if the backend server is running and try again.`,
+        text: `❌ Upload failed: ${error instanceof Error ? error.message : "Unknown error"
+          }. Please check if the backend server is running and try again.`,
         sender: "bot",
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -537,16 +536,14 @@ export default function ChatPage() {
           {messages.map((message) => (
             <View
               key={message.id}
-              className={`mb-4 ${
-                message.sender === "user" ? "items-end" : "items-start"
-              }`}
+              className={`mb-4 ${message.sender === "user" ? "items-end" : "items-start"
+                }`}
             >
               <View
-                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                  message.sender === "user"
-                    ? "bg-white shadow-sm border border-gray-100"
-                    : "bg-white shadow-sm border border-gray-100"
-                }`}
+                className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.sender === "user"
+                  ? "bg-white shadow-sm border border-gray-100"
+                  : "bg-white shadow-sm border border-gray-100"
+                  }`}
                 style={
                   message.sender === "user"
                     ? { backgroundColor: "#114131" }
@@ -562,9 +559,8 @@ export default function ChatPage() {
                   </View>
                 ) : (
                   <Text
-                    className={`text-sm ${
-                      message.sender === "user" ? "text-white" : "text-gray-800"
-                    }`}
+                    className={`text-sm ${message.sender === "user" ? "text-white" : "text-gray-800"
+                      }`}
                   >
                     {message.text}
                   </Text>
@@ -613,13 +609,12 @@ export default function ChatPage() {
                 {/* Enhanced Progress Bar */}
                 <View className="w-full bg-blue-200 rounded-full h-3 mb-3 overflow-hidden">
                   <View
-                    className={`h-3 rounded-full transition-all duration-500 ease-out ${
-                      uploadProgress.status === "processing"
-                        ? "bg-gradient-to-r from-blue-500 to-blue-600"
-                        : uploadProgress.status === "completed"
+                    className={`h-3 rounded-full transition-all duration-500 ease-out ${uploadProgress.status === "processing"
+                      ? "bg-gradient-to-r from-blue-500 to-blue-600"
+                      : uploadProgress.status === "completed"
                         ? "bg-gradient-to-r from-green-500 to-green-600"
                         : "bg-gradient-to-r from-red-500 to-red-600"
-                    }`}
+                      }`}
                     style={{
                       width: `${uploadProgress.percentage}%`,
                       shadowColor:
@@ -671,22 +666,20 @@ export default function ChatPage() {
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center">
                     <View
-                      className={`w-3 h-3 rounded-full mr-2 ${
-                        uploadProgress.status === "processing"
-                          ? "bg-yellow-500 animate-pulse"
-                          : uploadProgress.status === "completed"
+                      className={`w-3 h-3 rounded-full mr-2 ${uploadProgress.status === "processing"
+                        ? "bg-yellow-500 animate-pulse"
+                        : uploadProgress.status === "completed"
                           ? "bg-green-500"
                           : "bg-red-500"
-                      }`}
+                        }`}
                     />
                     <Text
-                      className={`text-xs font-medium capitalize ${
-                        uploadProgress.status === "processing"
-                          ? "text-yellow-700"
-                          : uploadProgress.status === "completed"
+                      className={`text-xs font-medium capitalize ${uploadProgress.status === "processing"
+                        ? "text-yellow-700"
+                        : uploadProgress.status === "completed"
                           ? "text-green-700"
                           : "text-red-700"
-                      }`}
+                        }`}
                     >
                       {uploadProgress.status === "processing"
                         ? "Processing..."
@@ -745,11 +738,10 @@ export default function ChatPage() {
             <TouchableOpacity
               onPress={() => handleSendMessage(inputText)}
               disabled={!inputText.trim() || isTyping || isUploading}
-              className={`p-2 rounded-full ${
-                inputText.trim() && !isTyping && !isUploading
-                  ? "bg-gray-300"
-                  : "bg-gray-300"
-              }`}
+              className={`p-2 rounded-full ${inputText.trim() && !isTyping && !isUploading
+                ? "bg-gray-300"
+                : "bg-gray-300"
+                }`}
               style={
                 inputText.trim() && !isTyping && !isUploading
                   ? { backgroundColor: "#114131" }

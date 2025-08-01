@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
+import Constants from "expo-constants";
 
 // TypeScript interfaces
 interface RegisterFormData {
@@ -86,7 +87,8 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/register", {
+      const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
+      const response = await fetch(`${API_BASE_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -148,9 +150,8 @@ export default function RegisterScreen() {
         <View className="w-full mb-4">
           <Text className="mb-1 text-gray-700">Name</Text>
           <TextInput
-            className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 ${
-              errors.name ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 ${errors.name ? "border-red-500" : "border-gray-300"
+              }`}
             placeholder="Enter your name"
             value={formData.name}
             onChangeText={(value) => handleInputChange("name", value)}
@@ -167,9 +168,8 @@ export default function RegisterScreen() {
         <View className="w-full mb-4">
           <Text className="mb-1 text-gray-700">Email</Text>
           <TextInput
-            className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 ${
-              errors.email ? "border-red-500" : "border-gray-300"
-            }`}
+            className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 ${errors.email ? "border-red-500" : "border-gray-300"
+              }`}
             placeholder="Enter your email"
             value={formData.email}
             onChangeText={(value) => handleInputChange("email", value)}
@@ -185,9 +185,8 @@ export default function RegisterScreen() {
         </View>
         {/* Register Button */}
         <TouchableOpacity
-          className={`rounded-md w-full py-3 mt-2 mb-2 items-center ${
-            !isFormValid || loading ? "opacity-50" : ""
-          }`}
+          className={`rounded-md w-full py-3 mt-2 mb-2 items-center ${!isFormValid || loading ? "opacity-50" : ""
+            }`}
           style={{ backgroundColor: "#059669" }}
           onPress={handleRegister}
           disabled={!isFormValid || loading}
