@@ -476,7 +476,7 @@ export default function GoalsScreen() {
             ))}
 
             {/* Weekend Reflection */}
-            {0 === 0 && ( // Sunday
+            {new Date().getDay() === 0 && ( // Sunday
               <Card className="border-0 bg-blue-50">
                 <View className="p-4">
                   <View className="flex-row items-center mb-3">
