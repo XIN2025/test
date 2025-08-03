@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from "react";
 import { View, Text, Animated } from "react-native";
 import { useRouter } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
-import { getFontFamily } from "../constants/fonts";
 
 export default function Index() {
   const router = useRouter();
@@ -54,13 +53,13 @@ export default function Index() {
         <EvraLogo size={80} />
         <Text
           className="text-4xl font-bold mb-2"
-          style={{ color: "#059669", fontFamily: "Evra" }}
+          style={{ color: "#114131", fontFamily: "Evra" }}
         >
           Evra
         </Text>
         <Text
           className="text-lg"
-          style={{ color: "#059669", fontFamily: "Evra" }}
+          style={{ color: "#114131", fontFamily: "Evra" }}
         >
           Your Agent for Better Health
         </Text>
