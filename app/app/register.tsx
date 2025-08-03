@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
 import Constants from "expo-constants";
+import { getFontFamily } from "../constants/fonts";
 
 // TypeScript interfaces
 interface RegisterFormData {
@@ -103,7 +104,8 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
+      const API_BASE_URL =
+        Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${API_BASE_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -146,11 +148,14 @@ export default function RegisterScreen() {
     <View className="flex-1 justify-center items-center bg-green-50 px-4">
       {/* Logo */}
       <View className="items-center mb-8">
-        <EvraLogo size={64} className="mb-4" />
-        <Text className="text-3xl font-bold" style={{ color: "#059669" }}>
+        <EvraLogo size={64} />
+        <Text
+          className="text-3xl font-bold"
+          style={{ color: "#114131", fontFamily: "Evra" }}
+        >
           Evra
         </Text>
-        <Text className="mt-1" style={{ color: "#059669" }}>
+        <Text className="mt-1" style={{ color: "#114131", fontFamily: "Evra" }}>
           Your Agent for Better Health
         </Text>
       </View>
@@ -166,8 +171,9 @@ export default function RegisterScreen() {
         <View className="w-full mb-4">
           <Text className="mb-1 text-gray-700">Name</Text>
           <TextInput
-            className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 ${errors.name ? "border-red-500" : "border-gray-300"
-              }`}
+            className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 ${
+              errors.name ? "border-red-500" : "border-gray-300"
+            }`}
             placeholder="Enter your name"
             value={formData.name}
             onChangeText={(value) => handleInputChange("name", value)}
@@ -184,8 +190,9 @@ export default function RegisterScreen() {
         <View className="w-full mb-4">
           <Text className="mb-1 text-gray-700">Email</Text>
           <TextInput
-            className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 ${errors.email ? "border-red-500" : "border-gray-300"
-              }`}
+            className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 ${
+              errors.email ? "border-red-500" : "border-gray-300"
+            }`}
             placeholder="Enter your email"
             value={formData.email}
             onChangeText={(value) => handleInputChange("email", value)}
@@ -201,8 +208,9 @@ export default function RegisterScreen() {
         </View>
         {/* Register Button */}
         <TouchableOpacity
-          className={`rounded-md w-full py-3 mt-2 mb-2 items-center ${!isFormValid || loading ? "opacity-50" : ""
-            }`}
+          className={`rounded-md w-full py-3 mt-2 mb-2 items-center ${
+            !isFormValid || loading ? "opacity-50" : ""
+          }`}
           style={{ backgroundColor: "#059669" }}
           onPress={handleRegister}
           disabled={!isFormValid || loading}
