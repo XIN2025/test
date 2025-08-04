@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
 import Constants from "expo-constants";
+import { getFontFamily } from "../constants/fonts";
 
 export default function VerifyRegistrationOtpScreen() {
   const { email } = useLocalSearchParams();
@@ -13,15 +14,13 @@ export default function VerifyRegistrationOtpScreen() {
   const handleVerify = async () => {
     setLoading(true);
     try {
-      const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
-      const response = await fetch(
-        `${API_BASE_URL}/verify-registration-otp`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, otp }),
-        }
-      );
+      const API_BASE_URL =
+        Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
+      const response = await fetch(`${API_BASE_URL}/verify-registration-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || "Verification failed");
       Alert.alert(
@@ -42,10 +41,13 @@ export default function VerifyRegistrationOtpScreen() {
       {/* Logo */}
       <View className="items-center mb-8">
         <EvraLogo size={64} />
-        <Text className="text-3xl font-bold" style={{ color: "#059669" }}>
+        <Text
+          className="text-3xl font-bold"
+          style={{ color: "#114131", fontFamily: "Evra" }}
+        >
           Evra
         </Text>
-        <Text className="mt-1" style={{ color: "#059669" }}>
+        <Text className="mt-1" style={{ color: "#114131", fontFamily: "Evra" }}>
           Your Agent for Better Health
         </Text>
       </View>
