@@ -3,7 +3,6 @@ import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
 import Constants from "expo-constants";
-import { getFontFamily } from "../constants/fonts";
 
 // TypeScript interfaces
 interface LoginFormData {
