@@ -1,16 +1,3 @@
 import { Platform } from "react-native";
 
-export const fontFamilies = {
-  GANDHI_SERIF: {
-    regular: "GandhiSerifRegular",
-    bold: "GandhiSerifBold",
-    italic: "GandhiSerifItalic",
-    boldItalic: "GandhiSerifBoldItalic",
-  },
-};
-
-export const getFontFamily = (
-  weight: "regular" | "bold" | "italic" | "boldItalic"
-) => {
-  return fontFamilies.GANDHI_SERIF[weight];
-};
+// This file can be removed or updated to only export Evra if needed in the future.
