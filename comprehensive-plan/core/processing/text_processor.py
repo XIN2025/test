@@ -176,17 +176,16 @@ class TextProcessor:
         """Process text to extract entities and relationships iteratively"""
         all_entities = []
         all_relationships = []
-        
+        # Cache all existing entities from Neo4j once
+        cached_existing_entities = self.get_existing_entities()
         for iteration in range(1, self.max_iterations + 1):
             print(f"\nStarting iteration {iteration}...")
-            
-            # Extract entities using current context
+            # Extract entities using current context and cached existing entities
             new_entities = self.extract_entities(
                 text,
-                existing_entities=all_entities,
+                existing_entities=all_entities + cached_existing_entities,
                 iteration=iteration
             )
-            
             # Identify relationships using all known entities and relationships
             new_relationships = self.identify_relationships(
                 text,
@@ -194,25 +193,20 @@ class TextProcessor:
                 existing_relationships=all_relationships,
                 iteration=iteration
             )
-            
             # Add new findings to our collections
             all_entities.extend([e for e in new_entities if not any(
                 existing["name"].lower() == e["name"].lower() 
                 for existing in all_entities
             )])
-            
             all_relationships.extend([r for r in new_relationships if not any(
                 existing["from"] == r["from"] 
                 and existing["to"] == r["to"] 
                 and existing["type"] == r["type"]
                 for existing in all_relationships
             )])
-            
             # If no new entities or relationships were found, we can stop early
             if not new_entities and not new_relationships and iteration > 1:
                 print(f"No new findings in iteration {iteration}, stopping early.")
                 break
-                
             print(f"Iteration {iteration} found {len(new_entities)} new entities and {len(new_relationships)} new relationships.")
-        
         return all_entities, all_relationships 

@@ -1,5 +1,5 @@
 from neo4j import GraphDatabase
-from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
+from poc.config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
 class Neo4jDatabase:
     def __init__(self) -> None:
@@ -51,19 +51,21 @@ class Neo4jDatabase:
     def create_entity(self, entity_type: str, name: str, properties: dict = None) -> None:
         with self.driver.session() as session:
             properties = properties or {}
+            properties['type'] = entity_type
             cypher_query = (
-                f"MERGE (e:{entity_type} {{name: $name}}) "
+                "MERGE (e:Entity {name: $name, type: $entity_type}) "
                 "SET e += $properties "
                 "RETURN e"
             )
-            return session.run(cypher_query, name=name, properties=properties)
+            return session.run(cypher_query, name=name, entity_type=entity_type, properties=properties)
 
     def create_relationship(self, from_entity: str, relationship_type: str, to_entity: str, properties: dict = None) -> None:
         with self.driver.session() as session:
             properties = properties or {}
+            properties['type'] = relationship_type
             cypher_query = (
                 "MATCH (from {name: $from_name}), (to {name: $to_name}) "
-                f"MERGE (from)-[r:{relationship_type}]->(to) "
+                "MERGE (from)-[r:RELATIONSHIP]->(to) "
                 "SET r += $properties "
                 "RETURN r"
             )

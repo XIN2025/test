@@ -6,7 +6,6 @@ Setup script for the Comprehensive Graph RAG System
 This script helps set up the Graph RAG system quickly.
 """
 
-import os
 import sys
 import subprocess
 from pathlib import Path
@@ -49,7 +48,7 @@ GOOGLE_API_KEY=your_gemini_api_key_here
 # Neo4j Database Configuration
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_neo4j_password_here
+NEO4J_PASSWORD=password
 
 # Vector Store Configuration
 VECTOR_STORE_PATH=faiss_index.bin

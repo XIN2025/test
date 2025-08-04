@@ -10,7 +10,8 @@ Focus on:
 - Locations
 Return ONLY a JSON array of entities without any markdown formatting.'''
 
-ENTITY_EXTRACTION_HUMAN_PROMPT = lambda text, existing_entities: f'''Text: {text}
+def ENTITY_EXTRACTION_HUMAN_PROMPT(text, existing_entities):
+    return f'''Text: {text}
 
 Already identified entities: {[e["name"] for e in existing_entities]}
 
@@ -40,7 +41,8 @@ Common relationship types include:
 
 IMPORTANT: Return ONLY the raw JSON array without any markdown formatting.'''
 
-RELATIONSHIP_EXTRACTION_HUMAN_PROMPT = lambda text, entity_names, context, iteration: f'''Analyze the following text and extract relationships between entities. This is iteration {iteration} of the analysis.
+def RELATIONSHIP_EXTRACTION_HUMAN_PROMPT(text, entity_names, context, iteration):
+    return f'''Analyze the following text and extract relationships between entities. This is iteration {iteration} of the analysis.
 
 Text: {text}
 

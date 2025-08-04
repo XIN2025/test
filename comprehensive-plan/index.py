@@ -24,15 +24,13 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any
 from dataclasses import dataclass
 import typer
 from rich.console import Console
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
-from rich import print as rprint
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
