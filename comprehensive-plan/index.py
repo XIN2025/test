@@ -42,6 +42,7 @@ from core.retrieval.agentic_context_retrieval import AgenticContextRetrieval
 from core.processing.pdf_processor import PDFProcessor
 from core.processing.text_processor import TextProcessor
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import SystemMessage, HumanMessage
 from dotenv import load_dotenv
 
 # Load environment variables
