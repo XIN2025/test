@@ -79,7 +79,9 @@ def steward_agent(diagnoses: List[Dict]) -> List[Dict]:
     response = ask_gemini(prompt)
     allowed = []
     for diag in diagnoses:
-        if diag['diagnosis'] in response:
+        # Only retain if diagnosis is explicitly listed as retained in the response
+        # (e.g., by parsing a 'Retained:' or similar section, or by stricter matching)
+        if f"- {diag['diagnosis']}" in response:
             allowed.append(diag)
     return allowed
 
