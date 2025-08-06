@@ -7,6 +7,7 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
 import { validateAge, validateGender } from "../utils/validation";
@@ -52,6 +53,8 @@ const conditionsList = [
 ];
 
 const communicationStyles = ["Formal", "Friendly", "Concise", "Detailed"];
+
+const genderOptions = ["Male", "Female", "Other"];
 
 export default function InitialPreferences() {
   const { email } = useLocalSearchParams();
@@ -182,8 +185,18 @@ export default function InitialPreferences() {
               }`}
               placeholder="Enter your age"
               value={formData.age}
-              onChangeText={(value) => handleInputChange("age", value)}
+              onChangeText={(value) => {
+                // Only allow numbers and limit to reasonable age values
+                const numValue = value.replace(/[^0-9]/g, "");
+                if (
+                  numValue === "" ||
+                  (parseInt(numValue) >= 0 && parseInt(numValue) <= 120)
+                ) {
+                  handleInputChange("age", numValue);
+                }
+              }}
               keyboardType="numeric"
+              maxLength={3}
               editable={!loading}
               autoComplete="off"
             />
@@ -195,16 +208,23 @@ export default function InitialPreferences() {
           {/* Gender Input */}
           <View className="w-full mb-4">
             <Text className="mb-1 text-gray-700">Gender *</Text>
-            <TextInput
-              className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 ${
+            <View
+              className={`border rounded-md overflow-hidden ${
                 errors.gender ? "border-red-500" : "border-gray-300"
               }`}
-              placeholder="Enter your gender"
-              value={formData.gender}
-              onChangeText={(value) => handleInputChange("gender", value)}
-              editable={!loading}
-              autoComplete="off"
-            />
+            >
+              <Picker
+                selectedValue={formData.gender}
+                onValueChange={(value) => handleInputChange("gender", value)}
+                enabled={!loading}
+                style={{ backgroundColor: "#F9FAFB", height: 50 }}
+              >
+                <Picker.Item label="Select gender" value="" />
+                {genderOptions.map((option) => (
+                  <Picker.Item key={option} label={option} value={option} />
+                ))}
+              </Picker>
+            </View>
             {errors.gender && (
               <Text className="text-red-500 text-sm mt-1">{errors.gender}</Text>
             )}

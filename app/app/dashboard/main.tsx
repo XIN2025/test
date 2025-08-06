@@ -1,5 +1,12 @@
-import React from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+  Animated,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 // @ts-ignore
@@ -23,8 +30,58 @@ import Card from "@/components/ui/card";
 // @ts-ignore
 import { tw } from "nativewind";
 
+const { width, height } = Dimensions.get("window");
+
+const walkthrough = [
+  {
+    id: "welcome",
+    title: "Welcome to your Dashboard!",
+    description: "Let's take a quick tour of your health dashboard.",
+    target: { top: 80, left: width / 2 - 100 },
+    spotlightSize: 200,
+  },
+  {
+    id: "chat",
+    title: "Chat with EVRA",
+    description: "Get instant health guidance from your AI assistant.",
+    target: { top: 60, left: 40 },
+    spotlightSize: 140,
+  },
+  {
+    id: "health-score",
+    title: "Health Score",
+    description: "Your overall health score based on various metrics.",
+    target: { top: 110, right: 50 },
+    spotlightSize: 160,
+  },
+  {
+    id: "metrics",
+    title: "Today's Metrics",
+    description: "Track your daily health measurements here.",
+    target: { top: 310, left: width / 2 - 150 },
+    spotlightSize: 300,
+  },
+  {
+    id: "tasks",
+    title: "Today's Tasks",
+    description: "Complete your daily health tasks to stay on track.",
+    target: { top: 560, left: width / 2 - 150 },
+    spotlightSize: 200,
+  },
+  {
+    id: "goals",
+    title: "Weekly Goals",
+    description: "Monitor your progress towards weekly health goals.",
+    target: { top: 760, left: width / 2 - 150 },
+    spotlightSize: 200,
+  },
+];
+
 export default function MainDashboard() {
   const router = useRouter();
+  const [showWalkthrough, setShowWalkthrough] = useState(true);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [animation] = useState(new Animated.Value(1));
   const healthMetrics = [
     {
       icon: Heart,
@@ -63,6 +120,50 @@ export default function MainDashboard() {
     { task: "Log dinner", completed: false },
   ];
 
+  const animateSpotlight = (toValue: number) => {
+    Animated.timing(animation, {
+      toValue,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleNext = () => {
+    if (currentStep < walkthrough.length - 1) {
+      animateSpotlight(0);
+      setTimeout(() => {
+        setCurrentStep(currentStep + 1);
+        animateSpotlight(1);
+      }, 300);
+    } else {
+      setShowWalkthrough(false);
+    }
+  };
+
+  const handleSkip = () => {
+    setShowWalkthrough(false);
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      animateSpotlight(0);
+      setTimeout(() => {
+        setCurrentStep(currentStep - 1);
+        animateSpotlight(1);
+      }, 300);
+    }
+  };
+
+  const maskOpacity = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.7],
+  });
+
+  const spotlightScale = animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
@@ -71,6 +172,111 @@ export default function MainDashboard() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
+        {showWalkthrough && (
+          <View
+            style={{
+              position: "absolute",
+              width: "100%",
+              height: "100%",
+              zIndex: 1000,
+            }}
+          >
+            <Animated.View
+              style={{
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+                backgroundColor: "black",
+                opacity: maskOpacity,
+              }}
+            />
+
+            <Animated.View
+              style={{
+                position: "absolute",
+                ...walkthrough[currentStep].target,
+                width: walkthrough[currentStep].spotlightSize,
+                height: walkthrough[currentStep].spotlightSize,
+                borderRadius: walkthrough[currentStep].spotlightSize / 2,
+                backgroundColor: "transparent",
+                borderWidth: 2,
+                borderColor: "#059669",
+                transform: [{ scale: spotlightScale }],
+                shadowColor: "#059669",
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.5,
+                shadowRadius: 10,
+                elevation: 5,
+              }}
+            />
+
+            <View
+              style={{
+                position: "absolute",
+                padding: 20,
+                width: "100%",
+                bottom: 100,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: "#fff",
+                  fontSize: 24,
+                  fontWeight: "bold",
+                  textAlign: "center",
+                  marginBottom: 8,
+                  textShadowColor: "rgba(0, 0, 0, 0.75)",
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 2,
+                }}
+              >
+                {walkthrough[currentStep].title}
+              </Text>
+              <Text
+                style={{
+                  color: "#fff",
+                  fontSize: 16,
+                  textAlign: "center",
+                  maxWidth: 300,
+                  marginBottom: 24,
+                  textShadowColor: "rgba(0, 0, 0, 0.75)",
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 2,
+                }}
+              >
+                {walkthrough[currentStep].description}
+              </Text>
+
+              <View style={{ flexDirection: "row", gap: 16 }}>
+                <TouchableOpacity
+                  onPress={handleSkip}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 24,
+                    borderRadius: 8,
+                    backgroundColor: "#475569",
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontSize: 16 }}>Skip Tour</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleNext}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 24,
+                    borderRadius: 8,
+                    backgroundColor: "#059669",
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontSize: 16 }}>
+                    {currentStep === walkthrough.length - 1 ? "Finish" : "Next"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
         {/* Fixed Header */}
         <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 z-10">
           <View className="flex-row items-center justify-between">
