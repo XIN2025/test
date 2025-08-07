@@ -6,7 +6,9 @@ import {
   GoalNote,
   WeeklyReflection,
   GoalStats,
+  ActionPlan,
 } from "../types/goals";
+import { PillarTimePreferences } from "../types/preferences";
 import Constants from "expo-constants";
 
 const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
@@ -185,6 +187,33 @@ class GoalsApiService {
     const response: ApiResponse<{ week_start: string; goals: Goal[] }> =
       await this.makeRequest(`/api/goals/current-week?${params}`);
     return response.data!;
+  }
+
+  async generatePlan(
+    goalId: string,
+    userEmail: string,
+    pillarPreferences?: PillarTimePreferences[]
+  ): Promise<{ actionPlan: ActionPlan; weeklySchedule: any }> {
+    const params = new URLSearchParams({ user_email: userEmail });
+    const response: ApiResponse<{
+      action_plan: ActionPlan;
+      weekly_schedule: any;
+    }> = await this.makeRequest(
+      `/api/goals/${goalId}/generate-plan?${params}`,
+      {
+        method: "POST",
+        body: JSON.stringify(pillarPreferences),
+      }
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Failed to generate plan");
+    }
+
+    return {
+      actionPlan: response.data.action_plan,
+      weeklySchedule: response.data.weekly_schedule,
+    };
   }
 }
 

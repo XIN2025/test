@@ -1,10 +1,56 @@
 export type GoalPriority = "high" | "medium" | "low";
-export type GoalCategory =
-  | "health"
-  | "fitness"
-  | "nutrition"
-  | "mental"
-  | "personal";
+export type GoalCategory = "health" | "fitness" | "nutrition" | "mental" | "personal";
+
+export interface TimeEstimate {
+  min_duration: string;
+  max_duration: string;
+  recommended_frequency: string;
+}
+
+export interface ActionItem {
+  title: string;
+  description: string;
+  priority: string;
+  time_estimate: TimeEstimate;
+  prerequisites: string[];
+  success_criteria: string[];
+  adaptation_notes: string[];
+}
+
+export interface ActionPlan {
+  goal_id: string;
+  goal_title: string;
+  action_items: ActionItem[];
+  total_estimated_time_per_week: string;
+  health_adaptations: string[];
+  suggested_schedule?: any;
+}
+
+export interface WeeklySchedule {
+  start_date: string;
+  end_date: string;
+  daily_schedules: {
+    [key: string]: {
+      date: string;
+      time_slots: Array<{
+        start_time: string;
+        end_time: string;
+        duration: string;
+        pillar?: string;
+        action_item?: string;
+        frequency?: string;
+        priority?: string;
+        health_notes?: string[];
+      }>;
+      total_duration: string;
+      pillars_covered: string[];
+    };
+  };
+  total_weekly_hours: number;
+  pillar_distribution: { [key: string]: number };
+  health_adaptations: string[];
+  schedule_notes?: string[];
+}
 
 export interface GoalBase {
   title: string;
@@ -46,6 +92,31 @@ export interface GoalProgressUpdate {
   goal_id: string;
   current_value: number;
   note?: string;
+}
+
+export interface TimeEstimate {
+  min_duration: string; // ISO duration
+  max_duration: string; // ISO duration
+  recommended_frequency: string;
+}
+
+export interface ActionItem {
+  title: string;
+  description: string;
+  priority: string;
+  time_estimate: TimeEstimate;
+  prerequisites: string[];
+  success_criteria: string[];
+  adaptation_notes: string[];
+}
+
+export interface ActionPlan {
+  goal_id: string;
+  goal_title: string;
+  action_items: ActionItem[];
+  total_estimated_time_per_week: string; // ISO duration
+  health_adaptations: string[];
+  suggested_schedule?: any;
 }
 
 export interface GoalNote {

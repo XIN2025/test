@@ -46,9 +46,13 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
 
       try {
         const statsData = await goalsApi.getGoalStats(userEmail, weeks);
-        setStats(statsData);
+        if (statsData && 'goal_progress' in statsData) {
+          setStats(statsData);
+        }
       } catch (err) {
         console.error("Failed to load stats:", err);
+        // Don't set stats if there's an error
+        setStats(null);
       }
     },
     [userEmail]

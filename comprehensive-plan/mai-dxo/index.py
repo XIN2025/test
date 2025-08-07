@@ -276,7 +276,6 @@ if __name__ == "__main__":
             if not preds:
                 print(f"True: {true_diag} | Predicted: None")
                 continue
-
             pred_diag = preds[0]['diagnosis'].strip().lower()
             validation = validation_agent(true_diag, pred_diag)
             score = validation['score']
@@ -294,56 +293,5 @@ if __name__ == "__main__":
         print(f"Soft Accuracy (Score ≥ 7): {soft_correct}/{total} = {soft_correct / total:.2%}")
         print(f"Average Similarity Score: {score_sum / total:.2f}/10")
 
-# diagnostic_orchestrator_mai_dxo(case_summary)
-
-if __name__ == "__main__":
-    from parser import MovementCSVParser, NutritionCSVParser, SupplementCSVParser
-    
-    # Map CSVs to their parsers and diagnosis column
-    csv_configs = [
-        {
-            'path': 'dataset/EVRA_Movement Dataset - General.csv',
-            'parser': MovementCSVParser(),
-            'diagnosis_col': 'diagnoses',
-            'name': 'Movement'
-        },
-        {
-            'path': 'dataset/EVRA_Nutrition Dataset - General.csv',
-            'parser': NutritionCSVParser(),
-            'diagnosis_col': 'diagnoses',
-            'name': 'Nutrition'
-        },
-        {
-            'path': 'dataset/EVRA_Supplement Dataset_new - General.csv',
-            'parser': SupplementCSVParser(),
-            'diagnosis_col': 'comorbidities',
-            'name': 'Supplement'
-        },
-    ]
-
-    def features_to_case_summary(features: dict) -> str:
-        # Simple stringification; can be improved for more clinical context
-        return '\n'.join([f"{k}: {v}" for k, v in features.items() if v])
-
-    def evaluate_parser_on_csv(config):
-        parser = config['parser']
-        data = parser.parse(config['path'])
-        correct = 0
-        total = 0
-        print(f"\n===== Evaluating {config['name']} CSV =====")
-        for row in data:
-            features = row['features']
-            true_diag = row['diagnosis'].strip().lower()
-            case_summary = features_to_case_summary(features)
-            # Use only the first round of hypothesis_agent for speed
-            preds = hypothesis_agent(case_summary, 1)
-            if not preds:
-                pred_diag = ''
-            else:
-                pred_diag = preds[0]['diagnosis'].strip().lower()
-            print(f"True: {true_diag} | Predicted: {pred_diag}")
-            if pred_diag and pred_diag in true_diag:
-                correct += 1
-            total += 1
-        acc = correct / total if total else 0
-        print(f"Accuracy: {correct}/{total} = {acc:.2%}")
+    for config in csv_configs:
+        evaluate_parser_on_csv(config)

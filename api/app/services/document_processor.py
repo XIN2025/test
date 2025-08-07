@@ -1,14 +1,16 @@
 import os
 import tempfile
 import base64
-from typing import List, Dict, Tuple, Optional, Callable
+from typing import List, Dict, Tuple, Optional, Callable, Literal
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.language_models.chat_models import BaseChatModel
 import spacy
 import json
 import logging
 import time
-from ..config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
+from ..config import OPENAI_API_KEY, GOOGLE_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 from .graph_db import get_graph_db
 from .vector_store import get_vector_store
 
@@ -22,14 +24,32 @@ except OSError:
     nlp = None
 
 class DocumentProcessor:
-    def __init__(self):
-        self.llm = ChatOpenAI(
-            model=LLM_MODEL,
-            openai_api_key=OPENAI_API_KEY,
-            temperature=LLM_TEMPERATURE
-        )
+    def __init__(self, llm_provider: Literal["openai", "gemini"] = "gemini"):
+        self.llm = self._initialize_llm(llm_provider)
         self.graph_db = get_graph_db()
         self.vector_store = get_vector_store()
+        
+    def _initialize_llm(self, provider: str) -> BaseChatModel:
+        """Initialize the LLM based on the provider"""
+        if provider == "openai":
+            if not OPENAI_API_KEY:
+                raise ValueError("OpenAI API key not found in environment variables")
+            return ChatOpenAI(
+                model=LLM_MODEL,
+                openai_api_key=OPENAI_API_KEY,
+                temperature=LLM_TEMPERATURE
+            )
+        elif provider == "gemini":
+            if not GOOGLE_API_KEY:
+                raise ValueError("Google API key not found in environment variables")
+            return ChatGoogleGenerativeAI(
+                model="gemini-1.5-pro",
+                google_api_key=GOOGLE_API_KEY,
+                temperature=LLM_TEMPERATURE,
+                convert_system_message_to_human=True
+            )
+        else:
+            raise ValueError(f"Unsupported LLM provider: {provider}. Use 'openai' or 'gemini'.")
 
     def process_text_file(self, content: str, filename: str, progress_callback: Optional[Callable] = None) -> Dict:
         """Process a text file and extract entities and relationships with progress updates"""
@@ -268,8 +288,18 @@ class DocumentProcessor:
 # Global instance
 document_processor = None
 
-def get_document_processor() -> DocumentProcessor:
+def get_document_processor(llm_provider: Literal["openai", "gemini"] = "gemini") -> DocumentProcessor:
+    """
+    Get or create a DocumentProcessor instance
+    Args:
+        llm_provider: The LLM provider to use ('openai' or 'gemini')
+    """
     global document_processor
     if document_processor is None:
-        document_processor = DocumentProcessor()
-    return document_processor 
+        document_processor = DocumentProcessor(llm_provider=llm_provider)
+    return document_processor
+
+def reset_document_processor():
+    """Reset the global DocumentProcessor instance"""
+    global document_processor
+    document_processor = None 

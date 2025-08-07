@@ -7,11 +7,11 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
+import * as DocumentPicker from 'expo-document-picker';
 import { SafeAreaView } from "react-native-safe-area-context";
-// @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
-// @ts-ignore
 import {
   Target,
   Plus,
@@ -19,15 +19,16 @@ import {
   CheckCircle,
   Circle,
   Calendar,
+  PlayCircle,
   TrendingUp,
-  BookOpen,
-  Star,
-  ArrowRight,
   ChevronLeft,
   ChevronRight,
   BarChart3,
   Clock,
   AlertCircle,
+  ArrowRight,
+  BookOpen,
+  Star,
 } from "lucide-react-native";
 import Card from "@/components/ui/card";
 import WeeklyGoalsSummary from "@/components/WeeklyGoalsSummary";
@@ -35,9 +36,9 @@ import GoalProgressTracker from "@/components/GoalProgressTracker";
 import WeeklyReflection from "@/components/WeeklyReflection";
 import HabitGoalIntegration from "@/components/HabitGoalIntegration";
 import { useGoals } from "@/hooks/useGoals";
-import { Goal, GoalPriority, GoalCategory } from "@/types/goals";
-// @ts-ignore
-import { tw } from "nativewind";
+import { Goal, GoalPriority, GoalCategory, ActionPlan, WeeklySchedule } from "@/types/goals";
+import { PillarType, PillarTimePreferences } from "@/types/preferences";
+import { goalsApi } from "@/services/goalsApi";
 
 // Mock user email - replace with actual user authentication
 const MOCK_USER_EMAIL = "user@example.com";
@@ -48,6 +49,17 @@ export default function GoalsScreen() {
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [showReflection, setShowReflection] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [activePlan, setActivePlan] = useState<{ actionPlan: ActionPlan; weeklySchedule: any } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{
+    uploadId: string;
+    filename: string;
+    percentage: number;
+    message: string;
+    status: "processing" | "completed" | "failed";
+    entitiesCount: number;
+    relationshipsCount: number;
+  } | null>(null);
 
   // Use the goals hook for backend integration
   const {
@@ -198,6 +210,323 @@ export default function GoalsScreen() {
     }
   };
 
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          "application/pdf",
+          "text/plain",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/msword",
+        ],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        return file;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error picking document:", error);
+      Alert.alert("Error", "Failed to pick document. Please try again.");
+      return null;
+    }
+  };
+
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadingFileId, setUploadingFileId] = useState<string | null>(null);
+  const [uploadingUploadId, setUploadingUploadId] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<{name: string; type: string; size: number}[]>([]);
+
+  const uploadFileToServer = async (file: DocumentPicker.DocumentPickerAsset) => {
+    try {
+      const formData = new FormData();
+
+      // Use the File object for web, and uri for native
+      if (file.file) {
+        formData.append("file", file.file, file.name);
+      } else {
+        formData.append("file", {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType || "application/octet-stream",
+        } as any);
+      }
+
+      const response = await fetch("http://localhost:8000/upload/document", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      return result.upload_id;
+    } catch (error) {
+      console.error("Upload error details:", error);
+      throw error;
+    }
+  };
+
+  const monitorUploadProgress = async (uploadId: string) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/upload/progress/${uploadId}`
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to get progress: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.progress;
+    } catch (error) {
+      console.error("Progress monitoring error:", error);
+      throw error;
+    }
+  };
+
+  const handleFileUpload = async () => {
+    try {
+      // Step 1: Pick document
+      const file = await pickDocument();
+      if (!file) return;
+
+      // Check if file is already being uploaded
+      if (uploadingFileId === file.name) {
+        Alert.alert(
+          "Upload in Progress",
+          "This file is already being uploaded. Please wait for it to complete."
+        );
+        return;
+      }
+
+      // Check if file is already uploaded
+      if (uploadedFiles.some((f) => f.name === file.name)) {
+        Alert.alert(
+          "File Already Uploaded",
+          "This file has already been uploaded."
+        );
+        return;
+      }
+
+      // Test if backend is reachable
+      try {
+        const testResponse = await fetch("http://localhost:8000/");
+        console.log("Backend test response:", testResponse.status);
+      } catch (testError) {
+        console.error("Backend not reachable:", testError);
+        Alert.alert(
+          "Connection Error",
+          "Cannot connect to the backend server. Please make sure the API server is running on port 8000."
+        );
+        return;
+      }
+
+      // Step 2: Start upload process
+      setIsUploading(true);
+      setUploadingFileId(file.name);
+      setUploadingUploadId("temp-id");
+      setUploadProgress({
+        uploadId: "temp-id",
+        filename: file.name,
+        percentage: 5,
+        message: "Preparing file for upload...",
+        status: "processing",
+        entitiesCount: 0,
+        relationshipsCount: 0,
+      });
+
+      // Step 3: Simulate file preparation
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setUploadProgress((prev) =>
+        prev
+          ? { ...prev, message: "Reading file content...", percentage: 10 }
+          : null
+      );
+
+      // Step 4: Upload file to server
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setUploadProgress((prev) =>
+        prev
+          ? { ...prev, message: "Uploading file to server...", percentage: 15 }
+          : null
+      );
+
+      const uploadId = await uploadFileToServer(file);
+
+      setUploadingUploadId(uploadId);
+      setUploadProgress((prev) =>
+        prev
+          ? {
+            ...prev,
+            uploadId,
+            message: "File uploaded successfully, starting analysis...",
+            percentage: 25,
+          }
+          : null
+      );
+
+      // Step 5: Monitor progress with enhanced messaging
+      const progressInterval = setInterval(async () => {
+        try {
+          const progress = await monitorUploadProgress(uploadId);
+
+          // Enhanced progress messages based on percentage
+          let enhancedMessage = progress.message;
+          if (progress.percentage <= 30) {
+            enhancedMessage = "Extracting text from document...";
+          } else if (progress.percentage <= 50) {
+            enhancedMessage = "Analyzing document structure...";
+          } else if (progress.percentage <= 70) {
+            enhancedMessage = "Identifying medical entities...";
+          } else if (progress.percentage <= 90) {
+            enhancedMessage = "Extracting relationships and connections...";
+          } else if (progress.percentage < 100) {
+            enhancedMessage = "Finalizing analysis...";
+          }
+
+          setUploadProgress((prev) =>
+            prev
+              ? {
+                ...prev,
+                percentage: progress.percentage,
+                message: enhancedMessage,
+                status: progress.status,
+                entitiesCount: progress.entities_count || 0,
+                relationshipsCount: progress.relationships_count || 0,
+              }
+              : null
+          );
+
+          // Stop monitoring if completed or failed
+          if (progress.status === "completed" || progress.status === "failed") {
+            clearInterval(progressInterval);
+            setIsUploading(false);
+            setUploadingFileId(null);
+            setUploadingUploadId(null);
+
+            if (progress.status === "completed") {
+              // Show completion message briefly
+              setUploadProgress((prev) =>
+                prev
+                  ? {
+                    ...prev,
+                    message: "Analysis complete! Document processed successfully.",
+                    percentage: 100,
+                  }
+                  : null
+              );
+
+              // Add to uploaded files list
+              setUploadedFiles((prev) => [
+                ...prev,
+                {
+                  name: file.name,
+                  type: file.mimeType || "application/octet-stream",
+                  size: file.size || 0,
+                },
+              ]);
+
+              Alert.alert("Success", "Document uploaded and analyzed successfully!");
+            } else {
+              Alert.alert("Error", "Document processing failed. Please try again.");
+            }
+
+            // Clear progress after a delay
+            setTimeout(() => {
+              setUploadProgress(null);
+            }, 3000);
+          }
+        } catch (error) {
+          console.error("Progress monitoring error:", error);
+          clearInterval(progressInterval);
+          setIsUploading(false);
+          setUploadingFileId(null);
+          setUploadingUploadId(null);
+          setUploadProgress(null);
+          Alert.alert("Error", "Failed to monitor upload progress. Please try again.");
+        }
+      }, 1000); // Check progress every second
+
+    } catch (error) {
+      console.error("Upload error:", error);
+      setIsUploading(false);
+      setUploadingFileId(null);
+      setUploadingUploadId(null);
+      setUploadProgress(null);
+      Alert.alert(
+        "Error",
+        `Upload failed: ${error instanceof Error ? error.message : "Unknown error"}. Please check if the backend server is running and try again.`
+      );
+    }
+  };
+
+  const handleGeneratePlan = async (goalId: string) => {
+    if (generatingPlan) return;
+
+    try {
+      setGeneratingPlan(true);
+
+      // Create default time preferences
+      // Create default time preferences for each pillar
+      const defaultPreferences: PillarTimePreferences = {
+        user_email: MOCK_USER_EMAIL,
+        preferences: {
+          [PillarType.HEALTH]: {
+            preferred_time: "07:00",
+            duration_minutes: 45,
+            days_of_week: [1, 3, 5], // Tue, Thu, Sat
+            reminder_before_minutes: 15,
+          },
+          [PillarType.FITNESS]: {
+            preferred_time: "08:00",
+            duration_minutes: 60,
+            days_of_week: [0, 2, 4], // Mon, Wed, Fri
+            reminder_before_minutes: 15,
+          },
+          [PillarType.NUTRITION]: {
+            preferred_time: "12:00",
+            duration_minutes: 30,
+            days_of_week: [0, 1, 2, 3, 4, 5, 6], // Every day
+            reminder_before_minutes: 15,
+          },
+          [PillarType.MENTAL]: {
+            preferred_time: "18:00",
+            duration_minutes: 30,
+            days_of_week: [0, 2, 4, 6], // Mon, Wed, Fri, Sun
+            reminder_before_minutes: 15,
+          },
+          [PillarType.PERSONAL]: {
+            preferred_time: "20:00",
+            duration_minutes: 45,
+            days_of_week: [1, 3, 5], // Tue, Thu, Sat
+            reminder_before_minutes: 15,
+          },
+        },
+      };
+
+      const result = await goalsApi.generatePlan(
+        goalId,
+        MOCK_USER_EMAIL,
+        [defaultPreferences] as PillarTimePreferences[]
+      );
+
+      setActivePlan(result);
+      Alert.alert("Success", "Goal plan generated successfully!");
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to generate plan"
+      );
+    } finally {
+      setGeneratingPlan(false);
+    }
+  };
+
   const handleWeekChange = (direction: "prev" | "next") => {
     const newDate = new Date(currentWeek);
     if (direction === "prev") {
@@ -287,19 +616,83 @@ export default function GoalsScreen() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity
-              onPress={() => setShowAddGoal(true)}
-              className="w-8 h-8 rounded-full items-center justify-center"
-              style={{ backgroundColor: "#114131" }}
-            >
-              <Plus size={16} color="#fff" />
-            </TouchableOpacity>
+            <View className="flex-row">
+              <TouchableOpacity
+                onPress={handleFileUpload}
+                className="w-8 h-8 rounded-full items-center justify-center mr-2"
+                style={{ backgroundColor: "#114131" }}
+              >
+                <BookOpen size={16} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowAddGoal(true)}
+                className="w-8 h-8 rounded-full items-center justify-center"
+                style={{ backgroundColor: "#114131" }}
+              >
+                <Plus size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
         {error && (
           <View className="bg-red-50 border border-red-200 mx-4 mt-4 p-3 rounded-lg">
             <Text className="text-red-700 text-sm">{error}</Text>
+          </View>
+        )}
+        
+        {uploadProgress && (
+          <View className="mx-4 mt-4">
+            <Card className="border-0">
+              <View className="p-4">
+                <View className="flex-row items-center mb-2">
+                  {uploadProgress.status === "processing" ? (
+                    <ActivityIndicator size="small" color="#059669" style={{ marginRight: 8 }} />
+                  ) : uploadProgress.status === "completed" ? (
+                    <CheckCircle size={20} color="#059669" style={{ marginRight: 8 }} />
+                  ) : (
+                    <AlertCircle size={20} color="#ef4444" style={{ marginRight: 8 }} />
+                  )}
+                  <Text className="font-semibold text-gray-800">
+                    {uploadProgress.status === "processing" ? "Processing Document" : 
+                     uploadProgress.status === "completed" ? "Upload Complete" : 
+                     "Upload Failed"}
+                  </Text>
+                </View>
+
+                <Text className="text-sm text-gray-600 mb-2">
+                  {uploadProgress.filename}
+                </Text>
+
+                <View className="h-2 bg-gray-200 rounded-full mb-2">
+                  <View
+                    className="h-2 rounded-full"
+                    style={{
+                      width: `${uploadProgress.percentage}%`,
+                      backgroundColor: uploadProgress.status === "failed" ? "#ef4444" : "#059669",
+                    }}
+                  />
+                </View>
+
+                <Text className="text-sm text-gray-600">{uploadProgress.message}</Text>
+
+                {uploadProgress.status === "completed" && (
+                  <View className="mt-2 bg-green-50 rounded-lg p-3">
+                    <Text className="text-sm text-green-800">
+                      Successfully extracted {uploadProgress.entitiesCount} medical entities and {uploadProgress.relationshipsCount} relationships
+                    </Text>
+                  </View>
+                )}
+
+                {uploadProgress.status === "failed" && (
+                  <View className="mt-2 bg-red-50 rounded-lg p-3">
+                    <Text className="text-sm text-red-800">
+                      Failed to process document. Please try again.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Card>
           </View>
         )}
 
@@ -382,20 +775,22 @@ export default function GoalsScreen() {
             </Card>
 
             {/* Goals Summary */}
-            <WeeklyGoalsSummary
-              goals={goals.map((goal) => ({
-                id: goal.id,
-                title: goal.title,
-                currentValue: goal.current_value || 0,
-                targetValue: goal.target_value || 1,
-                completed: goal.completed,
-                category: goal.category,
-              }))}
-              onViewAll={() => {
-                // Scroll to goals list or show all goals
-                console.log("View all goals");
-              }}
-            />
+            {goals && goals.length > 0 && (
+              <WeeklyGoalsSummary
+                goals={goals.map((goal) => ({
+                  id: goal.id,
+                  title: goal.title,
+                  currentValue: goal.current_value || 0,
+                  targetValue: goal.target_value || 1,
+                  completed: goal.completed,
+                  category: goal.category,
+                }))}
+                onViewAll={() => {
+                  // Scroll to goals list or show all goals
+                  console.log("View all goals");
+                }}
+              />
+            )}
 
             {/* Goals List */}
             {goals.map((goal) => (
@@ -434,13 +829,63 @@ export default function GoalsScreen() {
                       onPress={() => handleToggleComplete(goal.id)}
                       className="ml-2"
                     >
-                      {goal.completed ? (
-                        <CheckCircle size={24} color="#059669" />
-                      ) : (
-                        <Circle size={24} color="#d1d5db" />
-                      )}
+                      <View className="flex-row">
+                        <TouchableOpacity
+                          onPress={() => handleGeneratePlan(goal.id)}
+                          disabled={generatingPlan}
+                          className={`p-2 mr-2 ${generatingPlan ? 'opacity-50' : ''}`}
+                        >
+                          <PlayCircle size={24} color="#059669" />
+                        </TouchableOpacity>
+                        {goal.completed ? (
+                          <CheckCircle size={24} color="#059669" />
+                        ) : (
+                          <Circle size={24} color="#d1d5db" />
+                        )}
+                      </View>
                     </TouchableOpacity>
                   </View>
+
+                  {/* Active Plan */}
+                  {activePlan && activePlan.actionPlan && (
+                    <View className="mt-4 bg-green-50 p-4 rounded-lg">
+                      <Text className="text-lg font-semibold text-gray-800 mb-2">Action Plan</Text>
+                      {activePlan.actionPlan.action_items.map((item, index) => (
+                        <View key={index} className="mb-2">
+                          <Text className="text-sm font-semibold text-gray-700">
+                            {index + 1}. {item.title}
+                          </Text>
+                          <Text className="text-sm text-gray-600 ml-4">
+                            {item.description}
+                          </Text>
+                          {item.adaptation_notes && item.adaptation_notes.length > 0 && (
+                            <View className="mt-1 ml-4">
+                              <Text className="text-xs text-gray-500 italic">
+                                Note: {item.adaptation_notes[0]}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                      {activePlan.weeklySchedule && activePlan.weeklySchedule.daily_schedules && (
+                        <View className="mt-4">
+                          <Text className="font-semibold text-gray-800 mb-2">Weekly Schedule</Text>
+                          {Object.entries(activePlan.weeklySchedule.daily_schedules).map(([day, schedule]: [string, any]) => (
+                            <View key={day} className="mb-2">
+                              <Text className="text-sm font-medium text-gray-700">
+                                {day.charAt(0).toUpperCase() + day.slice(1)}
+                              </Text>
+                              {schedule.time_slots && schedule.time_slots.map((slot: any, index: number) => (
+                                <Text key={index} className="text-sm text-gray-600 ml-4">
+                                  • {slot.action_item} ({slot.start_time} - {slot.end_time})
+                                </Text>
+                              ))}
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  )}
 
                   {/* Use GoalProgressTracker component for measurable goals */}
                   {goal.target_value && (

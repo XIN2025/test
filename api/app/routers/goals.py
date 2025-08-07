@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Body
 from typing import List, Optional
 from datetime import datetime, timedelta
 from ..schemas.goals import (
     GoalCreate, GoalUpdate, Goal, GoalProgressUpdate, GoalNote,
     WeeklyReflection, GoalStats, GoalResponse
 )
+from ..schemas.preferences import PillarTimePreferences
 from ..services.goals_service import GoalsService
 from pydantic import EmailStr
 
@@ -146,5 +147,29 @@ async def get_current_week_goals(user_email: EmailStr = Query(...)):
         week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
         goals = goals_service.get_user_goals(user_email, week_start)
         return GoalResponse(success=True, message="Current week goals retrieved successfully", data={"week_start": week_start.isoformat(), "goals": [goal.dict() for goal in goals]})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@goals_router.post("/api/goals/{goal_id}/generate-plan", response_model=GoalResponse)
+async def generate_goal_plan(
+    goal_id: str,
+    user_email: EmailStr = Query(...),
+    pillar_preferences: List[PillarTimePreferences] = Body(default=[])
+):
+    try:
+        result = await goals_service.generate_goal_plan(
+            goal_id=goal_id,
+            user_email=user_email,
+            pillar_preferences=pillar_preferences
+        )
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["message"])
+        return GoalResponse(
+            success=True,
+            message="Goal plan generated successfully",
+            data=result["data"]
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
