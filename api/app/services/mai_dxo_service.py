@@ -1,5 +1,5 @@
 import os
-import google.generativeai as genai
+from openai import OpenAI
 from datetime import datetime
 from typing import List, Dict, Optional
 from ..schemas.diagnosis import (
@@ -13,23 +13,28 @@ from .db import get_db
 import logging
 
 logger = logging.getLogger(__name__)
-
+# 
 class MAIDxOService:
     def __init__(self):
         self.db = get_db()
         self.diagnosis_collection = self.db["diagnoses"]
         
-        # Initialize Gemini
-        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-        self.model = genai.GenerativeModel("gemini-1.5-pro")
+        # Initialize OpenAI
+        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
+        self.temperature = float(os.getenv("LLM_TEMPERATURE", "0.1"))
         self.max_rounds = 1
 
-    def _ask_gemini(self, prompt: str) -> str:
+    def _ask_model(self, prompt: str) -> str:
         try:
-            response = self.model.generate_content(prompt)
-            return response.text.strip()
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.temperature
+            )
+            return response.choices[0].message.content.strip()
         except Exception as e:
-            logger.error(f"Gemini error: {str(e)}")
+            logger.error(f"OpenAI error: {str(e)}")
             return f"Error: {str(e)}"
 
     def _format_case_summary(self, request: DiagnosisRequest) -> str:
@@ -122,7 +127,7 @@ class MAIDxOService:
             "Risk Factors: <list>"
         )
 
-        response = self._ask_gemini(prompt)
+        response = self._ask_model(prompt)
         try:
             parts = response.split('\n')
             critique = next(p.split(':', 1)[1].strip() for p in parts if p.startswith('Critique:'))
@@ -158,7 +163,7 @@ class MAIDxOService:
             "Recommendations: <list>"
         )
 
-        response = self._ask_gemini(prompt)
+        response = self._ask_model(prompt)
         try:
             parts = response.split('\n')
             score = float(next(p.split(':', 1)[1].strip() for p in parts if p.startswith('Completeness Score:')))
@@ -209,7 +214,7 @@ class MAIDxOService:
             "Format:\n- Diagnosis: <name>\n  Confidence: <score>%\n  Justification: <reason>"
         )
 
-        response = self._ask_gemini(prompt)
+        response = self._ask_model(prompt)
         hypotheses = self._parse_hypotheses(response)
 
         # Generate feedback from both agents

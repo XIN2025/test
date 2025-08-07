@@ -2,10 +2,7 @@ import os
 import tempfile
 import base64
 from typing import List, Dict, Tuple, Optional, Callable, Literal
-from langchain_openai import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_core.language_models.chat_models import BaseChatModel
+from openai import OpenAI
 import spacy
 import json
 import logging
@@ -24,32 +21,28 @@ except OSError:
     nlp = None
 
 class DocumentProcessor:
-    def __init__(self, llm_provider: Literal["openai", "gemini"] = "gemini"):
-        self.llm = self._initialize_llm(llm_provider)
+    def __init__(self):
+        if not OPENAI_API_KEY:
+            raise ValueError("OpenAI API key not found in environment variables")
+        
+        self.client = OpenAI(api_key=OPENAI_API_KEY)
+        self.model = LLM_MODEL
+        self.temperature = LLM_TEMPERATURE
         self.graph_db = get_graph_db()
         self.vector_store = get_vector_store()
         
-    def _initialize_llm(self, provider: str) -> BaseChatModel:
-        """Initialize the LLM based on the provider"""
-        if provider == "openai":
-            if not OPENAI_API_KEY:
-                raise ValueError("OpenAI API key not found in environment variables")
-            return ChatOpenAI(
-                model=LLM_MODEL,
-                openai_api_key=OPENAI_API_KEY,
-                temperature=LLM_TEMPERATURE
+    def _ask_model(self, prompt: str) -> str:
+        """Send a prompt to the model and get the response"""
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=self.temperature
             )
-        elif provider == "gemini":
-            if not GOOGLE_API_KEY:
-                raise ValueError("Google API key not found in environment variables")
-            return ChatGoogleGenerativeAI(
-                model="gemini-1.5-pro",
-                google_api_key=GOOGLE_API_KEY,
-                temperature=LLM_TEMPERATURE,
-                convert_system_message_to_human=True
-            )
-        else:
-            raise ValueError(f"Unsupported LLM provider: {provider}. Use 'openai' or 'gemini'.")
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"OpenAI error: {str(e)}")
+            return f"Error: {str(e)}"
 
     def process_text_file(self, content: str, filename: str, progress_callback: Optional[Callable] = None) -> Dict:
         """Process a text file and extract entities and relationships with progress updates"""
@@ -182,8 +175,7 @@ class DocumentProcessor:
         """
         
         try:
-            entity_response = self.llm.invoke([HumanMessage(content=entity_prompt)])
-            entity_content = entity_response.content
+            entity_content = self._ask_model(entity_prompt)
             
             # Parse JSON response
             if "```json" in entity_content:
@@ -219,8 +211,7 @@ class DocumentProcessor:
             """
             
             try:
-                rel_response = self.llm.invoke([HumanMessage(content=relationship_prompt)])
-                rel_content = rel_response.content
+                rel_content = self._ask_model(relationship_prompt)
                 
                 # Parse JSON response
                 if "```json" in rel_content:
@@ -288,15 +279,13 @@ class DocumentProcessor:
 # Global instance
 document_processor = None
 
-def get_document_processor(llm_provider: Literal["openai", "gemini"] = "gemini") -> DocumentProcessor:
+def get_document_processor() -> DocumentProcessor:
     """
-    Get or create a DocumentProcessor instance
-    Args:
-        llm_provider: The LLM provider to use ('openai' or 'gemini')
+    Get or create a DocumentProcessor instance using OpenAI
     """
     global document_processor
     if document_processor is None:
-        document_processor = DocumentProcessor(llm_provider=llm_provider)
+        document_processor = DocumentProcessor()
     return document_processor
 
 def reset_document_processor():

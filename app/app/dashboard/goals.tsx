@@ -239,33 +239,18 @@ export default function GoalsScreen() {
   const [uploadingUploadId, setUploadingUploadId] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<{name: string; type: string; size: number}[]>([]);
 
+  // Using goalsApi for file upload operations
   const uploadFileToServer = async (file: DocumentPicker.DocumentPickerAsset) => {
     try {
-      const formData = new FormData();
-
-      // Use the File object for web, and uri for native
       if (file.file) {
-        formData.append("file", file.file, file.name);
+        return await goalsApi.uploadDocument(file.file);
       } else {
-        formData.append("file", {
+        return await goalsApi.uploadDocument({
           uri: file.uri,
           name: file.name,
           type: file.mimeType || "application/octet-stream",
-        } as any);
+        });
       }
-
-      const response = await fetch("http://localhost:8000/upload/document", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-      }
-
-      const result = await response.json();
-      return result.upload_id;
     } catch (error) {
       console.error("Upload error details:", error);
       throw error;
@@ -274,15 +259,7 @@ export default function GoalsScreen() {
 
   const monitorUploadProgress = async (uploadId: string) => {
     try {
-      const response = await fetch(
-        `http://localhost:8000/upload/progress/${uploadId}`
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to get progress: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.progress;
+      return await goalsApi.monitorUploadProgress(uploadId);
     } catch (error) {
       console.error("Progress monitoring error:", error);
       throw error;
@@ -314,14 +291,12 @@ export default function GoalsScreen() {
       }
 
       // Test if backend is reachable
-      try {
-        const testResponse = await fetch("http://localhost:8000/");
-        console.log("Backend test response:", testResponse.status);
-      } catch (testError) {
-        console.error("Backend not reachable:", testError);
+      const isBackendReachable = await goalsApi.testBackendConnection();
+      if (!isBackendReachable) {
+        console.error("Backend not reachable");
         Alert.alert(
           "Connection Error",
-          "Cannot connect to the backend server. Please make sure the API server is running on port 8000."
+          "Cannot connect to the backend server. Please make sure the API server is running."
         );
         return;
       }
@@ -356,14 +331,14 @@ export default function GoalsScreen() {
           : null
       );
 
-      const uploadId = await uploadFileToServer(file);
+      const { upload_id } = await uploadFileToServer(file);
 
-      setUploadingUploadId(uploadId);
+      setUploadingUploadId(upload_id);
       setUploadProgress((prev) =>
         prev
           ? {
             ...prev,
-            uploadId,
+            uploadId: upload_id,
             message: "File uploaded successfully, starting analysis...",
             percentage: 25,
           }
@@ -373,7 +348,7 @@ export default function GoalsScreen() {
       // Step 5: Monitor progress with enhanced messaging
       const progressInterval = setInterval(async () => {
         try {
-          const progress = await monitorUploadProgress(uploadId);
+          const progress = await monitorUploadProgress(upload_id);
 
           // Enhanced progress messages based on percentage
           let enhancedMessage = progress.message;

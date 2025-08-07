@@ -215,6 +215,59 @@ class GoalsApiService {
       weeklySchedule: response.data.weekly_schedule,
     };
   }
+
+  // File Upload Operations
+  async uploadDocument(file: File | { uri: string; name: string; type: string }): Promise<{ upload_id: string }> {
+    const formData = new FormData();
+
+    if (file instanceof File) {
+      formData.append("file", file, file.name);
+    } else {
+      formData.append("file", {
+        uri: file.uri,
+        name: file.name,
+        type: file.type || "application/octet-stream",
+      } as any);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/upload/document`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async monitorUploadProgress(uploadId: string): Promise<{
+    percentage: number;
+    message: string;
+    status: "processing" | "completed" | "failed";
+    entities_count?: number;
+    relationships_count?: number;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/upload/progress/${uploadId}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get progress: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.progress;
+  }
+
+  async testBackendConnection(): Promise<boolean> {
+    try {
+      const response = await fetch(API_BASE_URL);
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
+  }
 }
 
 export const goalsApi = new GoalsApiService();
