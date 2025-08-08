@@ -27,6 +27,7 @@ dependencies = [
     "python-docx>=0.8.11",
     "aiohttp>=3.8.0",
     "pydantic[email]>=2.11.3",
+    "langchain-openai>=0.3.28",
 ]
 
 [project.optional-dependencies]
