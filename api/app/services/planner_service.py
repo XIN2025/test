@@ -1,30 +1,64 @@
 from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 import logging
+import asyncio
 from ..schemas.goals import Goal
 from ..schemas.planner import ActionPlan, ActionItem, TimeEstimate, ActionPriority
 from ..schemas.health_insights import HealthContext, HealthInsight
 from ..services.health_insights_service import get_health_insights_service
-import google.generativeai as genai
+from openai import OpenAI, RateLimitError
 import os
 import json
+import time
+from ..config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 
 logger = logging.getLogger(__name__)
 
-class PlannerService:
-    def __init__(self):
-        self.health_insights_service = get_health_insights_service()
-        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-        self.model = genai.GenerativeModel("gemini-1.5-pro")
+# Rate limiting parameters
+MAX_RETRIES = 5
+MIN_RETRY_DELAY = 1  # seconds
+MAX_RETRY_DELAY = 32  # seconds
 
-    async def create_action_plan(self, goal: Goal) -> ActionPlan:
+class PlannerService:
+    def _sync_test_api_connection(self):
+        """Test OpenAI API connection synchronously"""
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": "Simple test message. Say hi!"}],
+                temperature=self.temperature
+            )
+            print("✅ OpenAI API test successful in PlannerService init!")
+            print(f"Test response: {response.choices[0].message.content}")
+            return True
+        except Exception as e:
+            print("❌ OpenAI API test failed in PlannerService init:")
+            print(str(e))
+            raise
+
+    def __init__(self):
+        if not OPENAI_API_KEY:
+            raise ValueError("OpenAI API key not found in environment variables")
+        print(f"Planner Service using API key: {OPENAI_API_KEY}")
+        print(f"Testing OpenAI API connection with model: {LLM_MODEL}")
+        
+        self.client = OpenAI(api_key=OPENAI_API_KEY)
+        self.model = LLM_MODEL
+        self.temperature = LLM_TEMPERATURE
+        
+        # Test API connection synchronously
+        self._sync_test_api_connection()
+        
+        self.health_insights_service = get_health_insights_service()
+
+    def create_action_plan(self, goal: Goal) -> ActionPlan:
         """Create an action plan for a goal, considering health insights"""
         try:
             # 1. Get health insights
-            health_insight = await self.health_insights_service.get_health_insight(goal)
+            health_insight = self.health_insights_service.get_health_insight(goal)
             
-            # 2. Generate action items with Gemini
-            action_items = await self._generate_action_items(goal, health_insight)
+            # 2. Generate action items with OpenAI
+            action_items = self._generate_action_items(goal, health_insight)
             
             # 3. Calculate total estimated time
             total_time = self._calculate_total_time(action_items)
@@ -42,12 +76,46 @@ class PlannerService:
             logger.error(f"Error creating action plan: {str(e)}")
             raise
 
-    async def _generate_action_items(self, goal: Goal, health_insight: HealthInsight) -> List[ActionItem]:
-        """Generate action items using Gemini, considering health insights"""
+    def _call_openai_with_retry(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        """Make OpenAI API call with exponential backoff retry logic"""
+        for attempt in range(MAX_RETRIES):
+            try:
+                delay = min(MAX_RETRY_DELAY, MIN_RETRY_DELAY * (2 ** attempt))  # Exponential backoff
+                if attempt > 0:
+                    print(f"Retry attempt {attempt + 1} after {delay}s delay...")
+                    time.sleep(delay)  # Use time.sleep instead of asyncio.sleep
+                
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    temperature=self.temperature,
+                    messages=messages,
+                    **kwargs
+                )
+                return response.choices[0].message.content.strip()
+                
+            except RateLimitError as e:
+                if attempt == MAX_RETRIES - 1:
+                    logger.error("Rate limit exceeded after all retries")
+                    raise
+                logger.warning(f"Rate limit hit, attempt {attempt + 1}/{MAX_RETRIES}")
+                continue
+            except Exception as e:
+                if "quota" in str(e).lower():
+                    logger.error("API quota exceeded")
+                raise
+
+    def _generate_action_items(self, goal: Goal, health_insight: HealthInsight) -> List[ActionItem]:
+        """Generate action items using OpenAI, considering health insights"""
         try:
             prompt = self._create_action_items_prompt(goal, health_insight)
-            response = await self.model.generate_content_async(prompt)
-            response_text = response.text.strip()
+            print(f"Using model: {self.model}")  # Debug line
+            
+            messages = [
+                {"role": "system", "content": "You are a specialized health and fitness planner that creates detailed action plans."},
+                {"role": "user", "content": prompt}
+            ]
+            
+            response_text = self._call_openai_with_retry(messages)
             
             # Try to find JSON array in response
             try:

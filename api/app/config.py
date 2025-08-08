@@ -9,7 +9,7 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 
 # SMTP/Email Configuration
 SMTP_HOST = os.getenv("SMTP_HOST")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SMTP_FROM = os.getenv("SMTP_FROM")
@@ -25,9 +25,8 @@ VECTOR_INDEX_PATH = os.getenv("VECTOR_INDEX_PATH", "faiss_index.bin")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 # LLM Configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
+OPENAI_API_KEY = os.getenv("OPENAI_KEY")  # Load from OPENAI_KEY in .env
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4-turbo-preview")  # Updated to a valid model name
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 
 # File Upload Configuration

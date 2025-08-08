@@ -1,7 +1,6 @@
-import os
-from openai import OpenAI
 from datetime import datetime
 from typing import List, Dict, Optional
+from openai import OpenAI
 from ..schemas.diagnosis import (
     DiagnosisRequest,
     DiagnosisHypothesis,
@@ -10,20 +9,24 @@ from ..schemas.diagnosis import (
     DiagnosisResult
 )
 from .db import get_db
+from ..config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 import logging
 
 logger = logging.getLogger(__name__)
 # 
 class MAIDxOService:
     def __init__(self):
+        if not OPENAI_API_KEY:
+            raise ValueError("OpenAI API key not found in environment variables")
+            
         self.db = get_db()
         self.diagnosis_collection = self.db["diagnoses"]
         
         # Initialize OpenAI
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.model = os.getenv("LLM_MODEL", "gpt-4o-mini")
-        self.temperature = float(os.getenv("LLM_TEMPERATURE", "0.1"))
-        self.max_rounds = 1
+        self.client = OpenAI(api_key=OPENAI_API_KEY)
+        self.model = LLM_MODEL
+        self.temperature = LLM_TEMPERATURE
+        self.max_rounds = 1  # Configuration for diagnostic rounds
 
     def _ask_model(self, prompt: str) -> str:
         try:
@@ -34,8 +37,11 @@ class MAIDxOService:
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
+            if "insufficient_quota" in str(e):
+                logger.error("OpenAI API quota exceeded. Please check your billing details.")
+                raise ValueError("OpenAI API quota exceeded. Please check your billing details.")
             logger.error(f"OpenAI error: {str(e)}")
-            return f"Error: {str(e)}"
+            raise  # Re-raise the exception to be handled by the caller
 
     def _format_case_summary(self, request: DiagnosisRequest) -> str:
         summary = [
@@ -127,8 +133,8 @@ class MAIDxOService:
             "Risk Factors: <list>"
         )
 
-        response = self._ask_model(prompt)
         try:
+            response = self._ask_model(prompt)
             parts = response.split('\n')
             critique = next(p.split(':', 1)[1].strip() for p in parts if p.startswith('Critique:'))
             missing = next(p.split(':', 1)[1].strip() for p in parts if p.startswith('Missing Considerations:')).split(', ')
@@ -163,8 +169,8 @@ class MAIDxOService:
             "Recommendations: <list>"
         )
 
-        response = self._ask_model(prompt)
         try:
+            response = self._ask_model(prompt)
             parts = response.split('\n')
             score = float(next(p.split(':', 1)[1].strip() for p in parts if p.startswith('Completeness Score:')))
             missing = next(p.split(':', 1)[1].strip() for p in parts if p.startswith('Missing Elements:')).split(', ')
@@ -214,14 +220,20 @@ class MAIDxOService:
             "Format:\n- Diagnosis: <name>\n  Confidence: <score>%\n  Justification: <reason>"
         )
 
-        response = self._ask_model(prompt)
-        hypotheses = self._parse_hypotheses(response)
+        try:
+            response = self._ask_model(prompt)
+            hypotheses = self._parse_hypotheses(response)
 
-        # Generate feedback from both agents
-        challenger_feedback = self._generate_challenger_feedback(case_summary, hypotheses)
-        checklist_feedback = self._generate_checklist_feedback(case_summary, hypotheses)
+            # Generate feedback from both agents
+            challenger_feedback = self._generate_challenger_feedback(case_summary, hypotheses)
+            checklist_feedback = self._generate_checklist_feedback(case_summary, hypotheses)
 
-        return hypotheses, challenger_feedback, checklist_feedback
+            return hypotheses, challenger_feedback, checklist_feedback
+        except ValueError as e:
+            if "quota exceeded" in str(e):
+                raise
+            logger.error(f"Error in diagnostic round: {str(e)}")
+            return [], None, None
 
     def _evaluate_convergence(self, current_hypotheses: List[DiagnosisHypothesis], 
                             previous_hypotheses: List[DiagnosisHypothesis]) -> bool:
@@ -241,7 +253,7 @@ class MAIDxOService:
 
         return diagnoses_match and confidence_stable
 
-    async def generate_diagnosis(self, request: DiagnosisRequest) -> DiagnosisResult:
+    def generate_diagnosis(self, request: DiagnosisRequest) -> DiagnosisResult:
         """Run the complete diagnostic orchestration process."""
         case_summary = self._format_case_summary(request)
         max_rounds = self.max_rounds

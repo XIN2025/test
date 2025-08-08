@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
-import * as DocumentPicker from 'expo-document-picker';
+import * as DocumentPicker from "expo-document-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -36,7 +36,13 @@ import GoalProgressTracker from "@/components/GoalProgressTracker";
 import WeeklyReflection from "@/components/WeeklyReflection";
 import HabitGoalIntegration from "@/components/HabitGoalIntegration";
 import { useGoals } from "@/hooks/useGoals";
-import { Goal, GoalPriority, GoalCategory, ActionPlan, WeeklySchedule } from "@/types/goals";
+import {
+  Goal,
+  GoalPriority,
+  GoalCategory,
+  ActionPlan,
+  WeeklySchedule,
+} from "@/types/goals";
 import { PillarType, PillarTimePreferences } from "@/types/preferences";
 import { goalsApi } from "@/services/goalsApi";
 
@@ -50,7 +56,10 @@ export default function GoalsScreen() {
   const [showReflection, setShowReflection] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [generatingPlan, setGeneratingPlan] = useState(false);
-  const [activePlan, setActivePlan] = useState<{ actionPlan: ActionPlan; weeklySchedule: any } | null>(null);
+  const [activePlan, setActivePlan] = useState<{
+    actionPlan: ActionPlan;
+    weeklySchedule: any;
+  } | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{
     uploadId: string;
     filename: string;
@@ -82,8 +91,6 @@ export default function GoalsScreen() {
     description: "",
     priority: "medium" as GoalPriority,
     category: "health" as GoalCategory,
-    targetValue: "",
-    unit: "",
     dueDate: new Date(),
   });
 
@@ -146,10 +153,6 @@ export default function GoalsScreen() {
         description: formData.description,
         priority: formData.priority,
         category: formData.category,
-        target_value: formData.targetValue
-          ? parseFloat(formData.targetValue)
-          : undefined,
-        unit: formData.unit,
         due_date: formData.dueDate.toISOString(),
       });
 
@@ -160,8 +163,6 @@ export default function GoalsScreen() {
         description: "",
         priority: "medium",
         category: "health",
-        targetValue: "",
-        unit: "",
         dueDate: new Date(),
       });
     } catch (error) {
@@ -236,11 +237,17 @@ export default function GoalsScreen() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingFileId, setUploadingFileId] = useState<string | null>(null);
-  const [uploadingUploadId, setUploadingUploadId] = useState<string | null>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<{name: string; type: string; size: number}[]>([]);
+  const [uploadingUploadId, setUploadingUploadId] = useState<string | null>(
+    null
+  );
+  const [uploadedFiles, setUploadedFiles] = useState<
+    { name: string; type: string; size: number }[]
+  >([]);
 
   // Using goalsApi for file upload operations
-  const uploadFileToServer = async (file: DocumentPicker.DocumentPickerAsset) => {
+  const uploadFileToServer = async (
+    file: DocumentPicker.DocumentPickerAsset
+  ) => {
     try {
       if (file.file) {
         return await goalsApi.uploadDocument(file.file);
@@ -337,11 +344,11 @@ export default function GoalsScreen() {
       setUploadProgress((prev) =>
         prev
           ? {
-            ...prev,
-            uploadId: upload_id,
-            message: "File uploaded successfully, starting analysis...",
-            percentage: 25,
-          }
+              ...prev,
+              uploadId: upload_id,
+              message: "File uploaded successfully, starting analysis...",
+              percentage: 25,
+            }
           : null
       );
 
@@ -367,13 +374,13 @@ export default function GoalsScreen() {
           setUploadProgress((prev) =>
             prev
               ? {
-                ...prev,
-                percentage: progress.percentage,
-                message: enhancedMessage,
-                status: progress.status,
-                entitiesCount: progress.entities_count || 0,
-                relationshipsCount: progress.relationships_count || 0,
-              }
+                  ...prev,
+                  percentage: progress.percentage,
+                  message: enhancedMessage,
+                  status: progress.status,
+                  entitiesCount: progress.entities_count || 0,
+                  relationshipsCount: progress.relationships_count || 0,
+                }
               : null
           );
 
@@ -389,10 +396,11 @@ export default function GoalsScreen() {
               setUploadProgress((prev) =>
                 prev
                   ? {
-                    ...prev,
-                    message: "Analysis complete! Document processed successfully.",
-                    percentage: 100,
-                  }
+                      ...prev,
+                      message:
+                        "Analysis complete! Document processed successfully.",
+                      percentage: 100,
+                    }
                   : null
               );
 
@@ -406,9 +414,15 @@ export default function GoalsScreen() {
                 },
               ]);
 
-              Alert.alert("Success", "Document uploaded and analyzed successfully!");
+              Alert.alert(
+                "Success",
+                "Document uploaded and analyzed successfully!"
+              );
             } else {
-              Alert.alert("Error", "Document processing failed. Please try again.");
+              Alert.alert(
+                "Error",
+                "Document processing failed. Please try again."
+              );
             }
 
             // Clear progress after a delay
@@ -423,10 +437,12 @@ export default function GoalsScreen() {
           setUploadingFileId(null);
           setUploadingUploadId(null);
           setUploadProgress(null);
-          Alert.alert("Error", "Failed to monitor upload progress. Please try again.");
+          Alert.alert(
+            "Error",
+            "Failed to monitor upload progress. Please try again."
+          );
         }
       }, 1000); // Check progress every second
-
     } catch (error) {
       console.error("Upload error:", error);
       setIsUploading(false);
@@ -435,7 +451,9 @@ export default function GoalsScreen() {
       setUploadProgress(null);
       Alert.alert(
         "Error",
-        `Upload failed: ${error instanceof Error ? error.message : "Unknown error"}. Please check if the backend server is running and try again.`
+        `Upload failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }. Please check if the backend server is running and try again.`
       );
     }
   };
@@ -444,10 +462,21 @@ export default function GoalsScreen() {
     if (generatingPlan) return;
 
     try {
+      // First check if the goal already has a plan
+      const goal = goals.find(g => g.id === goalId);
+      if (goal?.action_plan && goal?.weekly_schedule) {
+        // Use existing plan
+        setActivePlan({
+          actionPlan: goal.action_plan,
+          weeklySchedule: goal.weekly_schedule
+        });
+        Alert.alert("Success", "Plan loaded successfully!");
+        return;
+      }
+
       setGeneratingPlan(true);
 
-      // Create default time preferences
-      // Create default time preferences for each pillar
+      // If no existing plan, create new one with default preferences
       const defaultPreferences: PillarTimePreferences = {
         user_email: MOCK_USER_EMAIL,
         preferences: {
@@ -484,11 +513,9 @@ export default function GoalsScreen() {
         },
       };
 
-      const result = await goalsApi.generatePlan(
-        goalId,
-        MOCK_USER_EMAIL,
-        [defaultPreferences] as PillarTimePreferences[]
-      );
+      const result = await goalsApi.generatePlan(goalId, MOCK_USER_EMAIL, [
+        defaultPreferences,
+      ] as PillarTimePreferences[]);
 
       setActivePlan(result);
       Alert.alert("Success", "Goal plan generated successfully!");
@@ -615,23 +642,37 @@ export default function GoalsScreen() {
             <Text className="text-red-700 text-sm">{error}</Text>
           </View>
         )}
-        
+
         {uploadProgress && (
           <View className="mx-4 mt-4">
             <Card className="border-0">
               <View className="p-4">
                 <View className="flex-row items-center mb-2">
                   {uploadProgress.status === "processing" ? (
-                    <ActivityIndicator size="small" color="#059669" style={{ marginRight: 8 }} />
+                    <ActivityIndicator
+                      size="small"
+                      color="#059669"
+                      style={{ marginRight: 8 }}
+                    />
                   ) : uploadProgress.status === "completed" ? (
-                    <CheckCircle size={20} color="#059669" style={{ marginRight: 8 }} />
+                    <CheckCircle
+                      size={20}
+                      color="#059669"
+                      style={{ marginRight: 8 }}
+                    />
                   ) : (
-                    <AlertCircle size={20} color="#ef4444" style={{ marginRight: 8 }} />
+                    <AlertCircle
+                      size={20}
+                      color="#ef4444"
+                      style={{ marginRight: 8 }}
+                    />
                   )}
                   <Text className="font-semibold text-gray-800">
-                    {uploadProgress.status === "processing" ? "Processing Document" : 
-                     uploadProgress.status === "completed" ? "Upload Complete" : 
-                     "Upload Failed"}
+                    {uploadProgress.status === "processing"
+                      ? "Processing Document"
+                      : uploadProgress.status === "completed"
+                      ? "Upload Complete"
+                      : "Upload Failed"}
                   </Text>
                 </View>
 
@@ -644,17 +685,24 @@ export default function GoalsScreen() {
                     className="h-2 rounded-full"
                     style={{
                       width: `${uploadProgress.percentage}%`,
-                      backgroundColor: uploadProgress.status === "failed" ? "#ef4444" : "#059669",
+                      backgroundColor:
+                        uploadProgress.status === "failed"
+                          ? "#ef4444"
+                          : "#059669",
                     }}
                   />
                 </View>
 
-                <Text className="text-sm text-gray-600">{uploadProgress.message}</Text>
+                <Text className="text-sm text-gray-600">
+                  {uploadProgress.message}
+                </Text>
 
                 {uploadProgress.status === "completed" && (
                   <View className="mt-2 bg-green-50 rounded-lg p-3">
                     <Text className="text-sm text-green-800">
-                      Successfully extracted {uploadProgress.entitiesCount} medical entities and {uploadProgress.relationshipsCount} relationships
+                      Successfully extracted {uploadProgress.entitiesCount}{" "}
+                      medical entities and {uploadProgress.relationshipsCount}{" "}
+                      relationships
                     </Text>
                   </View>
                 )}
@@ -808,7 +856,9 @@ export default function GoalsScreen() {
                         <TouchableOpacity
                           onPress={() => handleGeneratePlan(goal.id)}
                           disabled={generatingPlan}
-                          className={`p-2 mr-2 ${generatingPlan ? 'opacity-50' : ''}`}
+                          className={`p-2 mr-2 ${
+                            generatingPlan ? "opacity-50" : ""
+                          }`}
                         >
                           <PlayCircle size={24} color="#059669" />
                         </TouchableOpacity>
@@ -824,7 +874,9 @@ export default function GoalsScreen() {
                   {/* Active Plan */}
                   {activePlan && activePlan.actionPlan && (
                     <View className="mt-4 bg-green-50 p-4 rounded-lg">
-                      <Text className="text-lg font-semibold text-gray-800 mb-2">Action Plan</Text>
+                      <Text className="text-lg font-semibold text-gray-800 mb-2">
+                        Action Plan
+                      </Text>
                       {activePlan.actionPlan.action_items.map((item, index) => (
                         <View key={index} className="mb-2">
                           <Text className="text-sm font-semibold text-gray-700">
@@ -833,32 +885,45 @@ export default function GoalsScreen() {
                           <Text className="text-sm text-gray-600 ml-4">
                             {item.description}
                           </Text>
-                          {item.adaptation_notes && item.adaptation_notes.length > 0 && (
-                            <View className="mt-1 ml-4">
-                              <Text className="text-xs text-gray-500 italic">
-                                Note: {item.adaptation_notes[0]}
-                              </Text>
-                            </View>
-                          )}
+                          {item.adaptation_notes &&
+                            item.adaptation_notes.length > 0 && (
+                              <View className="mt-1 ml-4">
+                                <Text className="text-xs text-gray-500 italic">
+                                  Note: {item.adaptation_notes[0]}
+                                </Text>
+                              </View>
+                            )}
                         </View>
                       ))}
-                      {activePlan.weeklySchedule && activePlan.weeklySchedule.daily_schedules && (
-                        <View className="mt-4">
-                          <Text className="font-semibold text-gray-800 mb-2">Weekly Schedule</Text>
-                          {Object.entries(activePlan.weeklySchedule.daily_schedules).map(([day, schedule]: [string, any]) => (
-                            <View key={day} className="mb-2">
-                              <Text className="text-sm font-medium text-gray-700">
-                                {day.charAt(0).toUpperCase() + day.slice(1)}
-                              </Text>
-                              {schedule.time_slots && schedule.time_slots.map((slot: any, index: number) => (
-                                <Text key={index} className="text-sm text-gray-600 ml-4">
-                                  • {slot.action_item} ({slot.start_time} - {slot.end_time})
+                      {activePlan.weeklySchedule &&
+                        activePlan.weeklySchedule.daily_schedules && (
+                          <View className="mt-4">
+                            <Text className="font-semibold text-gray-800 mb-2">
+                              Weekly Schedule
+                            </Text>
+                            {Object.entries(
+                              activePlan.weeklySchedule.daily_schedules
+                            ).map(([day, schedule]: [string, any]) => (
+                              <View key={day} className="mb-2">
+                                <Text className="text-sm font-medium text-gray-700">
+                                  {day.charAt(0).toUpperCase() + day.slice(1)}
                                 </Text>
-                              ))}
-                            </View>
-                          ))}
-                        </View>
-                      )}
+                                {schedule.time_slots &&
+                                  schedule.time_slots.map(
+                                    (slot: any, index: number) => (
+                                      <Text
+                                        key={index}
+                                        className="text-sm text-gray-600 ml-4"
+                                      >
+                                        • {slot.action_item} ({slot.start_time}{" "}
+                                        - {slot.end_time})
+                                      </Text>
+                                    )
+                                  )}
+                              </View>
+                            ))}
+                          </View>
+                        )}
                     </View>
                   )}
 
@@ -1127,26 +1192,6 @@ export default function GoalsScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-              </View>
-
-              <View className="flex-row mb-3">
-                <TextInput
-                  placeholder="Target value"
-                  value={formData.targetValue}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, targetValue: text })
-                  }
-                  className="border border-gray-300 rounded-lg px-3 py-2 flex-1 mr-2"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  placeholder="Unit"
-                  value={formData.unit}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, unit: text })
-                  }
-                  className="border border-gray-300 rounded-lg px-3 py-2 flex-1"
-                />
               </View>
 
               <View className="flex-row">

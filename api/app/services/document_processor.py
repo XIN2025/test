@@ -7,7 +7,7 @@ import spacy
 import json
 import logging
 import time
-from ..config import OPENAI_API_KEY, GOOGLE_API_KEY, LLM_MODEL, LLM_TEMPERATURE
+from ..config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 from .graph_db import get_graph_db
 from .vector_store import get_vector_store
 

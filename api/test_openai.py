@@ -1,8 +1,11 @@
 from openai import OpenAI
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Test API key
-API_KEY = os.getenv("OPENAI_API_KEY")
+API_KEY = os.getenv("OPENAI_KEY")
+print("Using OpenAI API Key:", API_KEY)
 
 def test_openai_api():
     try:

@@ -12,8 +12,64 @@ from pydantic import EmailStr
 goals_router = APIRouter()
 goals_service = GoalsService()
 
+@goals_router.get("/api/goals/stats", response_model=GoalResponse)
+async def get_goal_stats(user_email: EmailStr = Query(...), weeks: int = Query(4, ge=1, le=52)):
+    try:
+        stats = goals_service.get_goal_stats(user_email, weeks)
+        return GoalResponse(success=True, message="Goal statistics retrieved successfully", data={"stats": stats.dict()})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@goals_router.get("/api/goals/reflection", response_model=GoalResponse)
+async def get_weekly_reflection(user_email: EmailStr = Query(...), week_start: str = Query(...)):
+    try:
+        try:
+            week_start_date = datetime.fromisoformat(week_start.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid week_start date format")
+        reflection = goals_service.get_weekly_reflection(user_email, week_start_date)
+        return GoalResponse(success=True, message="Weekly reflection retrieved successfully", data={"reflection": reflection})
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@goals_router.post("/api/goals/reflection", response_model=GoalResponse)
+async def save_weekly_reflection(reflection_data: WeeklyReflection):
+    try:
+        result = goals_service.save_weekly_reflection(reflection_data)
+        return GoalResponse(success=True, message="Weekly reflection saved successfully", data=result["data"])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@goals_router.get("/api/goals/weekly-progress", response_model=GoalResponse)
+async def get_weekly_progress(user_email: EmailStr = Query(...), week_start: str = Query(...)):
+    try:
+        try:
+            week_start_date = datetime.fromisoformat(week_start.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid week_start date format")
+        progress = goals_service.get_weekly_progress(user_email, week_start_date)
+        return GoalResponse(success=True, message="Weekly progress retrieved successfully", data=progress)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@goals_router.get("/api/goals/current-week", response_model=GoalResponse)
+async def get_current_week_goals(user_email: EmailStr = Query(...)):
+    try:
+        today = datetime.utcnow()
+        days_since_monday = today.weekday()
+        week_start = today - timedelta(days=days_since_monday)
+        week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        goals = goals_service.get_user_goals(user_email, week_start)
+        return GoalResponse(success=True, message="Current week goals retrieved successfully", data={"week_start": week_start.isoformat(), "goals": [goal.dict() for goal in goals]})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @goals_router.post("/api/goals", response_model=GoalResponse)
-async def create_goal(goal_data: GoalCreate):
+def create_goal(goal_data: GoalCreate):
     try:
         goal = goals_service.create_goal(goal_data)
         return GoalResponse(success=True, message="Goal created successfully", data={"goal": goal.dict()})
@@ -30,7 +86,7 @@ async def get_user_goals(user_email: EmailStr = Query(...), week_start: Optional
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid week_start date format")
         goals = goals_service.get_user_goals(user_email, week_start_date)
-        return GoalResponse(success=True, message="Goals retrieved successfully", data={"goals": [goal.dict() for goal in goals]})
+        return GoalResponse(success=True, message="Goals retrieved successfully", data={"goals": goals})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -94,50 +150,6 @@ async def add_goal_note(goal_id: str, note_data: GoalNote, user_email: EmailStr 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@goals_router.post("/api/goals/reflection", response_model=GoalResponse)
-async def save_weekly_reflection(reflection_data: WeeklyReflection):
-    try:
-        result = goals_service.save_weekly_reflection(reflection_data)
-        return GoalResponse(success=True, message="Weekly reflection saved successfully", data=result["data"])
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@goals_router.get("/api/goals/reflection", response_model=GoalResponse)
-async def get_weekly_reflection(user_email: EmailStr = Query(...), week_start: str = Query(...)):
-    try:
-        try:
-            week_start_date = datetime.fromisoformat(week_start.replace('Z', '+00:00'))
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid week_start date format")
-        reflection = goals_service.get_weekly_reflection(user_email, week_start_date)
-        return GoalResponse(success=True, message="Weekly reflection retrieved successfully", data={"reflection": reflection})
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@goals_router.get("/api/goals/stats", response_model=GoalResponse)
-async def get_goal_stats(user_email: EmailStr = Query(...), weeks: int = Query(4, ge=1, le=52)):
-    try:
-        stats = goals_service.get_goal_stats(user_email, weeks)
-        return GoalResponse(success=True, message="Goal statistics retrieved successfully", data={"stats": stats.dict()})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@goals_router.get("/api/goals/weekly-progress", response_model=GoalResponse)
-async def get_weekly_progress(user_email: EmailStr = Query(...), week_start: str = Query(...)):
-    try:
-        try:
-            week_start_date = datetime.fromisoformat(week_start.replace('Z', '+00:00'))
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid week_start date format")
-        progress = goals_service.get_weekly_progress(user_email, week_start_date)
-        return GoalResponse(success=True, message="Weekly progress retrieved successfully", data=progress)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @goals_router.get("/api/goals/current-week", response_model=GoalResponse)
 async def get_current_week_goals(user_email: EmailStr = Query(...)):
     try:
@@ -157,7 +169,7 @@ async def generate_goal_plan(
     pillar_preferences: List[PillarTimePreferences] = Body(default=[])
 ):
     try:
-        result = await goals_service.generate_goal_plan(
+        result = goals_service.generate_goal_plan(
             goal_id=goal_id,
             user_email=user_email,
             pillar_preferences=pillar_preferences

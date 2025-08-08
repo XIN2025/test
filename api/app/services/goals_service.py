@@ -37,16 +37,29 @@ class GoalsService:
         goal_dict["id"] = str(result.inserted_id)
         return Goal(**goal_dict)
 
-    def get_user_goals(self, user_email: str, week_start: Optional[datetime] = None) -> List[Goal]:
+    def get_user_goals(self, user_email: str, week_start: Optional[datetime] = None) -> List[Dict[str, Any]]:
         query = {"user_email": user_email}
         if week_start:
             week_end = week_start + timedelta(days=7)
             query["created_at"] = {"$gte": week_start, "$lt": week_end}
         goals = list(self.goals_collection.find(query).sort("created_at", -1))
+        
+        goals_with_plans = []
         for goal in goals:
             goal["id"] = str(goal["_id"])
             del goal["_id"]
-        return [Goal(**goal) for goal in goals]
+            goal_obj = Goal(**goal)
+            goal_dict = goal_obj.dict()
+            
+            # Get action plan and schedule
+            goal_plan = self.get_goal_plan(str(goal_obj.id), user_email)
+            if goal_plan:
+                goal_dict["action_plan"] = goal_plan["action_plan"]
+                goal_dict["weekly_schedule"] = goal_plan["weekly_schedule"]
+            
+            goals_with_plans.append(goal_dict)
+            
+        return goals_with_plans
 
     def get_goal_by_id(self, goal_id: str, user_email: str) -> Optional[Goal]:
         goal = self.goals_collection.find_one({"_id": ObjectId(goal_id), "user_email": user_email})
@@ -56,7 +69,7 @@ class GoalsService:
         del goal["_id"]
         return Goal(**goal)
 
-    def update_goal(self, goal_id: str, user_email: str, update_data: GoalUpdate) -> Optional[Goal]:
+    async def update_goal(self, goal_id: str, user_email: str, update_data: GoalUpdate) -> Optional[Goal]:
         update_dict = update_data.dict(exclude_unset=True)
         update_dict["updated_at"] = datetime.utcnow()
         if "current_value" in update_dict or "target_value" in update_dict:
@@ -74,11 +87,11 @@ class GoalsService:
             return None
         return self.get_goal_by_id(goal_id, user_email)
 
-    def delete_goal(self, goal_id: str, user_email: str) -> bool:
+    async def delete_goal(self, goal_id: str, user_email: str) -> bool:
         result = self.goals_collection.delete_one({"_id": ObjectId(goal_id), "user_email": user_email})
         return result.deleted_count > 0
 
-    def update_goal_progress(self, goal_id: str, user_email: str, current_value: float, note: Optional[str] = None) -> Optional[Goal]:
+    async def update_goal_progress(self, goal_id: str, user_email: str, current_value: float, note: Optional[str] = None) -> Optional[Goal]:
         update_data = {"current_value": current_value, "updated_at": datetime.utcnow()}
         goal = self.get_goal_by_id(goal_id, user_email)
         if not goal:
@@ -95,7 +108,7 @@ class GoalsService:
             return None
         return self.get_goal_by_id(goal_id, user_email)
 
-    def add_goal_note(self, goal_id: str, user_email: str, note: str) -> Optional[Goal]:
+    async def add_goal_note(self, goal_id: str, user_email: str, note: str) -> Optional[Goal]:
         goal = self.get_goal_by_id(goal_id, user_email)
         if not goal:
             return None
@@ -108,7 +121,7 @@ class GoalsService:
             return None
         return self.get_goal_by_id(goal_id, user_email)
 
-    def save_weekly_reflection(self, reflection_data: WeeklyReflection) -> Dict[str, Any]:
+    async def save_weekly_reflection(self, reflection_data: WeeklyReflection) -> Dict[str, Any]:
         reflection_dict = reflection_data.dict()
         reflection_dict["_id"] = ObjectId()
         reflection_dict["created_at"] = datetime.utcnow()
@@ -177,7 +190,7 @@ class GoalsService:
                 break
         return streak
 
-    async def generate_goal_plan(
+    def generate_goal_plan(
         self, 
         goal_id: str, 
         user_email: str, 
@@ -188,13 +201,17 @@ class GoalsService:
             # Get the goal
             goal = self.get_goal_by_id(goal_id, user_email)
             if not goal:
-                raise ValueError("Goal not found")
+                return {
+                    "success": False,
+                    "message": "Goal not found",
+                    "data": None
+                }
 
             # Generate action plan
-            action_plan = await self.planner_service.create_action_plan(goal)
+            action_plan = self.planner_service.create_action_plan(goal)
             
             # Generate weekly schedule
-            weekly_schedule = await self.scheduler_service.create_weekly_schedule(
+            weekly_schedule = self.scheduler_service.create_weekly_schedule(
                 action_plan=action_plan,
                 pillar_preferences=pillar_preferences,
                 start_date=datetime.utcnow().replace(

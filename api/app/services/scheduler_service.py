@@ -5,16 +5,20 @@ from ..schemas.scheduler import TimeSlot, DaySchedule, WeeklySchedule
 from ..schemas.planner import ActionPlan, ActionItem
 from ..schemas.goals import Goal
 from ..schemas.preferences import PillarTimePreferences
-import google.generativeai as genai
+from openai import OpenAI
 import os
 import json
+from ..config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 
 logger = logging.getLogger(__name__)
 
 class SmartSchedulerService:
     def __init__(self):
-        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-        self.model = genai.GenerativeModel("gemini-1.5-pro")
+        if not OPENAI_API_KEY:
+            raise ValueError("OpenAI API key not found in environment variables")
+        self.client = OpenAI(api_key=OPENAI_API_KEY)
+        self.model = LLM_MODEL
+        self.temperature = LLM_TEMPERATURE
         
         # Default time slots (can be customized)
         self.default_slots = {
@@ -23,7 +27,7 @@ class SmartSchedulerService:
             "evening": (time(17, 0), time(22, 0))
         }
 
-    async def create_weekly_schedule(
+    def create_weekly_schedule(
         self,
         action_plan: ActionPlan,
         pillar_preferences: List[PillarTimePreferences],
@@ -37,8 +41,8 @@ class SmartSchedulerService:
             # 2. Prioritize and distribute actions
             prioritized_actions = self._prioritize_actions(action_plan.action_items)
             
-            # 3. Generate initial schedule with Gemini
-            initial_schedule = await self._generate_initial_schedule(
+            # 3. Generate initial schedule with OpenAI
+            initial_schedule = self._generate_initial_schedule(
                 prioritized_actions,
                 time_blocks,
                 action_plan.health_adaptations,
@@ -122,22 +126,29 @@ class SmartSchedulerService:
             "adaptation_notes": action.adaptation_notes or []
         }
 
-    async def _generate_initial_schedule(
+    def _generate_initial_schedule(
         self,
         prioritized_actions: List[Dict],
         time_blocks: Dict[str, List[Dict]],
         health_adaptations: List[str],
         start_date: datetime
     ) -> WeeklySchedule:
-        """Generate initial schedule using Gemini"""
+        """Generate initial schedule using OpenAI"""
         try:
             prompt = self._create_schedule_prompt(
                 prioritized_actions,
                 time_blocks,
                 health_adaptations
             )
-            response = await self.model.generate_content_async(prompt)
-            response_text = response.text.strip()
+            response = self.client.chat.completions.create(
+                model=self.model,
+                temperature=self.temperature,
+                messages=[
+                    {"role": "system", "content": "You are a scheduling assistant that creates precise weekly schedules in JSON format."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            response_text = response.choices[0].message.content.strip()
             
             # Try to find JSON in response
             try:

@@ -13,7 +13,7 @@ class HealthInsightsService:
         self.graph_db = get_graph_db()
         self.mai_dxo_service = MAIDxOService()
 
-    async def extract_goal_context(self, goal: Goal) -> HealthContext:
+    def extract_goal_context(self, goal: Goal) -> HealthContext:
         """Extract relevant health context from the graph database for a given goal using semantic search"""
         try:
             query = f"Find health context for: {goal.title}. Details: {goal.description}"
@@ -43,10 +43,10 @@ class HealthInsightsService:
             logger.error(f"Error extracting goal context: {str(e)}")
             raise
 
-    async def get_health_insight(self, goal: Goal) -> HealthInsight:
+    def get_health_insight(self, goal: Goal) -> HealthInsight:
         """Generate health insights for a given goal"""
         try:
-            context = await self.extract_goal_context(goal)
+            context = self.extract_goal_context(goal)
             diagnosis_request = DiagnosisRequest(
                 user_email=goal.user_email,  # Required field
                 symptoms=context.medical_context if context.medical_context else ["No specific symptoms noted"],  # Use medical context as symptoms
@@ -60,7 +60,10 @@ class HealthInsightsService:
                     "risk_factors": context.risk_factors
                 }
             )
-            diagnosis_result = await self.mai_dxo_service.generate_diagnosis(diagnosis_request)
+            diagnosis_result = self.mai_dxo_service.generate_diagnosis(diagnosis_request)
+            if hasattr(diagnosis_result, '__await__'):  # Handle if it's still a coroutine
+                logger.error("mai_dxo_service.generate_diagnosis returned a coroutine, but it should be synchronous")
+                diagnosis_result = None
 
             health_considerations = self._extract_health_considerations(diagnosis_result, context)
             medical_precautions = self._extract_medical_precautions(diagnosis_result, context)
