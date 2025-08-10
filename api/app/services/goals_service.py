@@ -127,6 +127,9 @@ class GoalsService:
         reflection_dict["created_at"] = datetime.utcnow()
         result = self.reflections_collection.insert_one(reflection_dict)
         reflection_dict["id"] = str(result.inserted_id)
+        # Remove non-serializable ObjectId before returning
+        if "_id" in reflection_dict:
+            del reflection_dict["_id"]
         return {
             "success": True,
             "message": "Weekly reflection saved successfully",
