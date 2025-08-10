@@ -52,13 +52,14 @@ export default function LoginScreen() {
   // Form handlers
   const handleInputChange = (field: keyof LoginFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    // Clear the specific field error entirely so isFormValid recalculates correctly
+    if (errors[field] !== undefined) {
+      setErrors((prev) => {
+        const { [field]: _removed, ...rest } = prev;
+        return rest;
+      });
     }
-    if (apiError) {
-      setApiError(null);
-    }
+    if (apiError) setApiError(null);
   };
 
   const handleLogin = async () => {
