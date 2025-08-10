@@ -123,7 +123,9 @@ export default function VerifyLoginOtpScreen() {
             value={otp}
             onChangeText={(value) => {
               setOtp(value);
-              if (errors.otp) setErrors({});
+              if (errors.otp !== undefined) {
+                setErrors(() => ({}));
+              }
               if (apiError) setApiError(null);
             }}
             keyboardType="numeric"

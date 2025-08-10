@@ -3,7 +3,6 @@ import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
 import Constants from "expo-constants";
-import { getFontFamily } from "../constants/fonts";
 
 // TypeScript interfaces
 interface RegisterFormData {
@@ -76,13 +75,14 @@ export default function RegisterScreen() {
   // Form handlers
   const handleInputChange = (field: keyof RegisterFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    // Remove the field from the errors object entirely to allow re-enable
+    if (errors[field] !== undefined) {
+      setErrors((prev) => {
+        const { [field]: _removed, ...rest } = prev;
+        return rest;
+      });
     }
-    if (apiError) {
-      setApiError(null);
-    }
+    if (apiError) setApiError(null);
   };
 
   const handleRegister = async () => {

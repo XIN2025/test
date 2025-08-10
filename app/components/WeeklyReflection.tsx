@@ -24,6 +24,9 @@ interface WeeklyReflectionProps {
   totalGoals: number;
   onSave: (reflection: string, rating: number, nextWeekGoals: string[]) => void;
   onClose: () => void;
+  initialReflection?: string;
+  initialRating?: number;
+  initialGoals?: string[];
 }
 
 export default function WeeklyReflection({
@@ -33,10 +36,15 @@ export default function WeeklyReflection({
   totalGoals,
   onSave,
   onClose,
+  initialReflection,
+  initialRating,
+  initialGoals,
 }: WeeklyReflectionProps) {
-  const [reflection, setReflection] = useState("");
-  const [rating, setRating] = useState(0);
-  const [nextWeekGoals, setNextWeekGoals] = useState<string[]>([""]);
+  const [reflection, setReflection] = useState(initialReflection || "");
+  const [rating, setRating] = useState(initialRating || 0);
+  const [nextWeekGoals, setNextWeekGoals] = useState<string[]>(
+    initialGoals && initialGoals.length > 0 ? initialGoals : [""]
+  );
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
