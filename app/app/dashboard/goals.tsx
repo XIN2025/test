@@ -253,6 +253,7 @@ export default function GoalsScreen() {
   const [showReflection, setShowReflection] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [generatingGoalId, setGeneratingGoalId] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   const [selectedActionItem, setSelectedActionItem] =
@@ -759,6 +760,18 @@ export default function GoalsScreen() {
     [PillarType.PERSONAL]: { ...emptyPref, preferred_time: "20:00" },
   });
 
+  // Inline banner to inform user while plan is being generated
+  const GeneratingBanner = () =>
+    generatingPlan ? (
+      <View className="mx-4 mt-3 mb-1 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex-row items-center">
+        <ActivityIndicator size="small" color="#059669" />
+        <Text className="ml-2 text-sm text-emerald-900">
+          Generating plan… You can come back later once it is ready, as creating
+          a detailed plan may take a while.
+        </Text>
+      </View>
+    ) : null;
+
   const openPreferences = async () => {
     setShowPreferencesModal(true);
     setPreferencesLoading(true);
@@ -890,10 +903,7 @@ export default function GoalsScreen() {
         console.warn("Goals reload after plan generation failed:", reloadErr);
       }
 
-      Alert.alert(
-        "Success",
-        `Plan ${goal?.action_plan ? "regenerated" : "generated"} successfully!`
-      );
+      // Success – we already set expectations above, so no extra modal needed
     } catch (error) {
       console.error("Error generating plan:", error);
       Alert.alert(
@@ -1364,6 +1374,7 @@ export default function GoalsScreen() {
         </Modal>
 
         <ScrollView contentContainerClassName="pb-8" className="flex-1">
+          <GeneratingBanner />
           <View className="px-4 space-y-6 mt-4">
             {/* Week Navigation (hidden) */}
             {false && (
@@ -1481,13 +1492,17 @@ export default function GoalsScreen() {
                             generatingPlan ? "opacity-50" : ""
                           }`}
                         >
-                          <BarChart3
-                            size={16}
-                            color="#ffffff"
-                            className="mr-1"
-                          />
-                          <Text className="text-white text-sm font-medium">
-                            Generate Plan
+                          {generatingPlan ? (
+                            <ActivityIndicator size="small" color="#ffffff" />
+                          ) : (
+                            <BarChart3
+                              size={16}
+                              color="#ffffff"
+                              className="mr-1"
+                            />
+                          )}
+                          <Text className="text-white text-sm font-medium ml-2">
+                            {generatingPlan ? "Generating…" : "Generate Plan"}
                           </Text>
                         </TouchableOpacity>
                       )}
