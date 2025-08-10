@@ -1005,27 +1005,45 @@ export default function GoalsScreen() {
               </View>
             </View>
             <View className="flex-row">
-              <TouchableOpacity
-                onPress={openPreferences}
-                className="w-8 h-8 rounded-full items-center justify-center mr-2"
-                style={{ backgroundColor: "#114131" }}
-              >
-                <Star size={16} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShowUploadModal(true)}
-                className="w-8 h-8 rounded-full items-center justify-center mr-2"
-                style={{ backgroundColor: "#114131" }}
-              >
-                <BookOpen size={16} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShowAddGoal(true)}
-                className="w-8 h-8 rounded-full items-center justify-center"
-                style={{ backgroundColor: "#114131" }}
-              >
-                <Plus size={16} color="#fff" />
-              </TouchableOpacity>
+              <View className="items-center mr-3">
+                <TouchableOpacity
+                  onPress={openPreferences}
+                  accessibilityLabel="Set Weekly Time Preferences"
+                  className="w-8 h-8 rounded-full items-center justify-center"
+                  style={{ backgroundColor: "#114131" }}
+                >
+                  <Star size={16} color="#fff" />
+                </TouchableOpacity>
+                <Text className="text-[10px] text-gray-800 mt-1 text-center w-20">
+                  Set Weekly Time Preferences
+                </Text>
+              </View>
+              <View className="items-center mr-3">
+                <TouchableOpacity
+                  onPress={() => setShowUploadModal(true)}
+                  accessibilityLabel="Open File Manager"
+                  className="w-8 h-8 rounded-full items-center justify-center"
+                  style={{ backgroundColor: "#114131" }}
+                >
+                  <BookOpen size={16} color="#fff" />
+                </TouchableOpacity>
+                <Text className="text-[10px] text-gray-800 mt-1 text-center w-20">
+                  Open File Manager
+                </Text>
+              </View>
+              <View className="items-center">
+                <TouchableOpacity
+                  onPress={() => setShowAddGoal(true)}
+                  accessibilityLabel="Create New Goal"
+                  className="w-8 h-8 rounded-full items-center justify-center"
+                  style={{ backgroundColor: "#114131" }}
+                >
+                  <Plus size={16} color="#fff" />
+                </TouchableOpacity>
+                <Text className="text-[10px] text-gray-800 mt-1 text-center w-20">
+                  Create New Goal
+                </Text>
+              </View>
             </View>
           </View>
         </View>
