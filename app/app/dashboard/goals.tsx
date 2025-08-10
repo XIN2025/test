@@ -1057,7 +1057,7 @@ export default function GoalsScreen() {
             >
               <View className="flex-row justify-between items-center mb-4">
                 <Text className="text-lg font-semibold text-gray-800">
-                  Document Uploads
+                  Manage Documents
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowUploadModal(false)}
