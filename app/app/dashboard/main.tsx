@@ -147,21 +147,58 @@ export default function MainDashboard() {
     goalTitle?: string;
   };
 
+  // Helper to format time into HH:MM
+  const formatTimeHM = (t?: string): string => {
+    if (!t) return "";
+    const parts = `${t}`.trim().split(":");
+    if (parts.length >= 2) {
+      const hh = (parts[0] ?? "0").padStart(2, "0");
+      const mm = (parts[1] ?? "0").padStart(2, "0");
+      return `${hh}:${mm}`;
+    }
+    const h = parts[0];
+    if (h && /^\d{1,2}$/.test(h)) return `${h.padStart(2, "0")}:00`;
+    return t;
+  };
+
   // Build today's action items from goals data
   const todaysItems: TodayItem[] = useMemo(() => {
     const items: TodayItem[] = [];
+
+    const normalizeTime = (t?: string): string => formatTimeHM(t);
+
+    const makeKey = (
+      title: string,
+      goalTitle: string | undefined,
+      start?: string,
+      end?: string
+    ) => {
+      const normTitle = (title || "").trim().toLowerCase();
+      const normGoal = (goalTitle || "").trim().toLowerCase();
+      const normStart = normalizeTime(start);
+      const normEnd = normalizeTime(end);
+      return `${normGoal}|${normTitle}|${normStart}|${normEnd}`;
+    };
+
+    const seen = new Set<string>();
+
     (goals as any[]).forEach((g: any) => {
       // 1) From goal.weekly_schedule.daily_schedules[dayKey]
       const ds = g?.weekly_schedule?.daily_schedules?.[dayKey];
       if (ds?.time_slots?.length) {
         ds.time_slots.forEach((ts: any, idx: number) => {
-          items.push({
-            id: `${g.id}-top-${dayKey}-${idx}`,
-            title: ts.action_item || g.title,
-            start_time: ts.start_time,
-            end_time: ts.end_time,
-            goalTitle: g.title,
-          });
+          const title = ts.action_item || g.title;
+          const key = makeKey(title, g.title, ts.start_time, ts.end_time);
+          if (!seen.has(key)) {
+            seen.add(key);
+            items.push({
+              id: `${g.id}-top-${dayKey}-${idx}`,
+              title,
+              start_time: ts.start_time,
+              end_time: ts.end_time,
+              goalTitle: g.title,
+            });
+          }
         });
       }
 
@@ -171,20 +208,24 @@ export default function MainDashboard() {
         const w = ai?.weekly_schedule?.[dayKey];
         const slots = w?.time_slots || [];
         slots.forEach((ts: any, sIdx: number) => {
-          items.push({
-            id: `${g.id}-ai-${aIdx}-${dayKey}-${sIdx}`,
-            title: ai.title,
-            start_time: ts.start_time,
-            end_time: ts.end_time,
-            goalTitle: g.title,
-          });
+          const key = makeKey(ai.title, g.title, ts.start_time, ts.end_time);
+          if (!seen.has(key)) {
+            seen.add(key);
+            items.push({
+              id: `${g.id}-ai-${aIdx}-${dayKey}-${sIdx}`,
+              title: ai.title,
+              start_time: ts.start_time,
+              end_time: ts.end_time,
+              goalTitle: g.title,
+            });
+          }
         });
       });
     });
 
-    // Sort by time if available
+    // Sort by normalized time if available
     items.sort((a, b) =>
-      (a.start_time || "").localeCompare(b.start_time || "")
+      formatTimeHM(a.start_time).localeCompare(formatTimeHM(b.start_time))
     );
     return items;
   }, [goals, dayKey]);
@@ -550,8 +591,12 @@ export default function MainDashboard() {
                       <View className="items-end ml-3">
                         <Text className="text-xs text-gray-600 font-medium">
                           {it.start_time && it.end_time
-                            ? `${it.start_time} - ${it.end_time}`
-                            : it.start_time || it.end_time || ""}
+                            ? `${formatTimeHM(it.start_time)} - ${formatTimeHM(
+                                it.end_time
+                              )}`
+                            : formatTimeHM(it.start_time) ||
+                              formatTimeHM(it.end_time) ||
+                              ""}
                         </Text>
                       </View>
                     </View>
