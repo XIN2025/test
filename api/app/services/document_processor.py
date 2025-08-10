@@ -1,6 +1,3 @@
-import os
-import tempfile
-import base64
 from typing import List, Dict, Tuple, Optional, Callable, Literal
 from openai import OpenAI
 import spacy
@@ -117,64 +114,30 @@ class DocumentProcessor:
             }
 
     def _extract_text_from_pdf(self, file_content: bytes) -> str:
-        """Extract text content from PDF bytes"""
-        tmp_path = None
-        # Prefer unstructured when available; fall back to PyPDF2 if import/runtime fails
+        """Extract text content from PDF bytes using PyMuPDF, with PyPDF2 fallback."""
+        # Primary path: PyMuPDF (fitz)
         try:
-            try:
-                from unstructured.partition.pdf import partition_pdf  # type: ignore
-            except ImportError as ie:
-                logger.warning(
-                    "unstructured not available, falling back to PyPDF2 for PDF text extraction: %s",
-                    ie,
-                )
-                raise
+            import fitz  # type: ignore
 
-            # Save PDF to temp file for unstructured
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                tmp.write(file_content)
-                tmp_path = tmp.name
-
-            try:
-                # Extract elements from PDF
-                elements = partition_pdf(
-                    filename=tmp_path,
-                    extract_images_in_pdf=False,  # We don't need images for text extraction
-                    infer_table_structure=True,
-                    chunking_strategy="by_title",
-                    max_characters=4000,
-                    new_after_n_chars=3800,
-                    combine_text_under_n_chars=2000,
-                )
-
-                # Extract text from elements
-                text_chunks = []
-                for element in elements:
-                    if hasattr(element, 'text') and getattr(element, 'text'):
-                        text_chunks.append(element.text)
-
-                text = "\n\n".join(text_chunks)
-                if text.strip():
-                    return text
-                logger.info("unstructured returned no text; will try PyPDF2 fallback")
-            except Exception as ue:
-                # If unstructured is installed but fails (missing system deps, etc.), fall back
-                logger.warning(
-                    "unstructured partition failed; falling back to PyPDF2. Error: %s",
-                    ue,
-                )
-        except ImportError:
-            # Continue to PyPDF2 fallback
-            pass
-        finally:
-            # Clean up temp file created for unstructured, if any
-            if tmp_path and os.path.exists(tmp_path):
+            doc = fitz.open(stream=file_content, filetype="pdf")
+            text_chunks: List[str] = []
+            for page in doc:
                 try:
-                    os.unlink(tmp_path)
-                except Exception:
-                    pass
+                    extracted = page.get_text("text") or ""
+                except Exception as fe:
+                    logger.debug("PyMuPDF failed on a page: %s", fe)
+                    extracted = ""
+                if extracted:
+                    text_chunks.append(extracted)
+            doc.close()
+            text = "\n\n".join(text_chunks)
+            if text.strip():
+                return text
+            logger.info("PyMuPDF returned no text; will try PyPDF2 fallback")
+        except Exception as fe:
+            logger.warning("PyMuPDF not available or failed; falling back to PyPDF2. Error: %s", fe)
 
-        # PyPDF2 fallback path (pure-Python, fewer system deps)
+        # Fallback: PyPDF2 (pure-Python)
         try:
             from PyPDF2 import PdfReader  # type: ignore
             import io
