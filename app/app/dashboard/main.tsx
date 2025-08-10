@@ -30,6 +30,7 @@ import Card from "@/components/ui/card";
 import { tw } from "nativewind";
 import { useGoals } from "@/hooks/useGoals";
 import { useUser } from "@/context/UserContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width, height } = Dimensions.get("window");
 
@@ -85,7 +86,7 @@ export default function MainDashboard() {
   const userEmail = (params?.email as string) || ctxEmail || "";
   const userName = (params?.name as string) || ctxName || "";
   const { goals } = useGoals({ userEmail });
-  const [showWalkthrough, setShowWalkthrough] = useState(true);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [animation] = useState(new Animated.Value(1));
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
@@ -138,6 +139,25 @@ export default function MainDashboard() {
       ][day] || "monday"
     );
   }, []);
+
+  // Per-user storage key for walkthrough completion
+  const walkthroughStorageKey = useMemo(
+    () => `dashboardWalkthroughSeen:${userEmail || "guest"}`,
+    [userEmail]
+  );
+
+  // Only show walkthrough if not completed before for this user
+  useEffect(() => {
+    const checkWalkthrough = async () => {
+      try {
+        const seen = await AsyncStorage.getItem(walkthroughStorageKey);
+        setShowWalkthrough(!seen);
+      } catch (e) {
+        setShowWalkthrough(false);
+      }
+    };
+    checkWalkthrough();
+  }, [walkthroughStorageKey]);
 
   type TodayItem = {
     id: string;
@@ -256,11 +276,14 @@ export default function MainDashboard() {
       }, 300);
     } else {
       setShowWalkthrough(false);
+      // Persist completion so walkthrough shows only once per user
+      AsyncStorage.setItem(walkthroughStorageKey, "true").catch(() => {});
     }
   };
 
   const handleSkip = () => {
     setShowWalkthrough(false);
+    AsyncStorage.setItem(walkthroughStorageKey, "true").catch(() => {});
   };
 
   const handlePrevious = () => {
