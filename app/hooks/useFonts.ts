@@ -4,6 +4,7 @@ import { useEffect } from "react";
 export function useFonts() {
   const [fontsLoaded, fontError] = useExpoFonts({
     Evra: require("../assets/fonts/evra.otf"),
+    SourceSansPro: require("../assets/fonts/source-sans-pro.otf"),
   });
 
   useEffect(() => {
@@ -12,7 +13,7 @@ export function useFonts() {
     }
     if (fontsLoaded) {
       console.log("Fonts loaded successfully");
-      console.log("Available font families:", ["Evra"]);
+      console.log("Available font families:", ["Evra", "SourceSansPro"]);
     }
   }, [fontsLoaded, fontError]);
 

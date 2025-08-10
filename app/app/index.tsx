@@ -52,8 +52,8 @@ export default function Index() {
       >
         <EvraLogo size={80} />
         <Text
-          className="text-4xl font-bold mb-2"
-          style={{ color: "#114131", fontFamily: "Evra" }}
+          className="text-4xl mb-2"
+          style={{ color: "#114131", fontFamily: "SourceSansPro" }}
         >
           Evra
         </Text>

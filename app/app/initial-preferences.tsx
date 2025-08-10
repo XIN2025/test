@@ -97,7 +97,7 @@ export default function InitialPreferences() {
   // Form handlers
   const handleInputChange = (
     field: keyof PreferencesFormData,
-    value: string | boolean
+    value: string | boolean | string[]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
@@ -109,12 +109,12 @@ export default function InitialPreferences() {
   const toggleSelection = (
     item: string,
     list: string[],
-    setList: React.Dispatch<React.SetStateAction<string[]>>
+    apply: (newList: string[]) => void
   ) => {
     if (list.includes(item)) {
-      setList(list.filter((i) => i !== item));
+      apply(list.filter((i) => i !== item));
     } else {
-      setList([...list, item]);
+      apply([...list, item]);
     }
   };
 
@@ -138,7 +138,13 @@ export default function InitialPreferences() {
       await userApi.savePreferences(preferences);
 
       console.log("Success! Navigating to dashboard...");
-      router.push("./dashboard/main");
+      const normalizedEmail = Array.isArray(email)
+        ? email[0]
+        : String(email || "");
+      router.push({
+        pathname: "./dashboard/main",
+        params: { email: normalizedEmail },
+      });
     } catch (err) {
       const errorMessage = handleApiError(err);
       Alert.alert("Failed to save preferences.", errorMessage);
@@ -158,11 +164,19 @@ export default function InitialPreferences() {
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="px-4">
         {/* Logo */}
         <View className="items-center mb-8 mt-8">
-          <EvraLogo size={64} className="mb-4" />
-          <Text className="text-3xl font-bold" style={{ color: "#059669" }}>
+          <View style={{ marginBottom: 16 }}>
+            <EvraLogo size={64} />
+          </View>
+          <Text
+            className="text-3xl font-bold"
+            style={{ color: "#114131", fontFamily: "SourceSansPro" }}
+          >
             Evra
           </Text>
-          <Text className="mt-1" style={{ color: "#059669" }}>
+          <Text
+            className="mt-1"
+            style={{ color: "#114131", fontFamily: "Evra" }}
+          >
             Your Agent for Better Health
           </Text>
         </View>

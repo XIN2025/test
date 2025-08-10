@@ -118,39 +118,84 @@ class DocumentProcessor:
 
     def _extract_text_from_pdf(self, file_content: bytes) -> str:
         """Extract text content from PDF bytes"""
+        tmp_path = None
+        # Prefer unstructured when available; fall back to PyPDF2 if import/runtime fails
         try:
-            from unstructured.partition.pdf import partition_pdf
+            try:
+                from unstructured.partition.pdf import partition_pdf  # type: ignore
+            except ImportError as ie:
+                logger.warning(
+                    "unstructured not available, falling back to PyPDF2 for PDF text extraction: %s",
+                    ie,
+                )
+                raise
+
+            # Save PDF to temp file for unstructured
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                tmp.write(file_content)
+                tmp_path = tmp.name
+
+            try:
+                # Extract elements from PDF
+                elements = partition_pdf(
+                    filename=tmp_path,
+                    extract_images_in_pdf=False,  # We don't need images for text extraction
+                    infer_table_structure=True,
+                    chunking_strategy="by_title",
+                    max_characters=4000,
+                    new_after_n_chars=3800,
+                    combine_text_under_n_chars=2000,
+                )
+
+                # Extract text from elements
+                text_chunks = []
+                for element in elements:
+                    if hasattr(element, 'text') and getattr(element, 'text'):
+                        text_chunks.append(element.text)
+
+                text = "\n\n".join(text_chunks)
+                if text.strip():
+                    return text
+                logger.info("unstructured returned no text; will try PyPDF2 fallback")
+            except Exception as ue:
+                # If unstructured is installed but fails (missing system deps, etc.), fall back
+                logger.warning(
+                    "unstructured partition failed; falling back to PyPDF2. Error: %s",
+                    ue,
+                )
         except ImportError:
-            raise ImportError("unstructured library not installed. Please install with: pip install unstructured")
-        
-        # Save PDF to temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(file_content)
-            tmp_path = tmp.name
-        
-        try:
-            # Extract elements from PDF
-            elements = partition_pdf(
-                filename=tmp_path,
-                extract_images_in_pdf=False,  # We don't need images for text extraction
-                infer_table_structure=True,
-                chunking_strategy="by_title",
-                max_characters=4000,
-                new_after_n_chars=3800,
-                combine_text_under_n_chars=2000,
-            )
-            
-            # Extract text from elements
-            text_chunks = []
-            for element in elements:
-                if hasattr(element, 'text') and element.text:
-                    text_chunks.append(element.text)
-            
-            return "\n\n".join(text_chunks)
+            # Continue to PyPDF2 fallback
+            pass
         finally:
-            # Clean up temp file
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+            # Clean up temp file created for unstructured, if any
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+
+        # PyPDF2 fallback path (pure-Python, fewer system deps)
+        try:
+            from PyPDF2 import PdfReader  # type: ignore
+            import io
+
+            reader = PdfReader(io.BytesIO(file_content))
+            text_chunks = []
+            for page in reader.pages:
+                try:
+                    extracted = page.extract_text() or ""
+                except Exception as pe:
+                    logger.debug("PyPDF2 failed on a page: %s", pe)
+                    extracted = ""
+                if extracted:
+                    text_chunks.append(extracted)
+            text = "\n\n".join(text_chunks)
+            if not text.strip():
+                raise ValueError("Could not extract any text from PDF using available parsers")
+            return text
+        except Exception as pe:
+            logger.error("PDF text extraction failed (PyPDF2 fallback): %s", pe)
+            raise
 
     def _extract_entities_and_relationships(self, text: str, progress_callback: Optional[Callable] = None) -> Tuple[List[Dict], List[Dict]]:
         """Extract entities and relationships from text using LLM with progress updates"""

@@ -1,6 +1,5 @@
-from datetime import time, datetime
+from datetime import datetime
 from typing import Dict, Optional
-from bson import ObjectId
 from ..schemas.preferences import PillarType, TimePreference, PillarTimePreferences
 from .db import get_db
 import logging
@@ -18,9 +17,10 @@ class PreferencesService:
             # Convert all time objects to strings for storage
             preferences_dict = {}
             for pillar, pref in preferences.items():
+                # preferred_time is already a validated "HH:MM" string in the schema
                 preferences_dict[pillar.value] = {
                     **pref.dict(),
-                    "preferred_time": pref.preferred_time.strftime("%H:%M")
+                    "preferred_time": pref.preferred_time
                 }
             
             # Fetch existing preferences and merge with new ones to avoid overwriting
@@ -47,10 +47,8 @@ class PreferencesService:
             # Convert stored time strings back to time objects
             converted_preferences = {}
             for pillar, pref in preferences["preferences"].items():
+                # Keep preferred_time as validated string per schema
                 pref_copy = pref.copy()
-                time_str = pref_copy.pop("preferred_time")
-                hour, minute = map(int, time_str.split(":"))
-                pref_copy["preferred_time"] = time(hour, minute)
                 converted_preferences[PillarType(pillar)] = TimePreference(**pref_copy)
 
             return PillarTimePreferences(
@@ -65,9 +63,10 @@ class PreferencesService:
         """Update time preference for a specific pillar."""
         try:
             # Convert time object to string for storage
+            # preferred_time is already a validated "HH:MM" string in the schema
             preference_dict = {
                 **preference.dict(),
-                "preferred_time": preference.preferred_time.strftime("%H:%M")
+                "preferred_time": preference.preferred_time
             }
             
             result = self.preferences_collection.update_one(

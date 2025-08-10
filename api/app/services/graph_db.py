@@ -64,9 +64,10 @@ class GraphDatabaseService:
     def create_relationship(self, from_entity: str, relationship_type: str, to_entity: str, properties: Dict = None) -> None:
         """Create a relationship between two entities"""
         properties = properties or {}
+        rel_type = self._sanitize_rel_type(relationship_type)
         cypher_query = (
             "MATCH (from {name: $from_name}), (to {name: $to_name}) "
-            f"MERGE (from)-[r:{relationship_type}]->(to) "
+            f"MERGE (from)-[r:{rel_type}]->(to) "
             "SET r += $properties "
             "RETURN r"
         )
@@ -76,6 +77,43 @@ class GraphDatabaseService:
             to_name=to_entity,
             properties=properties
         )
+
+    def delete_relationship(self, from_entity: str, relationship_type: str, to_entity: str) -> None:
+        """Delete a specific relationship if it exists"""
+        rel_type = self._sanitize_rel_type(relationship_type)
+        cypher_query = f"MATCH (from {{name: $from_name}})-[r:{rel_type}]->(to {{name: $to_name}}) DELETE r"
+        try:
+            self.driver.execute_query(
+                cypher_query,
+                from_name=from_entity,
+                to_name=to_entity,
+            )
+        except Exception as e:
+            logger.error(f"Failed to delete relationship {from_entity}-[{relationship_type}]->{to_entity}: {e}")
+
+    def delete_entity_if_isolated(self, name: str) -> None:
+        """Delete an entity node only if it has no remaining relationships"""
+        # Use list comprehension counting pattern occurrences instead of deprecated size((e)--()) form
+        cypher_query = (
+            "MATCH (e {name: $name}) "
+            "WITH e, size([(e)--() | 1]) AS deg "
+            "WHERE deg = 0 DELETE e"
+        )
+        try:
+            self.driver.execute_query(cypher_query, name=name)
+        except Exception as e:
+            logger.error(f"Failed to delete entity {name}: {e}")
+
+    def _sanitize_rel_type(self, rel_type: str) -> str:
+        """Ensure relationship type is a valid Cypher identifier (letters, digits, underscore)."""
+        import re
+        if not rel_type:
+            return "RELATED_TO"
+        cleaned = re.sub(r"[^A-Za-z0-9_]", "_", rel_type)
+        # Relationship type cannot start with a digit
+        if cleaned and cleaned[0].isdigit():
+            cleaned = f"R_{cleaned}"
+        return cleaned or "RELATED_TO"
 
     def get_context(self, query: str, max_hops: int = 2) -> List[str]:
         """Get relevant context using semantic search and graph exploration

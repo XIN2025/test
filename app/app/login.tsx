@@ -18,23 +18,10 @@ interface ApiResponse {
   success?: boolean;
 }
 
-// TypeScript interfaces
-interface LoginFormData {
-  email: string;
-}
-
-interface ValidationErrors {
-  email?: string;
-}
-
-interface ApiResponse {
-  detail?: string;
-  success?: boolean;
-}
-
 export default function LoginScreen() {
   const [formData, setFormData] = useState<LoginFormData>({ email: "" });
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -69,6 +56,9 @@ export default function LoginScreen() {
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+    if (apiError) {
+      setApiError(null);
+    }
   };
 
   const handleLogin = async () => {
@@ -78,6 +68,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
+      setApiError(null);
       const API_BASE_URL =
         Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${API_BASE_URL}/login`, {
@@ -86,10 +77,32 @@ export default function LoginScreen() {
         body: JSON.stringify({ email: formData.email.trim() }),
       });
 
-      const data: ApiResponse = await response.json();
+      // Parse JSON if available, but don't crash if not
+      let data: ApiResponse | null = null;
+      try {
+        data = (await response.json()) as ApiResponse;
+      } catch (_) {
+        data = null;
+      }
 
       if (!response.ok) {
-        throw new Error(data.detail || "Login failed. Please try again.");
+        const backendMsg = data?.detail || (data as any)?.message;
+        const message = backendMsg || "Login failed. Please try again.";
+
+        // Map known errors to field/general errors
+        if (response.status === 404 && backendMsg) {
+          if (/not\s+found/i.test(backendMsg) || /email/i.test(backendMsg)) {
+            setErrors((prev) => ({ ...prev, email: backendMsg }));
+          }
+        }
+        if (response.status === 403 && backendMsg) {
+          // User not verified -> show as banner
+          setApiError(backendMsg);
+        }
+        if (response.status !== 404 && response.status !== 403) {
+          setApiError(message);
+        }
+        return;
       }
 
       Alert.alert("Success", "OTP sent to your email.");
@@ -102,7 +115,7 @@ export default function LoginScreen() {
         err instanceof Error
           ? err.message
           : "An unexpected error occurred. Please try again.";
-      Alert.alert("Login Error", errorMessage);
+      setApiError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -117,8 +130,8 @@ export default function LoginScreen() {
       <View className="items-center mb-8">
         <EvraLogo size={64} />
         <Text
-          className="text-3xl font-bold"
-          style={{ color: "#114131", fontFamily: "Evra" }}
+          className="text-3xl"
+          style={{ color: "#114131", fontFamily: "SourceSansPro" }}
         >
           Evra
         </Text>
@@ -134,6 +147,11 @@ export default function LoginScreen() {
         <Text className="text-gray-500 mb-6 text-center">
           Sign in to continue your health journey
         </Text>
+        {apiError ? (
+          <View className="w-full rounded-md border border-red-400 bg-red-100 p-3 mb-4">
+            <Text className="text-red-800 text-sm">{apiError}</Text>
+          </View>
+        ) : null}
         {/* Email Input */}
         <View className="w-full mb-4">
           <Text className="mb-1 text-gray-700">Email</Text>

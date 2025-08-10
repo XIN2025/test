@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, time
 from typing import List, Optional, Dict, Any, Tuple
 from bson import ObjectId
 from ..schemas.goals import GoalCreate, GoalUpdate, Goal, WeeklyReflection, GoalStats
-from ..schemas.planner import ActionPlan
+from ..schemas.planner import ActionPlan, WeeklyActionSchedule
 from ..schemas.scheduler import WeeklySchedule
 from ..schemas.preferences import PillarTimePreferences
 from .db import get_db
@@ -219,7 +219,80 @@ class GoalsService:
                 )
             )
 
-            # Store action plan and schedule
+            # Distribute weekly schedule to individual action items
+            for action_item in action_plan.action_items:
+                action_slots = {}
+                pillar_times = {}
+                total_duration = timedelta()
+
+                for day, schedule in weekly_schedule.daily_schedules.items():
+                    day_slots = []
+                    for slot in schedule.time_slots:
+                        if slot.action_item == action_item.title:
+                            # Convert duration to string in HH:MM:SS format
+                            hours = int(slot.duration.total_seconds() // 3600)
+                            minutes = int((slot.duration.total_seconds() % 3600) // 60)
+                            seconds = int(slot.duration.total_seconds() % 60)
+                            duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+                            day_slots.append({
+                                "start_time": slot.start_time.strftime("%H:%M"),
+                                "end_time": slot.end_time.strftime("%H:%M"),
+                                "duration": duration_str,
+                                "pillar": slot.pillar,
+                                "frequency": slot.frequency,
+                                "priority": slot.priority,
+                                "health_notes": slot.health_notes or []
+                            })
+                            total_duration += slot.duration
+                            if slot.pillar:
+                                pillar_times[slot.pillar] = pillar_times.get(slot.pillar, timedelta()) + slot.duration
+
+                    if day_slots:
+                        # Calculate total duration for the day's slots
+                        day_total = sum((slot.duration for slot in schedule.time_slots 
+                                      if slot.action_item == action_item.title), 
+                                      timedelta())
+                        
+                        # Convert day_total to string in HH:MM:SS format
+                        hours = int(day_total.total_seconds() // 3600)
+                        minutes = int((day_total.total_seconds() % 3600) // 60)
+                        seconds = int(day_total.total_seconds() % 60)
+                        day_total_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+                        action_slots[day] = {
+                            "date": schedule.date.isoformat(),
+                            "time_slots": day_slots,
+                            "total_duration": day_total_str
+                        }
+
+                # Calculate pillar distribution for this action item
+                total_seconds = total_duration.total_seconds()
+                pillar_distribution = {
+                    pillar: duration.total_seconds() / total_seconds
+                    for pillar, duration in pillar_times.items()
+                } if total_seconds > 0 else {}
+
+                # Convert total_duration to string in HH:MM:SS format
+                total_hours = int(total_duration.total_seconds() // 3600)
+                total_minutes = int((total_duration.total_seconds() % 3600) // 60)
+                total_seconds = int(total_duration.total_seconds() % 60)
+                total_duration_str = f"{total_hours:02d}:{total_minutes:02d}:{total_seconds:02d}"
+
+                # Set the weekly schedule for this action item using the Pydantic model
+                action_item.weekly_schedule = WeeklyActionSchedule(
+                    monday=action_slots.get("monday"),
+                    tuesday=action_slots.get("tuesday"),
+                    wednesday=action_slots.get("wednesday"),
+                    thursday=action_slots.get("thursday"),
+                    friday=action_slots.get("friday"),
+                    saturday=action_slots.get("saturday"),
+                    sunday=action_slots.get("sunday"),
+                    total_weekly_duration=total_duration_str,
+                    pillar_distribution=pillar_distribution
+                )
+
+            # Store action plan and schedule (keeping original format for backward compatibility)
             stored_plan = self._store_action_plan(goal_id, user_email, action_plan)
             stored_schedule = self._store_weekly_schedule(goal_id, user_email, weekly_schedule)
 
@@ -325,21 +398,21 @@ class GoalsService:
         week_end = week_start + timedelta(days=7)
         goals = self.get_user_goals(user_email, week_start)
         reflection = self.get_weekly_reflection(user_email, week_start)
-        
-        # Get action plans and schedules for each goal
+
+        # Get action plans and schedules for each goal (goals are dicts already)
         goals_with_plans = []
         for goal in goals:
-            goal_dict = goal.dict()
-            goal_plan = self.get_goal_plan(str(goal.id), user_email)
+            goal_dict = dict(goal)
+            goal_plan = self.get_goal_plan(goal_dict.get("id"), user_email)
             if goal_plan:
                 goal_dict["action_plan"] = goal_plan["action_plan"]
                 goal_dict["weekly_schedule"] = goal_plan["weekly_schedule"]
             goals_with_plans.append(goal_dict)
 
         total_goals = len(goals)
-        completed_goals = len([g for g in goals if g.completed])
+        completed_goals = len([g for g in goals if g.get("completed")])
         completion_rate = (completed_goals / total_goals * 100) if total_goals > 0 else 0
-        
+
         return {
             "week_start": week_start,
             "week_end": week_end,
@@ -350,4 +423,4 @@ class GoalsService:
                 "completed_goals": completed_goals,
                 "completion_rate": completion_rate
             }
-        } 
+        }

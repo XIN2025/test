@@ -3,34 +3,59 @@ import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
 import Constants from "expo-constants";
-import { getFontFamily } from "../constants/fonts";
 
 export default function VerifyRegistrationOtpScreen() {
   const { email } = useLocalSearchParams();
   const [otp, setOtp] = useState("");
+  const [errors, setErrors] = useState<{ otp?: string }>({});
+  const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleVerify = async () => {
     setLoading(true);
     try {
+      setApiError(null);
+      setErrors({});
+      const normalizedEmail = Array.isArray(email)
+        ? email[0]
+        : String(email || "");
       const API_BASE_URL =
         Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${API_BASE_URL}/verify-registration-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
+        body: JSON.stringify({ email: normalizedEmail, otp }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Verification failed");
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch (_) {
+        data = null;
+      }
+      if (!response.ok) {
+        const backendMsg = data?.detail || data?.message;
+        const msg = backendMsg || "Verification failed";
+        if (
+          response.status === 400 &&
+          /invalid\s+otp/i.test(String(backendMsg))
+        ) {
+          setErrors({ otp: backendMsg });
+        }
+        setApiError(msg);
+        return;
+      }
       Alert.alert(
         "Success",
         "Registration verified! Please set your preferences."
       );
-      router.push({ pathname: "./initial-preferences", params: { email } });
+      router.push({
+        pathname: "./initial-preferences",
+        params: { email: normalizedEmail },
+      });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
-      Alert.alert("Verification Error", error.message);
+      setApiError(error.message);
     } finally {
       setLoading(false);
     }
@@ -42,8 +67,8 @@ export default function VerifyRegistrationOtpScreen() {
       <View className="items-center mb-8">
         <EvraLogo size={64} />
         <Text
-          className="text-3xl font-bold"
-          style={{ color: "#114131", fontFamily: "Evra" }}
+          className="text-3xl"
+          style={{ color: "#114131", fontFamily: "SourceSansPro" }}
         >
           Evra
         </Text>
@@ -59,17 +84,31 @@ export default function VerifyRegistrationOtpScreen() {
         <Text className="text-gray-500 mb-6 text-center">
           Enter the OTP sent to your email
         </Text>
+        {apiError ? (
+          <View className="w-full rounded-md border border-red-400 bg-red-100 p-3 mb-4">
+            <Text className="text-red-800 text-sm">{apiError}</Text>
+          </View>
+        ) : null}
         {/* OTP Input */}
         <View className="w-full mb-4">
           <Text className="mb-1 text-gray-700">OTP</Text>
           <TextInput
-            className="border border-gray-300 rounded-md px-4 py-3 w-full text-base bg-gray-50 focus:border-green-500"
+            className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 focus:border-green-500 ${
+              errors.otp ? "border-red-500" : "border-gray-300"
+            }`}
             placeholder="Enter OTP"
             value={otp}
-            onChangeText={setOtp}
+            onChangeText={(value) => {
+              setOtp(value);
+              if (errors.otp) setErrors({});
+              if (apiError) setApiError(null);
+            }}
             keyboardType="numeric"
             editable={!loading}
           />
+          {errors.otp ? (
+            <Text className="text-red-500 text-sm mt-1">{errors.otp}</Text>
+          ) : null}
         </View>
         {/* Verify Button */}
         <TouchableOpacity

@@ -8,10 +8,15 @@ import {
   GoalStats,
   ActionPlan,
 } from "../types/goals";
-import { PillarTimePreferences } from "../types/preferences";
+import {
+  PillarTimePreferences,
+  PillarType,
+  TimePreference,
+} from "../types/preferences";
 import Constants from "expo-constants";
 
-const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL =
+  Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -217,7 +222,9 @@ class GoalsApiService {
   }
 
   // File Upload Operations
-  async uploadDocument(file: File | { uri: string; name: string; type: string }): Promise<{ upload_id: string }> {
+  async uploadDocument(
+    file: File | { uri: string; name: string; type: string }
+  ): Promise<{ upload_id: string }> {
     const formData = new FormData();
 
     if (file instanceof File) {
@@ -251,13 +258,43 @@ class GoalsApiService {
     relationships_count?: number;
   }> {
     const response = await fetch(`${API_BASE_URL}/upload/progress/${uploadId}`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to get progress: ${response.status}`);
     }
 
     const data = await response.json();
     return data.progress;
+  }
+
+  async getUploadedFiles(): Promise<
+    Array<{
+      id: string;
+      upload_id: string;
+      filename: string;
+      size: number;
+      extension: string;
+      status: string;
+      entities_count: number;
+      relationships_count: number;
+    }>
+  > {
+    const response = await fetch(`${API_BASE_URL}/upload/files`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch uploaded files: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.files || [];
+  }
+
+  async deleteUploadedFile(uploadId: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/upload/files/${uploadId}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Failed to delete file: ${response.status} ${text}`);
+    }
   }
 
   async testBackendConnection(): Promise<boolean> {
@@ -267,6 +304,23 @@ class GoalsApiService {
     } catch (error) {
       return false;
     }
+  }
+
+  // Preferences
+  async getTimePreferences(
+    userEmail: string
+  ): Promise<PillarTimePreferences | null> {
+    const params = new URLSearchParams({ user_email: userEmail });
+    const res = await this.makeRequest<any>(`/api/preferences/time?${params}`);
+    const pref = res?.data?.preferences;
+    return pref || null;
+  }
+
+  async setTimePreferences(prefs: PillarTimePreferences): Promise<void> {
+    await this.makeRequest(`/api/preferences/time`, {
+      method: "POST",
+      body: JSON.stringify(prefs),
+    });
   }
 }
 

@@ -21,28 +21,13 @@ interface ApiResponse {
   success?: boolean;
 }
 
-// TypeScript interfaces
-interface RegisterFormData {
-  name: string;
-  email: string;
-}
-
-interface ValidationErrors {
-  name?: string;
-  email?: string;
-}
-
-interface ApiResponse {
-  detail?: string;
-  success?: boolean;
-}
-
 export default function RegisterScreen() {
   const [formData, setFormData] = useState<RegisterFormData>({
     name: "",
     email: "",
   });
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -95,6 +80,9 @@ export default function RegisterScreen() {
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+    if (apiError) {
+      setApiError(null);
+    }
   };
 
   const handleRegister = async () => {
@@ -104,6 +92,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
+      setApiError(null);
       const API_BASE_URL =
         Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
       const response = await fetch(`${API_BASE_URL}/register`, {
@@ -115,12 +104,26 @@ export default function RegisterScreen() {
         }),
       });
 
-      const data: ApiResponse = await response.json();
+      // Try to parse any JSON error payload
+      let data: ApiResponse | null = null;
+      try {
+        data = (await response.json()) as ApiResponse;
+      } catch (_) {
+        data = null;
+      }
 
       if (!response.ok) {
-        throw new Error(
-          data.detail || "Registration failed. Please try again."
-        );
+        const backendMsg = data?.detail || (data as any)?.message;
+        const message = backendMsg || "Registration failed. Please try again.";
+
+        // Map known 400 detail to the email field error if applicable
+        if (response.status === 400 && backendMsg) {
+          if (/email/i.test(backendMsg)) {
+            setErrors((prev) => ({ ...prev, email: backendMsg }));
+          }
+        }
+        setApiError(message);
+        return;
       }
 
       Alert.alert("Success", "OTP sent to your email.");
@@ -133,7 +136,7 @@ export default function RegisterScreen() {
         err instanceof Error
           ? err.message
           : "An unexpected error occurred. Please try again.";
-      Alert.alert("Registration Error", errorMessage);
+      setApiError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -150,8 +153,8 @@ export default function RegisterScreen() {
       <View className="items-center mb-8">
         <EvraLogo size={64} />
         <Text
-          className="text-3xl font-bold"
-          style={{ color: "#114131", fontFamily: "Evra" }}
+          className="text-3xl"
+          style={{ color: "#114131", fontFamily: "SourceSansPro" }}
         >
           Evra
         </Text>
@@ -167,6 +170,11 @@ export default function RegisterScreen() {
         <Text className="text-gray-500 mb-6 text-center">
           Sign up to start your health journey
         </Text>
+        {apiError ? (
+          <View className="w-full rounded-md border border-red-400 bg-red-100 p-3 mb-4">
+            <Text className="text-red-800 text-sm">{apiError}</Text>
+          </View>
+        ) : null}
         {/* Name Input */}
         <View className="w-full mb-4">
           <Text className="mb-1 text-gray-700">Name</Text>

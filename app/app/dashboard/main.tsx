@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 // @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
 // @ts-ignore
@@ -19,7 +19,6 @@ import {
   Droplets,
   MessageCircle,
   Calendar,
-  Pill,
   TrendingUp,
   User,
   Settings,
@@ -29,6 +28,8 @@ import {
 import Card from "@/components/ui/card";
 // @ts-ignore
 import { tw } from "nativewind";
+import { useGoals } from "@/hooks/useGoals";
+import { useUser } from "@/context/UserContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -79,9 +80,16 @@ const walkthrough = [
 
 export default function MainDashboard() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const { userEmail: ctxEmail, userName: ctxName } = useUser();
+  const userEmail = (params?.email as string) || ctxEmail || "";
+  const userName = (params?.name as string) || ctxName || "";
+  const { goals } = useGoals({ userEmail });
   const [showWalkthrough, setShowWalkthrough] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [animation] = useState(new Animated.Value(1));
+  const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
+  const [showAllTodayItems, setShowAllTodayItems] = useState(false);
   const healthMetrics = [
     {
       icon: Heart,
@@ -113,12 +121,82 @@ export default function MainDashboard() {
     },
   ];
 
-  const todaysTasks = [
-    { task: "Take morning vitamins", completed: true },
-    { task: "Drink 2 more glasses of water", completed: false },
-    { task: "Evening walk (30 min)", completed: false },
-    { task: "Log dinner", completed: false },
-  ];
+  // Removed local demo tasks; weekly goals are now sourced from API via useGoals
+
+  // Determine the key for today's day name used in schedules
+  const dayKey = useMemo(() => {
+    const day = new Date().getDay(); // 0=Sun..6=Sat
+    return (
+      [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+      ][day] || "monday"
+    );
+  }, []);
+
+  type TodayItem = {
+    id: string;
+    title: string;
+    start_time?: string;
+    end_time?: string;
+    goalTitle?: string;
+  };
+
+  // Build today's action items from goals data
+  const todaysItems: TodayItem[] = useMemo(() => {
+    const items: TodayItem[] = [];
+    (goals as any[]).forEach((g: any) => {
+      // 1) From goal.weekly_schedule.daily_schedules[dayKey]
+      const ds = g?.weekly_schedule?.daily_schedules?.[dayKey];
+      if (ds?.time_slots?.length) {
+        ds.time_slots.forEach((ts: any, idx: number) => {
+          items.push({
+            id: `${g.id}-top-${dayKey}-${idx}`,
+            title: ts.action_item || g.title,
+            start_time: ts.start_time,
+            end_time: ts.end_time,
+            goalTitle: g.title,
+          });
+        });
+      }
+
+      // 2) From goal.action_plan.action_items[].weekly_schedule[dayKey].time_slots
+      const actionItems = g?.action_plan?.action_items || [];
+      actionItems.forEach((ai: any, aIdx: number) => {
+        const w = ai?.weekly_schedule?.[dayKey];
+        const slots = w?.time_slots || [];
+        slots.forEach((ts: any, sIdx: number) => {
+          items.push({
+            id: `${g.id}-ai-${aIdx}-${dayKey}-${sIdx}`,
+            title: ai.title,
+            start_time: ts.start_time,
+            end_time: ts.end_time,
+            goalTitle: g.title,
+          });
+        });
+      });
+    });
+
+    // Sort by time if available
+    items.sort((a, b) =>
+      (a.start_time || "").localeCompare(b.start_time || "")
+    );
+    return items;
+  }, [goals, dayKey]);
+
+  const toggleItemCompleted = (id: string) => {
+    setCompletedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const animateSpotlight = (toValue: number) => {
     Animated.timing(animation, {
@@ -289,7 +367,7 @@ export default function MainDashboard() {
               </View>
               <View>
                 <Text className="font-semibold text-gray-800">
-                  Good morning, John!
+                  {`Good morning, ${userName || "User"}!`}
                 </Text>
                 <Text className="text-sm text-gray-600">
                   Ready for a healthy day?
@@ -311,7 +389,12 @@ export default function MainDashboard() {
               {/* Quick Actions - Left Side */}
               <View className="w-1/2 pr-2">
                 <TouchableOpacity
-                  onPress={() => router.push("./chat")}
+                  onPress={() =>
+                    router.push({
+                      pathname: "./chat",
+                      params: { email: userEmail, name: userName },
+                    })
+                  }
                   className="mb-3"
                 >
                   <Card className="border-0">
@@ -413,44 +496,90 @@ export default function MainDashboard() {
               </View>
             </Card>
 
-            {/* Today's Tasks */}
+            {/* Today’s Action Items (collapsible) */}
             <Card className="border-0">
               <View className="p-4">
                 <View className="flex-row items-center mb-3">
-                  <Pill size={20} color="#114131" className="mr-2" />
                   <Text className="text-lg font-semibold text-gray-800">
-                    Today's Tasks
+                    Today’s Action Items
                   </Text>
                 </View>
-                {todaysTasks.map((item, index) => (
-                  <View key={index} className="flex-row items-center mb-2">
+                {todaysItems.length === 0 ? (
+                  <Text className="text-sm text-gray-600">
+                    No scheduled items for today.
+                  </Text>
+                ) : (
+                  (showAllTodayItems
+                    ? todaysItems
+                    : todaysItems.slice(0, 3)
+                  ).map((it) => (
                     <View
-                      className={`w-4 h-4 rounded-full border-2 items-center justify-center mr-3 ${
-                        item.completed ? "border-gray-300" : "border-gray-300"
-                      }`}
+                      key={it.id}
+                      className="flex-row items-center justify-between mb-3"
                     >
-                      {item.completed && (
-                        <View
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: "#114131" }}
-                        />
-                      )}
+                      <View className="flex-row items-center flex-1">
+                        <TouchableOpacity
+                          onPress={() => toggleItemCompleted(it.id)}
+                          className="w-5 h-5 rounded border mr-3 items-center justify-center"
+                          style={{ borderColor: "#94a3b8" }}
+                        >
+                          {completedItems.has(it.id) && (
+                            <View
+                              className="w-3 h-3 rounded"
+                              style={{ backgroundColor: "#114131" }}
+                            />
+                          )}
+                        </TouchableOpacity>
+                        <View className="flex-1">
+                          <Text
+                            className={`text-sm ${
+                              completedItems.has(it.id)
+                                ? "text-gray-500 line-through"
+                                : "text-gray-800"
+                            }`}
+                          >
+                            {it.title}
+                          </Text>
+                          {it.goalTitle && (
+                            <Text className="text-xs text-gray-500">
+                              {it.goalTitle}
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                      <View className="items-end ml-3">
+                        <Text className="text-xs text-gray-600 font-medium">
+                          {it.start_time && it.end_time
+                            ? `${it.start_time} - ${it.end_time}`
+                            : it.start_time || it.end_time || ""}
+                        </Text>
+                      </View>
                     </View>
+                  ))
+                )}
+
+                {todaysItems.length > 3 && (
+                  <TouchableOpacity
+                    onPress={() => setShowAllTodayItems((v) => !v)}
+                    className="mt-1 self-start px-3 py-1 rounded-full"
+                    style={{ backgroundColor: "#e6f4f1" }}
+                  >
                     <Text
-                      className={`text-sm ${
-                        item.completed
-                          ? "text-gray-500 line-through"
-                          : "text-gray-800"
-                      }`}
+                      className="text-xs font-medium"
+                      style={{ color: "#114131" }}
                     >
-                      {item.task}
+                      {showAllTodayItems
+                        ? "Show less"
+                        : `Show all (${todaysItems.length})`}
                     </Text>
-                  </View>
-                ))}
+                  </TouchableOpacity>
+                )}
               </View>
             </Card>
 
-            {/* Weekly Goals Summary */}
+            {/* Removed Today's Tasks card */}
+
+            {/* Weekly Goals Summary (from goals endpoint) */}
             <Card className="border-0">
               <View className="p-4">
                 <View className="flex-row items-center justify-between mb-3">
@@ -468,48 +597,50 @@ export default function MainDashboard() {
                       className="text-xs font-medium"
                       style={{ color: "#114131" }}
                     >
-                      3/5
+                      {`${
+                        (goals || []).filter((g: any) => g.completed).length
+                      }/${(goals || []).length}`}
                     </Text>
                   </TouchableOpacity>
                 </View>
-                <View className="space-y-2">
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center flex-1">
+                {(goals || []).length === 0 ? (
+                  <Text className="text-sm text-gray-600">No goals yet.</Text>
+                ) : (
+                  <View className="space-y-2">
+                    {(goals as any[]).slice(0, 5).map((g: any) => (
                       <View
-                        className="w-2 h-2 rounded-full mr-2"
-                        style={{ backgroundColor: "#114131" }}
-                      />
-                      <Text className="text-sm text-gray-700 flex-1">
-                        Complete 5 workouts
-                      </Text>
-                    </View>
-                    <Text className="text-xs text-gray-500">3/5</Text>
+                        key={g.id}
+                        className="flex-row items-center justify-between"
+                      >
+                        <View className="flex-row items-center flex-1">
+                          <View
+                            className="w-2 h-2 rounded-full mr-2"
+                            style={{
+                              backgroundColor: g.completed
+                                ? "#10b981"
+                                : "#94a3b8",
+                            }}
+                          />
+                          <Text className="text-sm text-gray-700 flex-1">
+                            {g.title}
+                          </Text>
+                        </View>
+                        <Text className="text-xs text-gray-500">
+                          {g.completed ? "Done" : ""}
+                        </Text>
+                      </View>
+                    ))}
                   </View>
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center flex-1">
-                      <View
-                        className="w-2 h-2 rounded-full mr-2"
-                        style={{ backgroundColor: "#114131" }}
-                      />
-                      <Text className="text-sm text-gray-700 flex-1">
-                        Drink 8 glasses daily
-                      </Text>
-                    </View>
-                    <Text className="text-xs text-gray-500">42/56</Text>
-                  </View>
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center flex-1">
-                      <View className="w-2 h-2 bg-gray-300 rounded-full mr-2" />
-                      <Text className="text-sm text-gray-700 flex-1">
-                        Read 30 min daily
-                      </Text>
-                    </View>
-                    <Text className="text-xs text-gray-500">180/210</Text>
-                  </View>
-                </View>
+                )}
                 <TouchableOpacity
                   className="mt-3 p-2 rounded-lg"
                   style={{ backgroundColor: "#e6f4f1" }}
+                  onPress={() =>
+                    router.push({
+                      pathname: "./goals",
+                      params: { email: userEmail, name: userName },
+                    })
+                  }
                 >
                   <Text
                     className="text-center text-sm font-medium"

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
-from datetime import datetime, timedelta
+from typing import List, Optional, Dict
+from datetime import datetime, timedelta, time
 from enum import Enum
 
 class ActionPriority(str, Enum):
@@ -8,11 +8,36 @@ class ActionPriority(str, Enum):
     MEDIUM = "medium"
     LOW = "low"
 
+class ActionTimeSlot(BaseModel):
+    start_time: str  # HH:MM format
+    end_time: str    # HH:MM format
+    duration: str    # HH:MM:SS format
+    pillar: Optional[str] = None
+    frequency: Optional[str] = None
+    priority: Optional[str] = None
+    health_notes: Optional[List[str]] = None
+
+class DailySchedule(BaseModel):
+    date: str  # ISO format
+    time_slots: List[ActionTimeSlot]
+    total_duration: str  # HH:MM:SS format
+
 class TimeEstimate(BaseModel):
     min_duration: timedelta
     max_duration: timedelta
     recommended_frequency: str  # e.g., "daily", "3 times per week", etc.
     time_of_day: Optional[str] = None  # e.g., "morning", "evening", etc.
+
+class WeeklyActionSchedule(BaseModel):
+    monday: Optional[DailySchedule] = None
+    tuesday: Optional[DailySchedule] = None
+    wednesday: Optional[DailySchedule] = None
+    thursday: Optional[DailySchedule] = None
+    friday: Optional[DailySchedule] = None
+    saturday: Optional[DailySchedule] = None
+    sunday: Optional[DailySchedule] = None
+    total_weekly_duration: str  # HH:MM:SS format
+    pillar_distribution: Dict[str, float]  # percentage of time per pillar
 
 class ActionItem(BaseModel):
     title: str
@@ -22,6 +47,7 @@ class ActionItem(BaseModel):
     prerequisites: Optional[List[str]] = None
     success_criteria: List[str]
     adaptation_notes: Optional[List[str]] = None  # Health-specific adaptations
+    weekly_schedule: Optional[WeeklyActionSchedule] = None  # New field
 
 class ActionPlan(BaseModel):
     goal_id: str
