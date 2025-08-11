@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Switch, TextInput, Modal, Alert } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  TextInput,
+  Modal,
+  Alert,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
@@ -30,9 +39,9 @@ export default function ProfileDashboard() {
   const params = useLocalSearchParams();
   const { email } = params;
   const actualEmail = email || contextEmail;
-  console.log('Profile params:', params);
-  console.log('Context email:', contextEmail);
-  console.log('Using email:', actualEmail);
+  console.log("Profile params:", params);
+  console.log("Context email:", contextEmail);
+  console.log("Using email:", actualEmail);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState({
@@ -41,7 +50,7 @@ export default function ProfileDashboard() {
     phone_number: "",
     date_of_birth: "",
     blood_type: "",
-    notifications_enabled: true
+    notifications_enabled: true,
   });
   const [editForm, setEditForm] = useState({
     full_name: "",
@@ -51,10 +60,11 @@ export default function ProfileDashboard() {
   });
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
-  const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
-  
+  const API_BASE_URL =
+    Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
+
   useEffect(() => {
-    console.log('API Base URL:', API_BASE_URL);
+    console.log("API Base URL:", API_BASE_URL);
   }, []);
 
   useEffect(() => {
@@ -65,19 +75,23 @@ export default function ProfileDashboard() {
 
   const fetchProfile = async () => {
     try {
-      const normalizedEmail = Array.isArray(actualEmail) ? actualEmail[0] : String(actualEmail || "");
-      console.log('Fetching profile for email:', normalizedEmail);
+      const normalizedEmail = Array.isArray(actualEmail)
+        ? actualEmail[0]
+        : String(actualEmail || "");
+      console.log("Fetching profile for email:", normalizedEmail);
       const response = await fetch(
-        `${API_BASE_URL}/api/user/profile?email=${encodeURIComponent(normalizedEmail)}`
+        `${API_BASE_URL}/api/user/profile?email=${encodeURIComponent(
+          normalizedEmail
+        )}`
       );
       const data = await response.json();
-      console.log('Profile API response:', { status: response.status, data });
+      console.log("Profile API response:", { status: response.status, data });
       if (!response.ok) {
         throw new Error(data.detail || "Failed to fetch profile");
       }
       setProfile(data);
       setNotificationsEnabled(data.notifications_enabled);
-      
+
       // Initialize edit form with current values, ensuring required fields are populated
       const newEditForm = {
         full_name: data.name || "",
@@ -87,20 +101,25 @@ export default function ProfileDashboard() {
       };
       setEditForm(newEditForm);
     } catch (error) {
-      Alert.alert("Error", error instanceof Error ? error.message : "Failed to fetch profile");
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to fetch profile"
+      );
     }
   };
 
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
-      const normalizedEmail = Array.isArray(actualEmail) ? actualEmail[0] : String(actualEmail || "");
-      console.log('Saving profile for email:', normalizedEmail);
+      const normalizedEmail = Array.isArray(actualEmail)
+        ? actualEmail[0]
+        : String(actualEmail || "");
+      console.log("Saving profile for email:", normalizedEmail);
 
       // Start with only the required fields
       const updateData: Record<string, any> = {
         email: normalizedEmail,
-        full_name: editForm.full_name
+        full_name: editForm.full_name,
       };
 
       // Only add fields that have actually been changed from their current profile values
@@ -116,63 +135,76 @@ export default function ProfileDashboard() {
         // Only include blood_type if it's different from current value
         updateData.blood_type = editForm.blood_type || null;
       }
-      
+
       // Only include notifications if they've changed
       if (notificationsEnabled !== profile.notifications_enabled) {
         updateData.notifications_enabled = notificationsEnabled;
       }
-      
+
       updateData.notifications_enabled = notificationsEnabled;
 
       // Only validate fields that are being updated and have values
-      if ('phone_number' in updateData && updateData.phone_number) {
+      if ("phone_number" in updateData && updateData.phone_number) {
         if (!/^\+?1?\d{10,14}$/.test(updateData.phone_number)) {
           Alert.alert("Error", "Phone number must be at least 10 digits");
           return;
         }
       }
 
-      if ('date_of_birth' in updateData && updateData.date_of_birth) {
+      if ("date_of_birth" in updateData && updateData.date_of_birth) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(updateData.date_of_birth)) {
           Alert.alert("Error", "Date of birth must be in YYYY-MM-DD format");
           return;
         }
       }
 
-      if ('blood_type' in updateData && updateData.blood_type) {
+      if ("blood_type" in updateData && updateData.blood_type) {
         if (!/^(A|B|AB|O)[+-]$/.test(updateData.blood_type)) {
-          Alert.alert("Error", "Blood type must be A+, A-, B+, B-, AB+, AB-, O+, or O-");
+          Alert.alert(
+            "Error",
+            "Blood type must be A+, A-, B+, B-, AB+, AB-, O+, or O-"
+          );
           return;
         }
       }
 
-      console.log('Attempting to update profile with data:', updateData);
+      console.log("Attempting to update profile with data:", updateData);
       try {
-        const response = await fetch(`${API_BASE_URL}/api/user/profile/update`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updateData),
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/api/user/profile/update`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(updateData),
+          }
+        );
 
-        console.log('Profile update response status:', response.status);
+        console.log("Profile update response status:", response.status);
         const data = await response.json();
-        console.log('Profile update response data:', data);
+        console.log("Profile update response data:", data);
 
         if (!response.ok) {
-          throw new Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+          throw new Error(
+            typeof data.detail === "string"
+              ? data.detail
+              : JSON.stringify(data.detail)
+          );
         }
 
         Alert.alert("Success", "Profile updated successfully");
         setIsEditing(false);
         fetchProfile();
       } catch (error) {
-        console.error('Error during fetch:', error);
+        console.error("Error during fetch:", error);
         throw error;
       }
     } catch (error) {
-      Alert.alert("Error", error instanceof Error ? error.message : "Failed to update profile");
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to update profile"
+      );
     } finally {
       setLoading(false);
     }
@@ -181,8 +213,10 @@ export default function ProfileDashboard() {
   const handleNotificationToggle = async (value: boolean) => {
     try {
       setNotificationsEnabled(value);
-      const normalizedEmail = Array.isArray(actualEmail) ? actualEmail[0] : String(actualEmail || "");
-      console.log('Updating notifications for email:', normalizedEmail);
+      const normalizedEmail = Array.isArray(actualEmail)
+        ? actualEmail[0]
+        : String(actualEmail || "");
+      console.log("Updating notifications for email:", normalizedEmail);
       await fetch(`${API_BASE_URL}/api/user/profile/update`, {
         method: "POST",
         headers: {
@@ -191,7 +225,7 @@ export default function ProfileDashboard() {
         body: JSON.stringify({
           email: normalizedEmail,
           ...editForm,
-          notifications_enabled: value
+          notifications_enabled: value,
         }),
       });
     } catch (error) {
@@ -302,7 +336,10 @@ export default function ProfileDashboard() {
                       Premium Member
                     </Text>
                   </View>
-                  <TouchableOpacity className="p-2" onPress={() => setIsEditing(true)}>
+                  <TouchableOpacity
+                    className="p-2"
+                    onPress={() => setIsEditing(true)}
+                  >
                     <Edit size={16} color="#64748b" />
                   </TouchableOpacity>
                 </View>
@@ -353,24 +390,35 @@ export default function ProfileDashboard() {
                     {isEditing ? (
                       <TextInput
                         value={editForm.full_name}
-                        onChangeText={(text) => setEditForm(prev => ({ ...prev, full_name: text }))}
+                        onChangeText={(text) =>
+                          setEditForm((prev) => ({ ...prev, full_name: text }))
+                        }
                         className="bg-gray-50 p-2 rounded-md"
                         placeholder="Enter full name"
                       />
                     ) : (
-                      <Text className="font-medium text-gray-800">{profile.name}</Text>
+                      <Text className="font-medium text-gray-800">
+                        {profile.name}
+                      </Text>
                     )}
                   </View>
                   <View className="py-2 border-b border-gray-100">
                     <Text className="text-gray-600 mb-1">Email</Text>
-                    <Text className="font-medium text-gray-800">{profile.email}</Text>
+                    <Text className="font-medium text-gray-800">
+                      {profile.email}
+                    </Text>
                   </View>
                   <View className="py-2 border-b border-gray-100">
                     <Text className="text-gray-600 mb-1">Phone</Text>
                     {isEditing ? (
                       <TextInput
                         value={editForm.phone_number}
-                        onChangeText={(text) => setEditForm(prev => ({ ...prev, phone_number: text }))}
+                        onChangeText={(text) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            phone_number: text,
+                          }))
+                        }
                         className="bg-gray-50 p-2 rounded-md"
                         placeholder="Enter phone number (min. 10 digits)"
                         keyboardType="phone-pad"
@@ -381,7 +429,9 @@ export default function ProfileDashboard() {
                       </Text>
                     )}
                     {isEditing && (
-                      <Text className="text-xs text-gray-500 mt-1">Format: +1XXXXXXXXXX or XXXXXXXXXX</Text>
+                      <Text className="text-xs text-gray-500 mt-1">
+                        Format: +1XXXXXXXXXX or XXXXXXXXXX
+                      </Text>
                     )}
                   </View>
                   <View className="py-2 border-b border-gray-100">
@@ -389,7 +439,12 @@ export default function ProfileDashboard() {
                     {isEditing ? (
                       <TextInput
                         value={editForm.date_of_birth}
-                        onChangeText={(text) => setEditForm(prev => ({ ...prev, date_of_birth: text }))}
+                        onChangeText={(text) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            date_of_birth: text,
+                          }))
+                        }
                         className="bg-gray-50 p-2 rounded-md"
                         placeholder="YYYY-MM-DD"
                       />
@@ -399,7 +454,9 @@ export default function ProfileDashboard() {
                       </Text>
                     )}
                     {isEditing && (
-                      <Text className="text-xs text-gray-500 mt-1">Format: YYYY-MM-DD (e.g., 1990-01-31)</Text>
+                      <Text className="text-xs text-gray-500 mt-1">
+                        Format: YYYY-MM-DD (e.g., 1990-01-31)
+                      </Text>
                     )}
                   </View>
                   <View className="py-2">
@@ -407,7 +464,9 @@ export default function ProfileDashboard() {
                     {isEditing ? (
                       <TextInput
                         value={editForm.blood_type}
-                        onChangeText={(text) => setEditForm(prev => ({ ...prev, blood_type: text }))}
+                        onChangeText={(text) =>
+                          setEditForm((prev) => ({ ...prev, blood_type: text }))
+                        }
                         className="bg-gray-50 p-2 rounded-md"
                         placeholder="Enter blood type (e.g., A+)"
                       />
@@ -417,7 +476,9 @@ export default function ProfileDashboard() {
                       </Text>
                     )}
                     {isEditing && (
-                      <Text className="text-xs text-gray-500 mt-1">Valid formats: A+, A-, B+, B-, AB+, AB-, O+, O-</Text>
+                      <Text className="text-xs text-gray-500 mt-1">
+                        Valid formats: A+, A-, B+, B-, AB+, AB-, O+, O-
+                      </Text>
                     )}
                   </View>
                   {isEditing && (

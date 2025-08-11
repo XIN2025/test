@@ -78,7 +78,7 @@ export default function DashboardTabsLayout() {
           name="profile"
           initialParams={{
             email: userEmail,
-            name: userName
+            name: userName,
           }}
           options={{
             title: "Profile",
