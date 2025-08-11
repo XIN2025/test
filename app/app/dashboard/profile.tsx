@@ -116,23 +116,20 @@ export default function ProfileDashboard() {
         : String(actualEmail || "");
       console.log("Saving profile for email:", normalizedEmail);
 
-      // Start with only the required fields
+      // Start with the required fields
       const updateData: Record<string, any> = {
         email: normalizedEmail,
-        full_name: editForm.full_name,
+        full_name: editForm.full_name || profile.name, // Always include full_name
       };
 
-      // Only add fields that have actually been changed from their current profile values
+      // Add optional fields only if they're different from current values
       if (editForm.phone_number !== profile.phone_number) {
-        // Only include phone_number if it's different from current value
         updateData.phone_number = editForm.phone_number || null;
       }
       if (editForm.date_of_birth !== profile.date_of_birth) {
-        // Only include date_of_birth if it's different from current value
         updateData.date_of_birth = editForm.date_of_birth || null;
       }
       if (editForm.blood_type !== profile.blood_type) {
-        // Only include blood_type if it's different from current value
         updateData.blood_type = editForm.blood_type || null;
       }
 
@@ -166,6 +163,20 @@ export default function ProfileDashboard() {
           );
           return;
         }
+      }
+
+      console.log("Current profile:", profile);
+      console.log("Edit form:", editForm);
+      console.log("Fields being updated:", updateData);
+      
+      // Only proceed if there are actual changes beyond the required fields
+      const hasChanges = Object.keys(updateData).length > 2 || // More than email and full_name
+                        editForm.full_name !== profile.name; // Or full_name has changed
+      
+      if (!hasChanges) {
+        console.log("No changes detected, skipping update");
+        setIsEditing(false);
+        return;
       }
 
       console.log("Attempting to update profile with data:", updateData);
