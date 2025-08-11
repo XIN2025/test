@@ -10,14 +10,16 @@ import {
   Target,
 } from "lucide-react-native";
 import { UserProvider } from "@/context/UserContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 export default function DashboardTabsLayout() {
   const params = useLocalSearchParams();
   const userEmail = (params?.email as string) || "";
   const userName = (params?.name as string) || "";
   return (
-    <UserProvider value={{ userEmail, userName }}>
-      <Tabs
+    <ThemeProvider>
+      <UserProvider value={{ userEmail, userName }}>
+        <Tabs
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: "#059669",
@@ -89,6 +91,7 @@ export default function DashboardTabsLayout() {
           }}
         />
       </Tabs>
-    </UserProvider>
+      </UserProvider>
+    </ThemeProvider>
   );
 }

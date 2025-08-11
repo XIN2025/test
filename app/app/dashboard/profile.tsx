@@ -11,13 +11,12 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
-// @ts-ignore
+import { useTheme } from "@/context/ThemeContext";
 import {
   Heart,
   User,
@@ -63,7 +62,7 @@ export default function ProfileDashboard() {
     blood_type: "",
   });
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(false);
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const API_BASE_URL =
     Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
 
@@ -391,24 +390,24 @@ export default function ProfileDashboard() {
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#f0f9f6", "#e6f4f1"]}
+        colors={isDarkMode ? ["#1a1a1a", "#2d2d2d"] : ["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
         {/* Fixed Header */}
-        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 z-10">
+        <View className={`shadow-sm border-b px-4 py-4 z-10 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'}`}>
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View
                 className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: "#114131" }}
+                style={{ backgroundColor: isDarkMode ? "#1f6f51" : "#114131" }}
               >
                 <User size={20} color="#fff" />
               </View>
               <View>
-                <Text className="font-semibold text-gray-800">Profile</Text>
-                <Text className="text-sm text-gray-600">
+                <Text className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Profile</Text>
+                <Text className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                   Manage your account
                 </Text>
               </View>
@@ -423,11 +422,11 @@ export default function ProfileDashboard() {
         <ScrollView contentContainerClassName="pb-8" className="flex-1">
           <View className="px-4 space-y-6 mt-4">
             {/* Profile Card */}
-            <Card className="border-0">
+            <Card className={`border-0 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
               <View className="p-6">
                 <View className="flex-row items-center mb-4">
                   <View className="relative">
-                    <View className="w-20 h-20 bg-emerald-100 rounded-full items-center justify-center mr-4 overflow-hidden">
+                    <View className={`w-20 h-20 rounded-full items-center justify-center mr-4 overflow-hidden ${isDarkMode ? 'bg-emerald-900' : 'bg-emerald-100'}`}>
                       {profile.profile_picture ? (
                         <Image
                           source={{ uri: `data:image/jpeg;base64,${profile.profile_picture}` }}
@@ -681,8 +680,8 @@ export default function ProfileDashboard() {
                       </Text>
                     </View>
                     <Switch
-                      value={darkModeEnabled}
-                      onValueChange={setDarkModeEnabled}
+                      value={isDarkMode}
+                      onValueChange={toggleDarkMode}
                       trackColor={{ false: "#d1d5db", true: "#10b981" }}
                       thumbColor="#ffffff"
                     />
