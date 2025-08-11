@@ -1,9 +1,11 @@
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from ..schemas.user import UserPreferences
 from ..schemas.profile import UserProfileUpdate
 from ..services.db import get_db
 from pydantic import EmailStr
+import base64
+from typing import Optional
 
 user_router = APIRouter()
 db = get_db()
@@ -36,7 +38,8 @@ def get_user_profile(email: EmailStr = Query(...)):
         "phone_number": "",
         "date_of_birth": "",
         "blood_type": "",
-        "notifications_enabled": True
+        "notifications_enabled": True,
+        "profile_picture": None
     }
     profile = {**defaults, **profile}  # Merge defaults with actual data
     
@@ -46,7 +49,8 @@ def get_user_profile(email: EmailStr = Query(...)):
         "phone_number": profile["phone_number"],
         "date_of_birth": profile["date_of_birth"],
         "blood_type": profile["blood_type"],
-        "notifications_enabled": profile["notifications_enabled"]
+        "notifications_enabled": profile["notifications_enabled"],
+        "profile_picture": profile.get("profile_picture")
     }
 
 @user_router.post("/api/user/profile/update")
@@ -98,6 +102,43 @@ def update_user_profile(profile: UserProfileUpdate):
             "message": "Profile updated successfully",
             "profile": get_user_profile(email=profile.email)
         }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@user_router.post("/api/user/profile/upload-picture")
+async def upload_profile_picture(
+    email: EmailStr = Query(...),
+    picture: UploadFile = File(...)
+):
+    """Upload a profile picture for a user."""
+    try:
+        users = db["users"]
+        # First check if user exists
+        existing_user = users.find_one({"email": email})
+        if not existing_user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Read the file content
+        content = await picture.read()
+        # Convert to base64 for storage
+        base64_image = base64.b64encode(content).decode('utf-8')
+        
+        # Update user profile with the picture
+        result = users.update_one(
+            {"email": email},
+            {
+                "$set": {
+                    "profile_picture": base64_image,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=500, detail="Failed to update profile picture")
+        
+        return {"message": "Profile picture updated successfully"}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 

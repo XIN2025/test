@@ -8,12 +8,15 @@ import {
   TextInput,
   Modal,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
+import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
 // @ts-ignore
 import {
   Heart,
@@ -51,6 +54,7 @@ export default function ProfileDashboard() {
     date_of_birth: "",
     blood_type: "",
     notifications_enabled: true,
+    profile_picture: null,
   });
   const [editForm, setEditForm] = useState({
     full_name: "",
@@ -236,6 +240,74 @@ export default function ProfileDashboard() {
     }
   };
 
+  const pickImage = async () => {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Sorry, we need camera roll permissions to upload a profile picture!');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled) {
+        setLoading(true);
+        try {
+          // Create form data for the image
+          const formData = new FormData();
+          
+          // Get the image from the URI
+          const response = await fetch(result.assets[0].uri);
+          const blob = await response.blob();
+          
+          // Append the file to FormData with the correct field name
+          formData.append('picture', blob, 'profile-picture.jpg');
+
+          // Upload the image
+          const uploadResponse = await fetch(
+            `${API_BASE_URL}/api/user/profile/upload-picture?email=${encodeURIComponent(
+              Array.isArray(actualEmail) ? actualEmail[0] : actualEmail || ""
+            )}`,
+            {
+              method: 'POST',
+              body: formData,
+              headers: {
+                'Accept': 'application/json',
+              },
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error('Failed to upload profile picture');
+          }
+
+          // Refresh profile to get updated picture
+          await fetchProfile();
+          Alert.alert('Success', 'Profile picture updated successfully');
+        } catch (error) {
+          Alert.alert(
+            'Error',
+            error instanceof Error ? error.message : 'Failed to upload profile picture'
+          );
+        } finally {
+          setLoading(false);
+        }
+      }
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to pick image'
+      );
+    }
+  };
+
   const handleNotificationToggle = async (value: boolean) => {
     try {
       setNotificationsEnabled(value);
@@ -355,10 +427,22 @@ export default function ProfileDashboard() {
               <View className="p-6">
                 <View className="flex-row items-center mb-4">
                   <View className="relative">
-                    <View className="w-20 h-20 bg-emerald-100 rounded-full items-center justify-center mr-4">
-                      <User size={32} color="#059669" />
+                    <View className="w-20 h-20 bg-emerald-100 rounded-full items-center justify-center mr-4 overflow-hidden">
+                      {profile.profile_picture ? (
+                        <Image
+                          source={{ uri: `data:image/jpeg;base64,${profile.profile_picture}` }}
+                          className="w-full h-full"
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <User size={32} color="#059669" />
+                      )}
                     </View>
-                    <TouchableOpacity className="absolute bottom-0 right-0 w-6 h-6 bg-emerald-600 rounded-full items-center justify-center">
+                    <TouchableOpacity
+                      className="absolute bottom-0 right-0 w-6 h-6 bg-emerald-600 rounded-full items-center justify-center"
+                      onPress={pickImage}
+                      disabled={loading}
+                    >
                       <Camera size={12} color="#fff" />
                     </TouchableOpacity>
                   </View>
