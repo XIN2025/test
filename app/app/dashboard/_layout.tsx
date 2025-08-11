@@ -76,6 +76,10 @@ export default function DashboardTabsLayout() {
         />
         <Tabs.Screen
           name="profile"
+          initialParams={{
+            email: userEmail,
+            name: userName
+          }}
           options={{
             title: "Profile",
             tabBarLabel: "Profile",
