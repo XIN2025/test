@@ -14,8 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
-import * as ImagePicker from 'expo-image-picker';
-import { Platform } from 'react-native';
+import * as ImagePicker from "expo-image-picker";
+import { Platform } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import {
   Heart,
@@ -164,7 +164,7 @@ export default function ProfileDashboard() {
       }
 
       // Validate fields that are in updateData
-      if ('blood_type' in updateData) {
+      if ("blood_type" in updateData) {
         const normalizedBloodType = updateData.blood_type.toUpperCase();
         if (!/^(A|B|AB|O)[+-]$/.test(normalizedBloodType)) {
           Alert.alert(
@@ -177,14 +177,14 @@ export default function ProfileDashboard() {
         updateData.blood_type = normalizedBloodType;
       }
 
-      if ('phone_number' in updateData && updateData.phone_number) {
+      if ("phone_number" in updateData && updateData.phone_number) {
         if (!/^\+?1?\d{10,14}$/.test(updateData.phone_number)) {
           Alert.alert("Error", "Phone number must be at least 10 digits");
           return;
         }
       }
 
-      if ('date_of_birth' in updateData && updateData.date_of_birth) {
+      if ("date_of_birth" in updateData && updateData.date_of_birth) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(updateData.date_of_birth)) {
           Alert.alert("Error", "Date of birth must be in YYYY-MM-DD format");
           return;
@@ -194,7 +194,7 @@ export default function ProfileDashboard() {
       console.log("Current profile:", profile);
       console.log("Edit form:", editForm);
       console.log("Fields being updated:", updateData);
-      
+
       // Only make the API call if we detected any changes
       if (!hasChanges) {
         Alert.alert("No Changes", "No changes were detected to update.");
@@ -202,16 +202,13 @@ export default function ProfileDashboard() {
         return;
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/user/profile/update`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updateData),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/user/profile/update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      });
 
       const data = await response.json();
 
@@ -223,10 +220,7 @@ export default function ProfileDashboard() {
         );
       }
 
-      Alert.alert(
-        "Success",
-        `Successfully updated profile`
-      );
+      Alert.alert("Success", `Successfully updated profile`);
       setIsEditing(false);
       fetchProfile();
     } catch (error) {
@@ -242,9 +236,12 @@ export default function ProfileDashboard() {
   const pickImage = async () => {
     try {
       // Request permissions
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Sorry, we need camera roll permissions to upload a profile picture!');
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Sorry, we need camera roll permissions to upload a profile picture!"
+        );
         return;
       }
 
@@ -261,13 +258,13 @@ export default function ProfileDashboard() {
         try {
           // Create form data for the image
           const formData = new FormData();
-          
+
           // Get the image from the URI
           const response = await fetch(result.assets[0].uri);
           const blob = await response.blob();
-          
+
           // Append the file to FormData with the correct field name
-          formData.append('picture', blob, 'profile-picture.jpg');
+          formData.append("picture", blob, "profile-picture.jpg");
 
           // Upload the image
           const uploadResponse = await fetch(
@@ -275,25 +272,27 @@ export default function ProfileDashboard() {
               Array.isArray(actualEmail) ? actualEmail[0] : actualEmail || ""
             )}`,
             {
-              method: 'POST',
+              method: "POST",
               body: formData,
               headers: {
-                'Accept': 'application/json',
+                Accept: "application/json",
               },
             }
           );
 
           if (!response.ok) {
-            throw new Error('Failed to upload profile picture');
+            throw new Error("Failed to upload profile picture");
           }
 
           // Refresh profile to get updated picture
           await fetchProfile();
-          Alert.alert('Success', 'Profile picture updated successfully');
+          Alert.alert("Success", "Profile picture updated successfully");
         } catch (error) {
           Alert.alert(
-            'Error',
-            error instanceof Error ? error.message : 'Failed to upload profile picture'
+            "Error",
+            error instanceof Error
+              ? error.message
+              : "Failed to upload profile picture"
           );
         } finally {
           setLoading(false);
@@ -301,8 +300,8 @@ export default function ProfileDashboard() {
       }
     } catch (error) {
       Alert.alert(
-        'Error',
-        error instanceof Error ? error.message : 'Failed to pick image'
+        "Error",
+        error instanceof Error ? error.message : "Failed to pick image"
       );
     }
   };
@@ -313,7 +312,7 @@ export default function ProfileDashboard() {
       const normalizedEmail = Array.isArray(actualEmail)
         ? actualEmail[0]
         : String(actualEmail || "");
-      
+
       const response = await fetch(`${API_BASE_URL}/api/user/profile/update`, {
         method: "POST",
         headers: {
@@ -396,7 +395,13 @@ export default function ProfileDashboard() {
         end={{ x: 1, y: 1 }}
       >
         {/* Fixed Header */}
-        <View className={`shadow-sm border-b px-4 py-4 z-10 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'}`}>
+        <View
+          className={`shadow-sm border-b px-4 py-4 z-10 ${
+            isDarkMode
+              ? "bg-gray-900 border-gray-800"
+              : "bg-white border-gray-100"
+          }`}
+        >
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View
@@ -406,8 +411,18 @@ export default function ProfileDashboard() {
                 <User size={20} color="#fff" />
               </View>
               <View>
-                <Text className={`font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Profile</Text>
-                <Text className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <Text
+                  className={`font-semibold ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
+                  Profile
+                </Text>
+                <Text
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
                   Manage your account
                 </Text>
               </View>
@@ -422,14 +437,22 @@ export default function ProfileDashboard() {
         <ScrollView contentContainerClassName="pb-8" className="flex-1">
           <View className="px-4 space-y-6 mt-4">
             {/* Profile Card */}
-            <Card className={`border-0 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <Card
+              className={`border-0 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            >
               <View className="p-6">
                 <View className="flex-row items-center mb-4">
                   <View className="relative">
-                    <View className={`w-20 h-20 rounded-full items-center justify-center mr-4 overflow-hidden ${isDarkMode ? 'bg-emerald-900' : 'bg-emerald-100'}`}>
+                    <View
+                      className={`w-20 h-20 rounded-full items-center justify-center mr-4 overflow-hidden ${
+                        isDarkMode ? "bg-emerald-900" : "bg-emerald-100"
+                      }`}
+                    >
                       {profile.profile_picture ? (
                         <Image
-                          source={{ uri: `data:image/jpeg;base64,${profile.profile_picture}` }}
+                          source={{
+                            uri: `data:image/jpeg;base64,${profile.profile_picture}`,
+                          }}
                           className="w-full h-full"
                           resizeMode="cover"
                         />
@@ -585,11 +608,16 @@ export default function ProfileDashboard() {
                           value={editForm.blood_type}
                           onChangeText={(text) => {
                             const normalizedBloodType = text.toUpperCase();
-                            setEditForm((prev) => ({ ...prev, blood_type: text }));
-                            
+                            setEditForm((prev) => ({
+                              ...prev,
+                              blood_type: text,
+                            }));
+
                             // Show validation message when text is entered
                             if (text) {
-                              if (!/^(A|B|AB|O)[+-]$/.test(normalizedBloodType)) {
+                              if (
+                                !/^(A|B|AB|O)[+-]$/.test(normalizedBloodType)
+                              ) {
                                 Alert.alert(
                                   "Invalid Blood Type",
                                   "Please enter a valid blood type.\n\nValid formats are:\nA+, A-\nB+, B-\nAB+, AB-\nO+, O-"
@@ -602,11 +630,15 @@ export default function ProfileDashboard() {
                           autoCapitalize="characters"
                           maxLength={3}
                         />
-                        {editForm.blood_type && !/^(A|B|AB|O)[+-]$/.test(editForm.blood_type.toUpperCase()) && (
-                          <Text className="text-xs text-red-500 mt-1">
-                            Invalid blood type format. Please use one of: A+, A-, B+, B-, AB+, AB-, O+, O-
-                          </Text>
-                        )}
+                        {editForm.blood_type &&
+                          !/^(A|B|AB|O)[+-]$/.test(
+                            editForm.blood_type.toUpperCase()
+                          ) && (
+                            <Text className="text-xs text-red-500 mt-1">
+                              Invalid blood type format. Please use one of: A+,
+                              A-, B+, B-, AB+, AB-, O+, O-
+                            </Text>
+                          )}
                         <Text className="text-xs text-gray-500 mt-1">
                           Valid formats: A+, A-, B+, B-, AB+, AB-, O+, O-
                         </Text>
