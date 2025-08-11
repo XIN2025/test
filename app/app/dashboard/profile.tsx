@@ -78,7 +78,6 @@ export default function ProfileDashboard() {
       const normalizedEmail = Array.isArray(actualEmail)
         ? actualEmail[0]
         : String(actualEmail || "");
-      console.log("Fetching profile for email:", normalizedEmail);
       const response = await fetch(
         `${API_BASE_URL}/api/user/profile?email=${encodeURIComponent(
           normalizedEmail
@@ -114,53 +113,77 @@ export default function ProfileDashboard() {
       const normalizedEmail = Array.isArray(actualEmail)
         ? actualEmail[0]
         : String(actualEmail || "");
-      console.log("Saving profile for email:", normalizedEmail);
 
-      // Start with the required fields
+      // Start with empty update data
       const updateData: Record<string, any> = {
         email: normalizedEmail,
         full_name: editForm.full_name || profile.name, // Always include full_name
       };
 
-      // Add optional fields only if they're different from current values
-      if (editForm.phone_number !== profile.phone_number) {
-        updateData.phone_number = editForm.phone_number || null;
+      let hasChanges = false;
+      let changedFields: string[] = [];
+
+      // Compare each field and track changes, adding changed fields to updateData
+      if (editForm.full_name && editForm.full_name !== profile.name) {
+        hasChanges = true;
+        updateData.full_name = editForm.full_name;
+        changedFields.push("Name");
       }
-      if (editForm.date_of_birth !== profile.date_of_birth) {
-        updateData.date_of_birth = editForm.date_of_birth || null;
-      }
+
       if (editForm.blood_type !== profile.blood_type) {
-        updateData.blood_type = editForm.blood_type || null;
+        hasChanges = true;
+        updateData.blood_type = editForm.blood_type;
+        changedFields.push("Blood Type");
       }
 
-      // Only include notifications if they've changed
+      if (editForm.date_of_birth !== profile.date_of_birth) {
+        hasChanges = true;
+        updateData.date_of_birth = editForm.date_of_birth;
+        changedFields.push("Date of Birth");
+      }
+
+      if (editForm.phone_number !== profile.phone_number) {
+        hasChanges = true;
+        updateData.phone_number = editForm.phone_number;
+        changedFields.push("Phone Number");
+      }
+
       if (notificationsEnabled !== profile.notifications_enabled) {
+        hasChanges = true;
         updateData.notifications_enabled = notificationsEnabled;
+        changedFields.push("Notifications");
       }
 
-      updateData.notifications_enabled = notificationsEnabled;
+      if (!hasChanges) {
+        Alert.alert("No Changes", "No changes were detected to update.");
+        setIsEditing(false);
+        return;
+      }
 
-      // Only validate fields that are being updated and have values
-      if ("phone_number" in updateData && updateData.phone_number) {
+      // Validate fields that are in updateData
+      if ('blood_type' in updateData) {
+        const normalizedBloodType = updateData.blood_type.toUpperCase();
+        if (!/^(A|B|AB|O)[+-]$/.test(normalizedBloodType)) {
+          Alert.alert(
+            "Error",
+            "Blood type must be A+, A-, B+, B-, AB+, AB-, O+, or O-"
+          );
+          return;
+        }
+        // Update with normalized value
+        updateData.blood_type = normalizedBloodType;
+      }
+
+      if ('phone_number' in updateData && updateData.phone_number) {
         if (!/^\+?1?\d{10,14}$/.test(updateData.phone_number)) {
           Alert.alert("Error", "Phone number must be at least 10 digits");
           return;
         }
       }
 
-      if ("date_of_birth" in updateData && updateData.date_of_birth) {
+      if ('date_of_birth' in updateData && updateData.date_of_birth) {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(updateData.date_of_birth)) {
           Alert.alert("Error", "Date of birth must be in YYYY-MM-DD format");
-          return;
-        }
-      }
-
-      if ("blood_type" in updateData && updateData.blood_type) {
-        if (!/^(A|B|AB|O)[+-]$/.test(updateData.blood_type)) {
-          Alert.alert(
-            "Error",
-            "Blood type must be A+, A-, B+, B-, AB+, AB-, O+, or O-"
-          );
           return;
         }
       }
@@ -169,48 +192,40 @@ export default function ProfileDashboard() {
       console.log("Edit form:", editForm);
       console.log("Fields being updated:", updateData);
       
-      // Only proceed if there are actual changes beyond the required fields
-      const hasChanges = Object.keys(updateData).length > 2 || // More than email and full_name
-                        editForm.full_name !== profile.name; // Or full_name has changed
-      
+      // Only make the API call if we detected any changes
       if (!hasChanges) {
-        console.log("No changes detected, skipping update");
+        Alert.alert("No Changes", "No changes were detected to update.");
         setIsEditing(false);
         return;
       }
 
-      console.log("Attempting to update profile with data:", updateData);
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/api/user/profile/update`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(updateData),
-          }
-        );
-
-        console.log("Profile update response status:", response.status);
-        const data = await response.json();
-        console.log("Profile update response data:", data);
-
-        if (!response.ok) {
-          throw new Error(
-            typeof data.detail === "string"
-              ? data.detail
-              : JSON.stringify(data.detail)
-          );
+      const response = await fetch(
+        `${API_BASE_URL}/api/user/profile/update`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updateData),
         }
+      );
 
-        Alert.alert("Success", "Profile updated successfully");
-        setIsEditing(false);
-        fetchProfile();
-      } catch (error) {
-        console.error("Error during fetch:", error);
-        throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data.detail === "string"
+            ? data.detail
+            : JSON.stringify(data.detail)
+        );
       }
+
+      Alert.alert(
+        "Success",
+        `Successfully updated profile`
+      );
+      setIsEditing(false);
+      fetchProfile();
     } catch (error) {
       Alert.alert(
         "Error",
@@ -227,8 +242,8 @@ export default function ProfileDashboard() {
       const normalizedEmail = Array.isArray(actualEmail)
         ? actualEmail[0]
         : String(actualEmail || "");
-      console.log("Updating notifications for email:", normalizedEmail);
-      await fetch(`${API_BASE_URL}/api/user/profile/update`, {
+      
+      const response = await fetch(`${API_BASE_URL}/api/user/profile/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -239,6 +254,15 @@ export default function ProfileDashboard() {
           notifications_enabled: value,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to update notification settings");
+      }
+
+      Alert.alert(
+        "Notifications Updated",
+        `Push notifications have been ${value ? "enabled" : "disabled"}.`
+      );
     } catch (error) {
       Alert.alert("Error", "Failed to update notification settings");
       setNotificationsEnabled(!value);
@@ -473,22 +497,40 @@ export default function ProfileDashboard() {
                   <View className="py-2">
                     <Text className="text-gray-600 mb-1">Blood Type</Text>
                     {isEditing ? (
-                      <TextInput
-                        value={editForm.blood_type}
-                        onChangeText={(text) =>
-                          setEditForm((prev) => ({ ...prev, blood_type: text }))
-                        }
-                        className="bg-gray-50 p-2 rounded-md"
-                        placeholder="Enter blood type (e.g., A+)"
-                      />
+                      <>
+                        <TextInput
+                          value={editForm.blood_type}
+                          onChangeText={(text) => {
+                            const normalizedBloodType = text.toUpperCase();
+                            setEditForm((prev) => ({ ...prev, blood_type: text }));
+                            
+                            // Show validation message when text is entered
+                            if (text) {
+                              if (!/^(A|B|AB|O)[+-]$/.test(normalizedBloodType)) {
+                                Alert.alert(
+                                  "Invalid Blood Type",
+                                  "Please enter a valid blood type.\n\nValid formats are:\nA+, A-\nB+, B-\nAB+, AB-\nO+, O-"
+                                );
+                              }
+                            }
+                          }}
+                          className="bg-gray-50 p-2 rounded-md"
+                          placeholder="Enter blood type (e.g., A+)"
+                          autoCapitalize="characters"
+                          maxLength={3}
+                        />
+                        {editForm.blood_type && !/^(A|B|AB|O)[+-]$/.test(editForm.blood_type.toUpperCase()) && (
+                          <Text className="text-xs text-red-500 mt-1">
+                            Invalid blood type format. Please use one of: A+, A-, B+, B-, AB+, AB-, O+, O-
+                          </Text>
+                        )}
+                        <Text className="text-xs text-gray-500 mt-1">
+                          Valid formats: A+, A-, B+, B-, AB+, AB-, O+, O-
+                        </Text>
+                      </>
                     ) : (
                       <Text className="font-medium text-gray-800">
                         {profile.blood_type || "Not set"}
-                      </Text>
-                    )}
-                    {isEditing && (
-                      <Text className="text-xs text-gray-500 mt-1">
-                        Valid formats: A+, A-, B+, B-, AB+, AB-, O+, O-
                       </Text>
                     )}
                   </View>
