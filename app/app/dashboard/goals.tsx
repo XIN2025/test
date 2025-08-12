@@ -247,7 +247,7 @@ export default function GoalsScreen() {
   const { userEmail: ctxEmail, userName: ctxName } = useUser();
   const userEmail = ctxEmail || (params?.email as string) || "";
   const userName = ctxName || (params?.name as string) || "";
-  
+
   useEffect(() => {
     console.log("Current user context:", { ctxEmail, ctxName, params });
   }, [ctxEmail, ctxName, params]);
@@ -487,7 +487,7 @@ export default function GoalsScreen() {
       if (!userEmail) {
         throw new Error("User email is required for document upload");
       }
-      
+
       if (file.file) {
         return await goalsApi.uploadDocument(file.file, userEmail);
       } else {
@@ -686,7 +686,9 @@ export default function GoalsScreen() {
               // Refresh uploaded files list from backend
               try {
                 if (!userEmail) {
-                  console.warn("User email is undefined, skipping file refresh");
+                  console.warn(
+                    "User email is undefined, skipping file refresh"
+                  );
                   return;
                 }
                 const files = await goalsApi.getUploadedFiles(userEmail);

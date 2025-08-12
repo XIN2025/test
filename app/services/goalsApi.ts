@@ -238,10 +238,13 @@ class GoalsApiService {
       } as any);
     }
 
-    const response = await fetch(`${API_BASE_URL}/upload/document?email=${encodeURIComponent(userEmail)}`, {
-      method: "POST",
-      body: formData,
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/upload/document?email=${encodeURIComponent(userEmail)}`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -280,7 +283,9 @@ class GoalsApiService {
       relationships_count: number;
     }>
   > {
-    const response = await fetch(`${API_BASE_URL}/upload/files?email=${encodeURIComponent(userEmail)}`);
+    const response = await fetch(
+      `${API_BASE_URL}/upload/files?email=${encodeURIComponent(userEmail)}`
+    );
     if (!response.ok) {
       throw new Error(`Failed to fetch uploaded files: ${response.status}`);
     }
