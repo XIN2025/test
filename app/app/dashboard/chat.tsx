@@ -47,7 +47,7 @@ export default function ChatPage() {
   // API Configuration
   const API_BASE_URL =
     Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
-  
+
   // Get user's email from context
   const { userEmail } = useUser();
 

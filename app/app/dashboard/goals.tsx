@@ -249,7 +249,12 @@ export default function GoalsScreen() {
   const userName = ctxName || (params?.name as string) || "";
 
   useEffect(() => {
-    console.log("Current user context:", { ctxEmail, ctxName, params, userEmail });
+    console.log("Current user context:", {
+      ctxEmail,
+      ctxName,
+      params,
+      userEmail,
+    });
   }, [ctxEmail, ctxName, params]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -494,7 +499,7 @@ export default function GoalsScreen() {
         file.file || {
           uri: file.uri,
           name: file.name,
-          type: file.mimeType || "application/octet-stream"
+          type: file.mimeType || "application/octet-stream",
         },
         userEmail
       );
@@ -1193,7 +1198,9 @@ export default function GoalsScreen() {
                             if (file.upload_id) {
                               await goalsApi.deleteUploadedFile(file.upload_id);
                             }
-                            const files = await goalsApi.getUploadedFiles(userEmail);
+                            const files = await goalsApi.getUploadedFiles(
+                              userEmail
+                            );
                             setUploadedFiles(
                               files.map((f) => ({
                                 id: f.id,
