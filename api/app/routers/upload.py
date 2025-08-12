@@ -1,5 +1,6 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
+from pydantic import EmailStr
 from typing import Dict, Any
 import asyncio
 import json
@@ -21,7 +22,8 @@ progress_tracker = ProgressTracker()
 @upload_router.post("/document")
 async def upload_document(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    email: str = Query(..., description="User email for document ownership")
 ):
     """Upload and process a document with progress tracking"""
     
@@ -74,7 +76,8 @@ async def upload_document(
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "entities": [],
-            "relationships": []
+            "relationships": [],
+            "user_email": email  # Add user email to record
         })
 
         return {
@@ -166,11 +169,12 @@ async def remove_upload_session(upload_id: str):
     return {"success": True, "message": "Upload session removed"}
 
 @upload_router.get("/files")
-async def list_uploaded_files():
-    """List persisted uploaded files from MongoDB"""
+async def list_uploaded_files(email: EmailStr = Query(..., description="User email to filter files")):
+    """List persisted uploaded files from MongoDB for a specific user"""
     db = get_db()
     col = db.get_collection("uploaded_files")
-    docs = list(col.find().sort("created_at", -1))
+    # Filter by user email
+    docs = list(col.find({"user_email": email}).sort("created_at", -1))
     def serialize(doc):
         return {
             "id": str(doc.get("_id")),
