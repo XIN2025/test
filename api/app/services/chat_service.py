@@ -17,6 +17,7 @@ class ChatState:
     """State for the chat workflow"""
     query: str
     context: List[str]
+    user_email: str
     response: str = ""
     follow_up_questions: List[str] = None
     reasoning: str = ""
@@ -151,9 +152,9 @@ class ChatService:
                     
                     # Step 3b: Get relationships
                     print(f"🔍 [CONTEXT RETRIEVAL] Step 3.{i+1}b: Getting relationships for node: '{node}'")
-                    print(f"🔍 [CONTEXT RETRIEVAL] Step 3.{i+1}b: Calling graph_db.get_context(['{node}'], max_hops=2)...")
+                    print(f"🔍 [CONTEXT RETRIEVAL] Step 3.{i+1}b: Calling graph_db.get_context with user_email: {state.user_email}")
                     
-                    relationships = self.graph_db.get_context([node], max_hops=2)
+                    relationships = self.graph_db.get_context(query=node, user_email=state.user_email, max_hops=2)
                     
                     print(f"🔍 [CONTEXT RETRIEVAL] Step 3.{i+1}b: ✅ Found {len(relationships)} relationships")
                     for j, rel in enumerate(relationships[:3]):  # Show first 3 relationships
@@ -287,13 +288,13 @@ class ChatService:
         """Determine if RAG should be used"""
         return "rag" if state.should_use_rag else "chat"
     
-    async def chat(self, query: str) -> Dict[str, Any]:
+    async def chat(self, query: str, user_email: str) -> Dict[str, Any]:
         """Main chat method"""
-        print(f"🚀 [CHAT] Starting chat for query: '{query}'")
+        print(f"🚀 [CHAT] Starting chat for query: '{query}' from user: {user_email}")
         try:
             # Initialize state
             print(f"🚀 [CHAT] Step 1: Initializing ChatState...")
-            initial_state = ChatState(query=query, context=[], follow_up_questions=[])
+            initial_state = ChatState(query=query, context=[], user_email=user_email, follow_up_questions=[])
             print(f"🚀 [CHAT] Step 1: ✅ ChatState initialized: {initial_state}")
             
             # Run the workflow
@@ -327,7 +328,7 @@ class ChatService:
                 "error": str(e)
             }
     
-    async def chat_stream(self, query: str):
+    async def chat_stream(self, query: str, user_email: str):
         """Streaming chat method for real-time responses"""
         try:
             initial_state = ChatState(query=query, context=[], follow_up_questions=[])

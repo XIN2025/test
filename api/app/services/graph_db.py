@@ -115,11 +115,12 @@ class GraphDatabaseService:
             cleaned = f"R_{cleaned}"
         return cleaned or "RELATED_TO"
 
-    def get_context(self, query: str, max_hops: int = 2) -> List[str]:
+    def get_context(self, query: str, user_email: str, max_hops: int = 2) -> List[str]:
         """Get relevant context using semantic search and graph exploration
         
         Args:
             query: A natural language query to find relevant context
+            user_email: Email of the user to filter nodes and relationships
             max_hops: Maximum number of relationship hops to explore in the graph
         """
         context_info: List[str] = []
@@ -130,11 +131,13 @@ class GraphDatabaseService:
         # Step 2: Get entity information for semantically relevant nodes
         starting_nodes = set()
         for node_id in relevant_nodes:
+            # Only match nodes that belong to the user
             entity_query = """
             MATCH (e {name: $name})
+            WHERE e.user_email = $user_email
             RETURN labels(e) as types, e.name as name, e.description as description
             """
-            records, _, _ = self.driver.execute_query(entity_query, name=node_id)
+            records, _, _ = self.driver.execute_query(entity_query, name=node_id, user_email=user_email)
             for record in records:
                 entity_type = record["types"][0]
                 description = record.get("description", f"Entity of type {entity_type}")
@@ -145,15 +148,21 @@ class GraphDatabaseService:
         relationship_info: List[str] = []
         for start_node in starting_nodes:
             for hop in range(1, max_hops + 1):
+                # Only explore relationships where all nodes and relationships belong to the user
                 rel_query = f"""
                 MATCH path = (start {{name: $start_name}})-[r*{hop}]-(end)
+                WHERE start.user_email = $user_email 
+                AND end.user_email = $user_email
+                AND ALL(rel IN relationships(path) WHERE rel.user_email = $user_email)
                 RETURN DISTINCT start.name as start_name,
                        [rel IN relationships(path) | type(rel)] as rel_types,
                        end.name as end_name,
                        end.description as end_description
                 LIMIT 10
                 """
-                records, _, _ = self.driver.execute_query(rel_query, start_name=start_node)
+                records, _, _ = self.driver.execute_query(rel_query, 
+                                                        start_name=start_node,
+                                                        user_email=user_email)
                 for record in records:
                     rel_chain = " -> ".join(record["rel_types"])
                     end_desc = record.get("end_description", "")

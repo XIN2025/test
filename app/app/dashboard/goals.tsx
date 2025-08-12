@@ -245,11 +245,11 @@ import { goalsApi } from "@/services/goalsApi";
 export default function GoalsScreen() {
   const params = useLocalSearchParams();
   const { userEmail: ctxEmail, userName: ctxName } = useUser();
-  const userEmail = ctxEmail || (params?.email as string) || "";
+  const userEmail = ctxEmail || (params?.email as string);
   const userName = ctxName || (params?.name as string) || "";
 
   useEffect(() => {
-    console.log("Current user context:", { ctxEmail, ctxName, params });
+    console.log("Current user context:", { ctxEmail, ctxName, params, userEmail });
   }, [ctxEmail, ctxName, params]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -485,18 +485,19 @@ export default function GoalsScreen() {
   ) => {
     try {
       if (!userEmail) {
+        console.error("User email missing. Context:", { ctxEmail, params });
         throw new Error("User email is required for document upload");
       }
 
-      if (file.file) {
-        return await goalsApi.uploadDocument(file.file, userEmail);
-      } else {
-        return await goalsApi.uploadDocument({
+      // For all uploads, pass the file info and userEmail
+      return await goalsApi.uploadDocument(
+        file.file || {
           uri: file.uri,
           name: file.name,
-          type: file.mimeType || "application/octet-stream",
-        });
-      }
+          type: file.mimeType || "application/octet-stream"
+        },
+        userEmail
+      );
     } catch (error) {
       console.error("Upload error details:", error);
       throw error;
@@ -1192,7 +1193,7 @@ export default function GoalsScreen() {
                             if (file.upload_id) {
                               await goalsApi.deleteUploadedFile(file.upload_id);
                             }
-                            const files = await goalsApi.getUploadedFiles();
+                            const files = await goalsApi.getUploadedFiles(userEmail);
                             setUploadedFiles(
                               files.map((f) => ({
                                 id: f.id,
