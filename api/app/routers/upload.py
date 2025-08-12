@@ -55,13 +55,14 @@ async def upload_document(
             raise HTTPException(status_code=400, detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB")
         logger.info(f"Read {len(content)} bytes from file {file.filename}")
         
-        # Start processing in background with the file content
+        # Start processing in background with the file content and user email
         background_tasks.add_task(
             process_document_background,
             upload_id,
             file.filename,
             content,
-            file_extension
+            file_extension,
+            email  # Pass the email to background task
         )
         
         # Create initial Mongo record (status = processing)
@@ -219,9 +220,9 @@ async def delete_uploaded_file(upload_id: str):
 
     return {"success": True, "message": "File and associated graph data deleted"}
 
-async def process_document_background(upload_id: str, filename: str, content: bytes, file_extension: str):
+async def process_document_background(upload_id: str, filename: str, content: bytes, file_extension: str, user_email: str):
     """Background task to process uploaded document with real-time progress updates"""
-    logger.info(f"Starting background processing for upload {upload_id}")
+    logger.info(f"Starting background processing for upload {upload_id} for user {user_email}")
     
     def progress_callback(percentage: int, message: str):
         """Callback function to update progress"""
@@ -247,14 +248,14 @@ async def process_document_background(upload_id: str, filename: str, content: by
 
         # Process document based on type with progress callback
         if file_extension == 'pdf':
-            result = processor.process_pdf_file(content, filename, progress_callback)
+            result = processor.process_pdf_file(content, filename, user_email, progress_callback)
         elif file_extension in ['docx', 'doc']:
             # For now, treat as text file since we don't have Word processing
             text_content = content.decode('utf-8')
-            result = processor.process_text_file(text_content, filename, progress_callback)
+            result = processor.process_text_file(text_content, filename, user_email, progress_callback)
         else:  # txt file
             text_content = content.decode('utf-8')
-            result = processor.process_text_file(text_content, filename, progress_callback)
+            result = processor.process_text_file(text_content, filename, user_email, progress_callback)
 
         # Check if processing was successful
         if not result.get('success'):
