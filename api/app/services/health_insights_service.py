@@ -17,7 +17,10 @@ class HealthInsightsService:
         """Extract relevant health context from the graph database for a given goal using semantic search"""
         try:
             query = f"Find health context for: {goal.title}. Details: {goal.description}"
-            context_data = self.graph_db.get_context(query)
+            context_data = self.graph_db.get_context(
+                query=query,
+                user_email=goal.user_email
+            )
             goal_entities = []
             medical_context = []
             lifestyle_factors = []
@@ -43,13 +46,42 @@ class HealthInsightsService:
             logger.error(f"Error extracting goal context: {str(e)}")
             raise
 
-    def get_health_insight(self, goal: Goal) -> HealthInsight:
-        """Generate health insights for a given goal"""
+    def get_health_insight(self, goal: Goal, context: List[str] = None, user_email: str = None) -> HealthInsight:
+        """Generate health insights for a given goal with optional context"""
         try:
-            context = self.extract_goal_context(goal)
+            # If context is provided, create HealthContext from it
+            if context:
+                goal_entities = []
+                medical_context = []
+                lifestyle_factors = []
+                risk_factors = []
+
+                for item in context:
+                    if "Medical" in item or "Condition" in item or "Symptom" in item:
+                        medical_context.append(item)
+                    elif "Lifestyle" in item or "Activity" in item:
+                        lifestyle_factors.append(item)
+                    elif "Risk" in item or "Warning" in item:
+                        risk_factors.append(item)
+                    else:
+                        goal_entities.append(item)
+
+                context = HealthContext(
+                    goal_related_entities=goal_entities,
+                    medical_context=medical_context,
+                    lifestyle_factors=lifestyle_factors,
+                    risk_factors=risk_factors
+                )
+            else:
+                # Extract context from graph database if not provided
+                context = self.extract_goal_context(goal)
+
+            # Use provided user_email or fall back to goal.user_email
+            user_email = user_email or goal.user_email
+
             diagnosis_request = DiagnosisRequest(
-                user_email=goal.user_email,  # Required field
-                symptoms=context.medical_context if context.medical_context else ["No specific symptoms noted"],  # Use medical context as symptoms
+                user_email=user_email,  # Use the determined user_email
+                symptoms=context.medical_context if context.medical_context else ["No specific symptoms noted"],
                 contextual_data={  # Changed from context_data to contextual_data to match schema
                     "goal": {
                         "title": goal.title,

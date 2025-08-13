@@ -15,6 +15,7 @@ export interface TimePreference {
 
 export interface PillarTimePreferences {
   user_email: string;
+  agent_mode?: boolean;
   preferences: {
     [key in PillarType]?: TimePreference;
   };

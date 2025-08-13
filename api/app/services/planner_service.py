@@ -51,11 +51,11 @@ class PlannerService:
         
         self.health_insights_service = get_health_insights_service()
 
-    def create_action_plan(self, goal: Goal) -> ActionPlan:
-        """Create an action plan for a goal, considering health insights"""
+    def create_action_plan(self, goal: Goal, context: List[str] = None, user_email: str = None) -> ActionPlan:
+        """Create an action plan for a goal, considering health insights and context"""
         try:
-            # 1. Get health insights
-            health_insight = self.health_insights_service.get_health_insight(goal)
+            # 1. Get health insights with context
+            health_insight = self.health_insights_service.get_health_insight(goal=goal, context=context, user_email=user_email)
             
             # 2. Generate action items with OpenAI
             action_items = self._generate_action_items(goal, health_insight)

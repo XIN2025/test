@@ -8,6 +8,7 @@ from ..schemas.preferences import PillarTimePreferences
 from .db import get_db
 from .planner_service import get_planner_service
 from .scheduler_service import get_scheduler_service
+from .graph_db import get_graph_db
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class GoalsService:
         self.schedules_collection = self.db["weekly_schedules"]
         self.planner_service = get_planner_service()
         self.scheduler_service = get_scheduler_service()
+        self.graph_db = get_graph_db()
 
     def create_goal(self, goal_data: GoalCreate) -> Goal:
         goal_dict = goal_data.dict()
@@ -193,38 +195,179 @@ class GoalsService:
                 break
         return streak
 
-    def generate_goal_plan(
-        self, 
-        goal_id: str, 
-        user_email: str, 
-        pillar_preferences: List[PillarTimePreferences]
-    ) -> Dict[str, Any]:
-        """Generate action plan and weekly schedule for a goal"""
+    def generate_goal_plan(self, goal_id: str, user_email: str, pillar_preferences: List[PillarTimePreferences]) -> Dict[str, Any]:
+        """Generate action plan and weekly schedule for a goal with optional agent mode"""
         try:
             # Get the goal
             goal = self.get_goal_by_id(goal_id, user_email)
             if not goal:
-                return {
-                    "success": False,
-                    "message": "Goal not found",
-                    "data": None
-                }
+return {"success": False, "message": "Goal not found", "data": None}
 
-            # Generate action plan
-            action_plan = self.planner_service.create_action_plan(goal)
+            # Check if agent mode is enabled for each preference
+            agent_mode = False
+            for pref in pillar_preferences:
+                if hasattr(pref, 'dict'):
+                    pref_dict = pref.dict()
+                    if pref_dict.get('agent_mode'):
+                        agent_mode = True
+                        break
+                elif isinstance(pref, dict) and pref.get('agent_mode'):
+                    agent_mode = True
+                    break
             
-            # Generate weekly schedule
-            weekly_schedule = self.scheduler_service.create_weekly_schedule(
-                action_plan=action_plan,
-                pillar_preferences=pillar_preferences,
-                start_date=datetime.utcnow().replace(
-                    hour=0, minute=0, second=0, microsecond=0
+            # Get graph context with user_email
+            try:
+                # Build a meaningful query string from goal details
+                goal_text = f"{goal.title} {goal.description if goal.description else ''} {goal.category if goal.category else ''}"
+                context = get_graph_db().get_context(
+                    query=goal_text,
+                    user_email=user_email,  # Always pass user_email
+                    max_hops=2
                 )
-            )
+            except Exception as e:
+                logger.error(f"Error extracting goal context: {str(e)}")
+                context = []  # Initialize as empty list instead of None
+            
+            # Generate action plan using context
+            try:
+                # Make sure context is a list
+                context_list = context if isinstance(context, list) else []
+                
+                # Generate action plan
+                action_plan = self.planner_service.create_action_plan(
+                    goal=goal,
+                    context=context_list if isinstance(context_list, list) else [],
+                    user_email=user_email,
+                    agent_mode=agent_mode
+                )
+            except Exception as e:
+                logger.error(f"Error creating action plan: {str(e)}")
+                raise
+
+            # Generate weekly schedule using preferences
+            try:
+                weekly_schedule = self.scheduler_service.create_weekly_schedule(
+                    action_plan=action_plan,
+                    pillar_preferences=pillar_preferences,
+                    start_date=datetime.utcnow().replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    )
+                )
+            except Exception as e:
+                logger.error(f"Error generating weekly schedule: {str(e)}")
+                raise
 
             # Distribute weekly schedule to individual action items
             for action_item in action_plan.action_items:
                 action_slots = {}
+                pillar_times = {}
+                total_duration = timedelta()
+
+                for day, schedule in weekly_schedule.daily_schedules.items():
+                    if not schedule or not schedule.time_slots:
+                        continue
+                    
+                    day_slots = []
+                    for slot in schedule.time_slots:
+                        if slot.action_item == action_item.title:
+                            # Convert duration string to proper format
+                            duration_str = slot.duration if isinstance(slot.duration, str) else str(slot.duration)
+                            if not ':' in duration_str:
+                                duration_td = timedelta(seconds=float(duration_str))
+                                hours = int(duration_td.total_seconds() // 3600)
+                                minutes = int((duration_td.total_seconds() % 3600) // 60)
+                                seconds = int(duration_td.total_seconds() % 60)
+                                duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+                            slot_dict = {
+                                "start_time": slot.start_time.strftime("%H:%M") if hasattr(slot.start_time, 'strftime') else slot.start_time,
+                                "end_time": slot.end_time.strftime("%H:%M") if hasattr(slot.end_time, 'strftime') else slot.end_time,
+                                "duration": duration_str,
+                                "pillar": slot.pillar,
+                                "frequency": slot.frequency,
+                                "priority": slot.priority,
+                                "health_notes": slot.health_notes or []
+                            }
+                            day_slots.append(slot_dict)
+
+                            # Calculate duration for pillar distribution
+                            try:
+                                h, m, s = duration_str.split(':')
+                                slot_duration = timedelta(hours=int(h), minutes=int(m), seconds=int(s))
+                                total_duration += slot_duration
+                                if slot.pillar:
+                                    pillar_times[slot.pillar] = pillar_times.get(slot.pillar, timedelta()) + slot_duration
+                            except:
+                                logger.warning(f"Could not parse duration: {duration_str}")
+
+                    if day_slots:
+                        action_slots[day] = {
+                            "date": schedule.date.isoformat() if hasattr(schedule.date, 'isoformat') else schedule.date,
+                            "time_slots": day_slots,
+                            "total_duration": duration_str
+                        }
+
+                # Calculate pillar distribution
+                total_seconds = total_duration.total_seconds()
+                pillar_distribution = {
+                    pillar: duration.total_seconds() / total_seconds
+                    for pillar, duration in pillar_times.items()
+                } if total_seconds > 0 else {}
+
+                # Format total duration
+                hours = int(total_duration.total_seconds() // 3600)
+                minutes = int((total_duration.total_seconds() % 3600) // 60)
+                seconds = int(total_duration.total_seconds() % 60)
+                total_duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+                # Set weekly schedule for the action item
+                action_item.weekly_schedule = {
+                    "monday": action_slots.get("monday"),
+                    "tuesday": action_slots.get("tuesday"),
+                    "wednesday": action_slots.get("wednesday"),
+                    "thursday": action_slots.get("thursday"),
+                    "friday": action_slots.get("friday"),
+                    "saturday": action_slots.get("saturday"),
+                    "sunday": action_slots.get("sunday"),
+                    "total_weekly_duration": total_duration_str,
+                    "pillar_distribution": pillar_distribution
+                }
+
+            # Save the generated plan
+            goal_dict = goal.dict()
+            action_plan_dict = action_plan.dict() if hasattr(action_plan, 'dict') else action_plan
+            weekly_schedule_dict = weekly_schedule.dict() if hasattr(weekly_schedule, 'dict') else weekly_schedule
+
+            # Store plan and schedule
+            stored_plan = self._store_action_plan(goal_id, user_email, action_plan)
+            stored_schedule = self._store_weekly_schedule(goal_id, user_email, weekly_schedule)
+
+            # Update goal with references
+            self.goals_collection.update_one(
+                {"_id": ObjectId(goal_id)},
+                {
+                    "$set": {
+                        "action_plan": stored_plan,
+                        "weekly_schedule": stored_schedule,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+
+            return {
+                "success": True,
+                "message": "Plan generated successfully",
+                "data": {
+                    "goal": goal_dict,
+                    "action_plan": stored_plan,
+                    "weekly_schedule": stored_schedule
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error generating plan: {str(e)}")
+            return {"success": False, "message": f"Failed to generate plan: {str(e)}"}
+
+# (Removed unreachable code)
                 pillar_times = {}
                 total_duration = timedelta()
 

@@ -90,6 +90,27 @@ async def get_user_goals(user_email: EmailStr = Query(...), week_start: Optional
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@goals_router.post("/api/goals/{goal_id}/generate-plan", response_model=GoalResponse)
+async def generate_goal_plan(
+    goal_id: str,
+    user_email: EmailStr = Query(...),
+    preferences: List[PillarTimePreferences] = Body(...),
+):
+    try:
+        result = goals_service.generate_goal_plan(goal_id, user_email, preferences)
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["message"])
+            
+        return GoalResponse(
+            success=True,
+            message="Goal plan generated successfully",
+            data=result["data"]
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @goals_router.get("/api/goals/{goal_id}", response_model=GoalResponse)
 async def get_goal(goal_id: str, user_email: EmailStr = Query(...)):
     try:
