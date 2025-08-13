@@ -205,18 +205,6 @@ class GoalsService:
             if not goal:
                 return {"success": False, "message": "Goal not found"}
 
-            # Check if agent mode is enabled for each preference
-            agent_mode = False
-            for pref in pillar_preferences:
-                if hasattr(pref, 'dict'):
-                    pref_dict = pref.dict()
-                    if pref_dict.get('agent_mode'):
-                        agent_mode = True
-                        break
-                elif isinstance(pref, dict) and pref.get('agent_mode'):
-                    agent_mode = True
-                    break
-            
             # Get graph context with user_email
             try:
                 # Build a meaningful query string from goal details
@@ -239,8 +227,7 @@ class GoalsService:
                 action_plan = self.planner_service.create_action_plan(
                     goal=goal,
                     context=context_list if isinstance(context_list, list) else [],
-                    user_email=user_email,
-                    agent_mode=agent_mode
+                    user_email=user_email
                 )
             except Exception as e:
                 logger.error(f"Error creating action plan: {str(e)}")
