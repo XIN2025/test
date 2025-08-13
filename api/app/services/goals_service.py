@@ -201,7 +201,7 @@ class GoalsService:
             # Get the goal
             goal = self.get_goal_by_id(goal_id, user_email)
             if not goal:
-return {"success": False, "message": "Goal not found", "data": None}
+                return {"success": False, "message": "Goal not found", "data": None}
 
             # Check if agent mode is enabled for each preference
             agent_mode = False
