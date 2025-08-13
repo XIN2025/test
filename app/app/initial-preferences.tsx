@@ -19,6 +19,7 @@ interface PreferencesFormData {
   gender: string;
   healthGoals: string[];
   conditions: string[];
+  atRiskConditions: string[];
   communicationStyle: string;
   notifications: boolean;
 }
@@ -41,6 +42,7 @@ const healthGoalsList = [
 const conditionsList = [
   "Type 2 Diabetes / Insulin Resistance",
   "Cardiovascular Disease",
+  "High Cholesterol",
   "Cancer",
   "Digestive / Gut Issues",
   "Depression",
@@ -65,6 +67,7 @@ export default function InitialPreferences() {
     gender: "",
     healthGoals: [],
     conditions: [],
+    atRiskConditions: [],
     communicationStyle: "",
     notifications: false,
   });
@@ -131,6 +134,7 @@ export default function InitialPreferences() {
         gender: formData.gender || "",
         healthGoals: formData.healthGoals,
         conditions: formData.conditions,
+        atRiskConditions: formData.atRiskConditions,
         communicationStyle: formData.communicationStyle || "",
         notifications: formData.notifications,
       };
@@ -320,6 +324,58 @@ export default function InitialPreferences() {
                   <Text
                     className={`text-sm font-medium ${
                       formData.conditions.includes(cond)
+                        ? "text-white"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {cond}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* At Risk Conditions */}
+          <View className="w-full mb-4">
+            <Text className="mb-2 text-gray-700 font-medium">
+              At Risk Conditions
+            </Text>
+            <Text className="text-gray-500 text-sm mb-2">
+              Conditions you want to prevent
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {conditionsList.map((cond) => (
+                <TouchableOpacity
+                  key={cond}
+                  className={`px-3 py-2 rounded-full border ${
+                    formData.atRiskConditions.includes(cond)
+                      ? "border-gray-300"
+                      : "bg-gray-100 border-gray-300"
+                  }`}
+                  style={{
+                    backgroundColor: formData.atRiskConditions.includes(cond)
+                      ? "#059669"
+                      : "#f3f4f6",
+                    borderColor: formData.atRiskConditions.includes(cond)
+                      ? "#059669"
+                      : "#d1d5db",
+                  }}
+                  onPress={() =>
+                    toggleSelection(
+                      cond,
+                      formData.atRiskConditions,
+                      (newAtRiskConditions) =>
+                        handleInputChange(
+                          "atRiskConditions",
+                          newAtRiskConditions
+                        )
+                    )
+                  }
+                  disabled={loading}
+                >
+                  <Text
+                    className={`text-sm font-medium ${
+                      formData.atRiskConditions.includes(cond)
                         ? "text-white"
                         : "text-gray-700"
                     }`}

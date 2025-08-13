@@ -31,7 +31,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Hello! I'm your AI health assistant. I can help you with health-related questions, tips, and guidance. How can I assist you today?",
+      text: "Hello! I'm your AI health agent. I can help you with health-related questions, tips, and guidance. How can I assist you today?",
       sender: "bot",
       suggestions: [
         "Tell me about nutrition",
@@ -149,10 +149,10 @@ export default function ChatPage() {
               </View>
               <View>
                 <Text className="font-semibold text-gray-800">
-                  AI Health Assistant
+                  AI Health Agent
                 </Text>
                 <Text className="text-sm text-gray-600">
-                  Chat with AI • Upload documents
+                  Chat with Evra • Upload documents
                 </Text>
               </View>
             </View>

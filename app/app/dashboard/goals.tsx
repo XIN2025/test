@@ -89,6 +89,40 @@ interface GeneratePlanResponse {
   };
 }
 
+interface DeleteFileButtonProps {
+  onDelete: () => Promise<void>;
+}
+
+const DeleteFileButton: React.FC<DeleteFileButtonProps> = ({ onDelete }) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleDelete = async () => {
+    setIsLoading(true);
+    try {
+      await onDelete();
+      // Don't set isLoading to false - stays in loading state forever as requested
+    } catch (error) {
+      setIsLoading(false); // Only reset on error
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handleDelete}
+      disabled={isLoading}
+      className={`px-2 py-1 rounded ${
+        isLoading ? "bg-gray-100" : "bg-red-100"
+      }`}
+    >
+      {isLoading ? (
+        <ActivityIndicator size="small" color="#dc2626" />
+      ) : (
+        <Text className="text-[10px] font-semibold text-red-600">Delete</Text>
+      )}
+    </TouchableOpacity>
+  );
+};
+
 interface ActionItemCardProps {
   item: ActionItem;
   onPress: () => void;
@@ -1192,8 +1226,8 @@ export default function GoalsScreen() {
                           {(file.size / 1024).toFixed(1)} KB · {file.type}
                         </Text>
                       </View>
-                      <TouchableOpacity
-                        onPress={async () => {
+                      <DeleteFileButton
+                        onDelete={async () => {
                           try {
                             if (file.upload_id) {
                               await goalsApi.deleteUploadedFile(file.upload_id);
@@ -1215,14 +1249,10 @@ export default function GoalsScreen() {
                             );
                           } catch (err) {
                             Alert.alert("Error", "Failed to delete file");
+                            throw err; // Re-throw to trigger error state in button
                           }
                         }}
-                        className="px-2 py-1 rounded bg-red-100"
-                      >
-                        <Text className="text-[10px] font-semibold text-red-600">
-                          Delete
-                        </Text>
-                      </TouchableOpacity>
+                      />
                     </View>
                   ))}
                 </ScrollView>
