@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useUser } from "../../context/UserContext";
 import {
   View,
   Text,
@@ -47,6 +48,9 @@ export default function ChatPage() {
   const API_BASE_URL =
     Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
 
+  // Get user's email from context
+  const { userEmail } = useUser();
+
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
@@ -80,6 +84,7 @@ export default function ChatPage() {
     try {
       const formData = new FormData();
       formData.append("message", text.trim());
+      formData.append("user_email", userEmail);
 
       const response = await fetch(`${API_BASE_URL}/chat/send`, {
         method: "POST",

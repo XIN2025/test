@@ -245,8 +245,17 @@ import { goalsApi } from "@/services/goalsApi";
 export default function GoalsScreen() {
   const params = useLocalSearchParams();
   const { userEmail: ctxEmail, userName: ctxName } = useUser();
-  const userEmail = (params?.email as string) || ctxEmail || "";
-  const userName = (params?.name as string) || ctxName || "";
+  const userEmail = ctxEmail || (params?.email as string);
+  const userName = ctxName || (params?.name as string) || "";
+
+  useEffect(() => {
+    console.log("Current user context:", {
+      ctxEmail,
+      ctxName,
+      params,
+      userEmail,
+    });
+  }, [ctxEmail, ctxName, params]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
@@ -480,15 +489,20 @@ export default function GoalsScreen() {
     file: DocumentPicker.DocumentPickerAsset
   ) => {
     try {
-      if (file.file) {
-        return await goalsApi.uploadDocument(file.file);
-      } else {
-        return await goalsApi.uploadDocument({
+      if (!userEmail) {
+        console.error("User email missing. Context:", { ctxEmail, params });
+        throw new Error("User email is required for document upload");
+      }
+
+      // For all uploads, pass the file info and userEmail
+      return await goalsApi.uploadDocument(
+        file.file || {
           uri: file.uri,
           name: file.name,
           type: file.mimeType || "application/octet-stream",
-        });
-      }
+        },
+        userEmail
+      );
     } catch (error) {
       console.error("Upload error details:", error);
       throw error;
@@ -500,7 +514,7 @@ export default function GoalsScreen() {
     const fetchFiles = async () => {
       if (!showUploadModal) return;
       try {
-        const files = await goalsApi.getUploadedFiles();
+        const files = await goalsApi.getUploadedFiles(userEmail);
         const mapped = files.map((f: any) => ({
           id: f.id,
           upload_id: f.upload_id,
@@ -517,7 +531,7 @@ export default function GoalsScreen() {
       }
     };
     fetchFiles();
-  }, [showUploadModal]);
+  }, [showUploadModal, userEmail]);
 
   useEffect(() => {
     return () => {
@@ -677,7 +691,13 @@ export default function GoalsScreen() {
 
               // Refresh uploaded files list from backend
               try {
-                const files = await goalsApi.getUploadedFiles();
+                if (!userEmail) {
+                  console.warn(
+                    "User email is undefined, skipping file refresh"
+                  );
+                  return;
+                }
+                const files = await goalsApi.getUploadedFiles(userEmail);
                 const mapped = files.map((f: any) => ({
                   id: f.id,
                   upload_id: f.upload_id,
@@ -1178,7 +1198,9 @@ export default function GoalsScreen() {
                             if (file.upload_id) {
                               await goalsApi.deleteUploadedFile(file.upload_id);
                             }
-                            const files = await goalsApi.getUploadedFiles();
+                            const files = await goalsApi.getUploadedFiles(
+                              userEmail
+                            );
                             setUploadedFiles(
                               files.map((f) => ({
                                 id: f.id,

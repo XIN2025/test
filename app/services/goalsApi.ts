@@ -223,7 +223,8 @@ class GoalsApiService {
 
   // File Upload Operations
   async uploadDocument(
-    file: File | { uri: string; name: string; type: string }
+    file: File | { uri: string; name: string; type: string },
+    userEmail: string
   ): Promise<{ upload_id: string }> {
     const formData = new FormData();
 
@@ -237,10 +238,13 @@ class GoalsApiService {
       } as any);
     }
 
-    const response = await fetch(`${API_BASE_URL}/upload/document`, {
-      method: "POST",
-      body: formData,
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/upload/document?email=${encodeURIComponent(userEmail)}`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -267,7 +271,7 @@ class GoalsApiService {
     return data.progress;
   }
 
-  async getUploadedFiles(): Promise<
+  async getUploadedFiles(userEmail: string): Promise<
     Array<{
       id: string;
       upload_id: string;
@@ -279,7 +283,9 @@ class GoalsApiService {
       relationships_count: number;
     }>
   > {
-    const response = await fetch(`${API_BASE_URL}/upload/files`);
+    const response = await fetch(
+      `${API_BASE_URL}/upload/files?email=${encodeURIComponent(userEmail)}`
+    );
     if (!response.ok) {
       throw new Error(`Failed to fetch uploaded files: ${response.status}`);
     }

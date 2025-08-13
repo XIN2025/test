@@ -41,9 +41,9 @@ class DocumentProcessor:
             logger.error(f"OpenAI error: {str(e)}")
             return f"Error: {str(e)}"
 
-    def process_text_file(self, content: str, filename: str, progress_callback: Optional[Callable] = None) -> Dict:
+    def process_text_file(self, content: str, filename: str, user_email: str, progress_callback: Optional[Callable] = None) -> Dict:
         """Process a text file and extract entities and relationships with progress updates"""
-        logger.info(f"Processing text file: {filename}")
+        logger.info(f"Processing text file: {filename} for user {user_email}")
         
         try:
             # Update progress: Starting text analysis
@@ -63,8 +63,8 @@ class DocumentProcessor:
                 progress_callback(80, "Storing data in knowledge base...")
                 time.sleep(0.5)
             
-            # Store in graph database
-            self._store_in_graph(entities, relationships)
+            # Store in graph database with user email
+            self._store_in_graph(entities, relationships, user_email)
             
             # Update vector store
             self._update_vector_store(entities)
@@ -90,9 +90,9 @@ class DocumentProcessor:
                 "error": str(e)
             }
 
-    def process_pdf_file(self, file_content: bytes, filename: str, progress_callback: Optional[Callable] = None) -> Dict:
+    def process_pdf_file(self, file_content: bytes, filename: str, user_email: str, progress_callback: Optional[Callable] = None) -> Dict:
         """Process a PDF file and extract entities and relationships with progress updates"""
-        logger.info(f"Processing PDF file: {filename}")
+        logger.info(f"Processing PDF file: {filename} for user {user_email}")
         
         try:
             # Update progress: Starting PDF processing
@@ -104,7 +104,7 @@ class DocumentProcessor:
             text_content = self._extract_text_from_pdf(file_content)
             
             # Process the extracted text
-            return self.process_text_file(text_content, filename, progress_callback)
+            return self.process_text_file(text_content, filename, user_email, progress_callback)
         except Exception as e:
             logger.error(f"Error processing PDF file {filename}: {e}")
             return {
@@ -250,15 +250,19 @@ class DocumentProcessor:
         
         return entities
 
-    def _store_in_graph(self, entities: List[Dict], relationships: List[Dict]):
+    def _store_in_graph(self, entities: List[Dict], relationships: List[Dict], user_email: str):
         """Store entities and relationships in the graph database"""
         # Store entities
         for entity in entities:
             try:
+                properties = {
+                    'description': entity.get('description', ''),
+                    'user_email': user_email  # Add user_email to entity properties
+                }
                 self.graph_db.create_entity(
                     entity_type=entity.get('type', 'ENTITY'),
                     name=entity.get('name'),
-                    properties={'description': entity.get('description', '')}
+                    properties=properties
                 )
             except Exception as e:
                 logger.error(f"Error storing entity {entity.get('name')}: {e}")
@@ -266,11 +270,15 @@ class DocumentProcessor:
         # Store relationships
         for rel in relationships:
             try:
+                properties = {
+                    'description': rel.get('description', ''),
+                    'user_email': user_email  # Add user_email to relationship properties
+                }
                 self.graph_db.create_relationship(
                     from_entity=rel.get('from'),
                     relationship_type=rel.get('type', 'RELATED_TO'),
                     to_entity=rel.get('to'),
-                    properties={'description': rel.get('description', '')}
+                    properties=properties
                 )
             except Exception as e:
                 logger.error(f"Error storing relationship {rel.get('from')} -> {rel.get('to')}: {e}")

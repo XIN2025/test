@@ -1,5 +1,6 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
+from pydantic import EmailStr
 from typing import Dict, Any
 import asyncio
 import json
@@ -21,7 +22,8 @@ progress_tracker = ProgressTracker()
 @upload_router.post("/document")
 async def upload_document(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    email: str = Query(..., description="User email for document ownership")
 ):
     """Upload and process a document with progress tracking"""
     
@@ -53,13 +55,14 @@ async def upload_document(
             raise HTTPException(status_code=400, detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB")
         logger.info(f"Read {len(content)} bytes from file {file.filename}")
         
-        # Start processing in background with the file content
+        # Start processing in background with the file content and user email
         background_tasks.add_task(
             process_document_background,
             upload_id,
             file.filename,
             content,
-            file_extension
+            file_extension,
+            email  # Pass the email to background task
         )
         
         # Create initial Mongo record (status = processing)
@@ -74,7 +77,8 @@ async def upload_document(
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
             "entities": [],
-            "relationships": []
+            "relationships": [],
+            "user_email": email  # Add user email to record
         })
 
         return {
@@ -166,11 +170,12 @@ async def remove_upload_session(upload_id: str):
     return {"success": True, "message": "Upload session removed"}
 
 @upload_router.get("/files")
-async def list_uploaded_files():
-    """List persisted uploaded files from MongoDB"""
+async def list_uploaded_files(email: EmailStr = Query(..., description="User email to filter files")):
+    """List persisted uploaded files from MongoDB for a specific user"""
     db = get_db()
     col = db.get_collection("uploaded_files")
-    docs = list(col.find().sort("created_at", -1))
+    # Filter by user email
+    docs = list(col.find({"user_email": email}).sort("created_at", -1))
     def serialize(doc):
         return {
             "id": str(doc.get("_id")),
@@ -215,9 +220,9 @@ async def delete_uploaded_file(upload_id: str):
 
     return {"success": True, "message": "File and associated graph data deleted"}
 
-async def process_document_background(upload_id: str, filename: str, content: bytes, file_extension: str):
+async def process_document_background(upload_id: str, filename: str, content: bytes, file_extension: str, user_email: str):
     """Background task to process uploaded document with real-time progress updates"""
-    logger.info(f"Starting background processing for upload {upload_id}")
+    logger.info(f"Starting background processing for upload {upload_id} for user {user_email}")
     
     def progress_callback(percentage: int, message: str):
         """Callback function to update progress"""
@@ -243,14 +248,14 @@ async def process_document_background(upload_id: str, filename: str, content: by
 
         # Process document based on type with progress callback
         if file_extension == 'pdf':
-            result = processor.process_pdf_file(content, filename, progress_callback)
+            result = processor.process_pdf_file(content, filename, user_email, progress_callback)
         elif file_extension in ['docx', 'doc']:
             # For now, treat as text file since we don't have Word processing
             text_content = content.decode('utf-8')
-            result = processor.process_text_file(text_content, filename, progress_callback)
+            result = processor.process_text_file(text_content, filename, user_email, progress_callback)
         else:  # txt file
             text_content = content.decode('utf-8')
-            result = processor.process_text_file(text_content, filename, progress_callback)
+            result = processor.process_text_file(text_content, filename, user_email, progress_callback)
 
         # Check if processing was successful
         if not result.get('success'):

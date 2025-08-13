@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 chat_router = APIRouter(prefix="/chat", tags=["chat"])
 
 @chat_router.post("/send")
-async def send_message(message: str = Form(...)):
+async def send_message(message: str = Form(...), user_email: str = Form(...)):
     """Send a chat message and get response with follow-up questions"""
     try:
         chat_service = get_chat_service()
-        result = await chat_service.chat(message)
+        result = await chat_service.chat(message, user_email)
         
         return {
             "success": result["success"],
@@ -31,13 +31,13 @@ async def send_message(message: str = Form(...)):
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 
 @chat_router.post("/stream")
-async def stream_chat(message: str = Form(...)):
+async def stream_chat(message: str = Form(...), user_email: str = Form(...)):
     """Stream chat response in real-time"""
     try:
         chat_service = get_chat_service()
         
         async def generate():
-            async for chunk in chat_service.chat_stream(message):
+            async for chunk in chat_service.chat_stream(message, user_email):
                 yield f"data: {json.dumps(chunk)}\n\n"
         
         return StreamingResponse(
