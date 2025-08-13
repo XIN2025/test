@@ -51,6 +51,7 @@ class PlannerService:
         
         self.health_insights_service = get_health_insights_service()
 
+
     def create_action_plan(self, goal: Goal, context: List[str] = None, user_email: str = None) -> ActionPlan:
         """Create an action plan for a goal, considering health insights and context"""
         try:

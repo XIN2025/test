@@ -212,7 +212,7 @@ export default function SupplementsPage() {
                       </View>
                       <View className="items-end">
                         <Text className="font-semibold text-emerald-600">
-                          ${supplement.price}
+                          ${supplement.price.toFixed(2)}
                         </Text>
                         <TouchableOpacity className="bg-emerald-600 px-3 py-1 rounded-full mt-1">
                           <Text className="text-xs text-white font-medium">
@@ -246,7 +246,7 @@ export default function SupplementsPage() {
                             {supplement.name}
                           </Text>
                           <Text className="font-semibold text-emerald-600">
-                            ${supplement.price}
+                            ${supplement.price.toFixed(2)}
                           </Text>
                         </View>
                         <Text className="text-sm text-gray-600 mt-1">
