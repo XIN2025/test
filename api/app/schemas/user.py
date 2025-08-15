@@ -18,5 +18,6 @@ class UserPreferences(BaseModel):
     gender: str
     healthGoals: List[str]
     conditions: List[str]
+    atRiskConditions: List[str]
     communicationStyle: str
     notifications: bool 

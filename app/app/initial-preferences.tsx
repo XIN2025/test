@@ -143,10 +143,9 @@ export default function InitialPreferences() {
         healthGoals: formData.healthGoals,
         conditions: formData.conditions,
         atRiskConditions: formData.atRiskConditions,
-        communicationStyle: {
-          tone: formData.tonalStyle || "",
-          verbosity: formData.verbosityStyle || "",
-        },
+        communicationStyle: [formData.tonalStyle, formData.verbosityStyle]
+          .filter(Boolean)
+          .join(" - "),
         notifications: formData.notifications,
       };
 
