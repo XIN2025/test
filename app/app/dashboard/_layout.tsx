@@ -4,9 +4,10 @@ import {
   Heart,
   MessageCircle,
   ShoppingBag,
-  Pill,
+  Users,
   User,
   Target,
+  Globe,
 } from "lucide-react-native";
 import { UserProvider } from "@/context/UserContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
@@ -72,10 +73,20 @@ function TabsNavigator() {
       <Tabs.Screen
         name="supplements"
         options={{
-          title: "Supplements",
-          tabBarLabel: "Supplements",
+          title: "Hub",
+          tabBarLabel: "Hub",
           tabBarIcon: ({ color, size }) => (
-            <Pill color={color} size={size ?? 22} />
+            <Users color={color} size={size ?? 22} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: "Community",
+          tabBarLabel: "Community",
+          tabBarIcon: ({ color, size }) => (
+            <Globe color={color} size={size ?? 22} />
           ),
         }}
       />

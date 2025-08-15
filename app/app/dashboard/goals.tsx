@@ -1237,44 +1237,60 @@ export default function GoalsScreen() {
             }}
           >
             <View
-              className="bg-white rounded-xl w-full max-w-md mx-4 p-5"
+              className={`rounded-xl w-full max-w-md mx-4 p-5 ${
+                isDarkMode ? "bg-gray-900" : "bg-white"
+              }`}
               style={{ elevation: 20 }}
             >
               <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-lg font-semibold text-gray-800">
+                <Text
+                  className={`text-lg font-semibold ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
                   Manage Documents
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowUploadModal(false)}
                   className="p-1"
                 >
-                  <X size={20} color="#6b7280" />
+                  <X size={20} color={isDarkMode ? "#d1d5db" : "#6b7280"} />
                 </TouchableOpacity>
               </View>
 
               {uploadProgress && (
-                <View className="mb-4 border border-gray-100 rounded-lg p-3 bg-gray-50">
+                <View
+                  className={`mb-4 border rounded-lg p-3 ${
+                    isDarkMode
+                      ? "bg-gray-800 border-gray-700"
+                      : "bg-gray-50 border-gray-100"
+                  }`}
+                >
                   <View className="flex-row items-center mb-2">
                     {uploadProgress.status === "processing" ? (
                       <ActivityIndicator
                         size="small"
-                        color="#059669"
+                        color={isDarkMode ? "#34d399" : "#059669"}
                         style={{ marginRight: 8 }}
                       />
                     ) : uploadProgress.status === "completed" ? (
                       <CheckCircle
                         size={18}
-                        color="#059669"
+                        color={isDarkMode ? "#34d399" : "#059669"}
                         style={{ marginRight: 8 }}
                       />
                     ) : (
                       <AlertCircle
                         size={18}
-                        color="#ef4444"
+                        color={isDarkMode ? "#f87171" : "#ef4444"}
                         style={{ marginRight: 8 }}
                       />
                     )}
-                    <Text className="font-medium text-gray-800 text-sm">
+                    <Text
+                      className={`font-medium text-sm ${
+                        isDarkMode ? "text-gray-100" : "text-gray-800"
+                      }`}
+                    >
                       {uploadProgress.status === "processing"
                         ? "Processing Document"
                         : uploadProgress.status === "completed"
@@ -1282,27 +1298,51 @@ export default function GoalsScreen() {
                         : "Upload Failed"}
                     </Text>
                   </View>
-                  <Text className="text-xs text-gray-600 mb-2">
+                  <Text
+                    className={`text-xs mb-2 ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
                     {uploadProgress.filename}
                   </Text>
-                  <View className="h-2 bg-gray-200 rounded-full mb-2 overflow-hidden">
+                  <View
+                    className={`h-2 rounded-full mb-2 overflow-hidden ${
+                      isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                    }`}
+                  >
                     <View
                       className="h-2"
                       style={{
                         width: `${uploadProgress.percentage}%`,
                         backgroundColor:
                           uploadProgress.status === "failed"
-                            ? "#ef4444"
+                            ? isDarkMode
+                              ? "#f87171"
+                              : "#ef4444"
+                            : isDarkMode
+                            ? "#34d399"
                             : "#059669",
                       }}
                     />
                   </View>
-                  <Text className="text-xs text-gray-600">
+                  <Text
+                    className={`text-xs ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
                     {uploadProgress.message}
                   </Text>
                   {uploadProgress.status === "completed" && (
-                    <View className="mt-2 bg-green-50 rounded-md p-2">
-                      <Text className="text-xs text-green-800">
+                    <View
+                      className={`mt-2 rounded-md p-2 ${
+                        isDarkMode ? "bg-emerald-950/50" : "bg-green-50"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs ${
+                          isDarkMode ? "text-emerald-300" : "text-green-800"
+                        }`}
+                      >
                         Extracted {uploadProgress.entitiesCount} entities &{" "}
                         {uploadProgress.relationshipsCount} relationships
                       </Text>
@@ -1312,12 +1352,24 @@ export default function GoalsScreen() {
               )}
 
               <View className="mb-4 max-h-56">
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text
+                  className={`text-sm font-medium mb-2 ${
+                    isDarkMode ? "text-gray-200" : "text-gray-700"
+                  }`}
+                >
                   Uploaded Files
                 </Text>
                 {uploadedFiles.length === 0 && !uploadProgress && (
-                  <View className="p-4 bg-gray-50 rounded-lg items-center">
-                    <Text className="text-xs text-gray-500">
+                  <View
+                    className={`p-4 rounded-lg items-center ${
+                      isDarkMode ? "bg-gray-800" : "bg-gray-50"
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs ${
+                        isDarkMode ? "text-gray-400" : "text-gray-500"
+                      }`}
+                    >
                       No documents uploaded yet.
                     </Text>
                   </View>
@@ -1326,16 +1378,24 @@ export default function GoalsScreen() {
                   {uploadedFiles.map((file) => (
                     <View
                       key={file.name}
-                      className="flex-row items-center justify-between bg-gray-50 rounded-lg px-3 py-2 mb-2"
+                      className={`flex-row items-center justify-between rounded-lg px-3 py-2 mb-2 ${
+                        isDarkMode ? "bg-gray-800" : "bg-gray-50"
+                      }`}
                     >
                       <View className="flex-1 mr-2">
                         <Text
-                          className="text-xs font-medium text-gray-800"
+                          className={`text-xs font-medium ${
+                            isDarkMode ? "text-gray-100" : "text-gray-800"
+                          }`}
                           numberOfLines={1}
                         >
                           {file.name}
                         </Text>
-                        <Text className="text-[10px] text-gray-500">
+                        <Text
+                          className={`text-[10px] ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
                           {(file.size / 1024).toFixed(1)} KB · {file.type}
                         </Text>
                       </View>
@@ -1374,15 +1434,29 @@ export default function GoalsScreen() {
               <View className="flex-row justify-end space-x-3">
                 <TouchableOpacity
                   onPress={() => setShowUploadModal(false)}
-                  className="px-4 py-2 rounded-lg bg-gray-200"
+                  className={`px-4 py-2 rounded-lg ${
+                    isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                  }`}
                 >
-                  <Text className="text-sm text-gray-700">Close</Text>
+                  <Text
+                    className={`text-sm ${
+                      isDarkMode ? "text-gray-200" : "text-gray-700"
+                    }`}
+                  >
+                    Close
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleFileUpload}
                   disabled={isUploading || generatingPlan}
                   className={`px-4 py-2 rounded-lg ${
-                    isUploading ? "bg-emerald-300" : "bg-emerald-600"
+                    isUploading
+                      ? isDarkMode
+                        ? "bg-emerald-900"
+                        : "bg-emerald-300"
+                      : isDarkMode
+                      ? "bg-emerald-700"
+                      : "bg-emerald-600"
                   }`}
                 >
                   <Text className="text-sm font-medium text-white">
