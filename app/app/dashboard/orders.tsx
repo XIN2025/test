@@ -538,17 +538,7 @@ export default function OrdersPage() {
                               <StatusIcon
                                 size={14}
                                 color={
-                                  isDarkMode
-                                    ? getStatusColor(order.status)
-                                        .replace("text-", "")
-                                        .replace("-700", "")
-                                        .replace("green", "#34d399")
-                                        .replace("blue", "#60a5fa")
-                                        .replace("amber", "#fbbf24")
-                                        .replace("red", "#f87171")
-                                    : getStatusColor(order.status)
-                                        .replace("text-", "")
-                                        .replace("-600", "")
+                                  isDarkMode ? "text-blue-400" : "text-gray-400"
                                 }
                                 className="mr-1"
                               />
