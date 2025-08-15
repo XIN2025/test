@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useUser } from "../../context/UserContext";
+import { useTheme } from "../../context/ThemeContext";
 import {
   View,
   Text,
@@ -129,29 +130,45 @@ export default function ChatPage() {
 
   // Removed document upload logic
 
+  const { isDarkMode } = useTheme();
+
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#f0f9f6", "#e6f4f1"]}
+        colors={isDarkMode ? ["#111827", "#1f2937"] : ["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
         {/* Header */}
-        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4">
+        <View
+          className={`shadow-sm border-b px-4 py-4 ${
+            isDarkMode
+              ? "bg-gray-900 border-gray-800"
+              : "bg-white border-gray-100"
+          }`}
+        >
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View
                 className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: "#114131" }}
+                style={{ backgroundColor: isDarkMode ? "#1f6f51" : "#114131" }}
               >
                 <MessageCircle size={20} color="#fff" />
               </View>
               <View>
-                <Text className="font-semibold text-gray-800">
+                <Text
+                  className={`font-semibold ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
                   AI Health Agent
                 </Text>
-                <Text className="text-sm text-gray-600">
+                <Text
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
                   Chat with Evra • Upload documents
                 </Text>
               </View>
@@ -177,26 +194,36 @@ export default function ChatPage() {
               <View
                 className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                   message.sender === "user"
-                    ? "bg-white shadow-sm border border-gray-100"
+                    ? isDarkMode
+                      ? "bg-emerald-900 border-emerald-800"
+                      : "bg-emerald-800"
+                    : isDarkMode
+                    ? "bg-gray-800 border border-gray-700"
                     : "bg-white shadow-sm border border-gray-100"
                 }`}
-                style={
-                  message.sender === "user"
-                    ? { backgroundColor: "#114131" }
-                    : {}
-                }
               >
                 {message.isLoading ? (
                   <View className="flex-row items-center">
-                    <ActivityIndicator size="small" color="#114131" />
-                    <Text className="text-gray-500 ml-2">
+                    <ActivityIndicator
+                      size="small"
+                      color={isDarkMode ? "#34d399" : "#114131"}
+                    />
+                    <Text
+                      className={`ml-2 ${
+                        isDarkMode ? "text-gray-300" : "text-gray-500"
+                      }`}
+                    >
                       AI is thinking...
                     </Text>
                   </View>
                 ) : (
                   <Text
                     className={`text-sm ${
-                      message.sender === "user" ? "text-white" : "text-gray-800"
+                      message.sender === "user"
+                        ? "text-white"
+                        : isDarkMode
+                        ? "text-gray-100"
+                        : "text-gray-800"
                     }`}
                   >
                     {message.text}
@@ -214,9 +241,17 @@ export default function ChatPage() {
                       <TouchableOpacity
                         key={index}
                         onPress={() => handleSuggestionClick(suggestion)}
-                        className="bg-white border border-gray-200 rounded-full px-3 py-2 mr-2 mb-2"
+                        className={`border rounded-full px-3 py-2 mr-2 mb-2 ${
+                          isDarkMode
+                            ? "bg-gray-800 border-gray-700"
+                            : "bg-white border-gray-200"
+                        }`}
                       >
-                        <Text className="text-sm text-gray-700">
+                        <Text
+                          className={`text-sm ${
+                            isDarkMode ? "text-gray-300" : "text-gray-700"
+                          }`}
+                        >
                           {suggestion}
                         </Text>
                       </TouchableOpacity>
@@ -233,16 +268,25 @@ export default function ChatPage() {
         {/* Input Section */}
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="bg-white border-t border-gray-100 px-4 py-4"
+          className={`border-t px-4 py-4 ${
+            isDarkMode
+              ? "bg-gray-900 border-gray-800"
+              : "bg-white border-gray-100"
+          }`}
         >
           <View className="flex-row items-center">
             {/* Text Input */}
-            <View className="flex-1 bg-gray-50 rounded-full px-4 py-2 mr-3">
+            <View
+              className={`flex-1 rounded-full px-4 py-2 mr-3 ${
+                isDarkMode ? "bg-gray-800" : "bg-gray-50"
+              }`}
+            >
               <TextInput
                 value={inputText}
                 onChangeText={setInputText}
                 placeholder="Type your message..."
-                className="text-gray-800"
+                className={isDarkMode ? "text-gray-100" : "text-gray-800"}
+                placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
                 multiline
                 maxLength={500}
               />
@@ -253,13 +297,14 @@ export default function ChatPage() {
               onPress={() => handleSendMessage(inputText)}
               disabled={!inputText.trim() || isTyping}
               className={`p-2 rounded-full ${
-                inputText.trim() && !isTyping ? "bg-gray-300" : "bg-gray-300"
-              }`}
-              style={
                 inputText.trim() && !isTyping
-                  ? { backgroundColor: "#114131" }
-                  : {}
-              }
+                  ? isDarkMode
+                    ? "bg-emerald-700"
+                    : "bg-emerald-600"
+                  : isDarkMode
+                  ? "bg-gray-700"
+                  : "bg-gray-300"
+              }`}
             >
               <Send
                 size={20}
@@ -270,52 +315,91 @@ export default function ChatPage() {
 
           {/* Chat Suggestions */}
           <View className="mt-3">
-            <Text className="text-xs font-medium text-gray-600 mb-2">
+            <Text
+              className={`text-xs font-medium mb-2 ${
+                isDarkMode ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
               CHAT SUGGESTIONS
             </Text>
             <View className="flex-row flex-wrap">
               <TouchableOpacity
                 onPress={() => handleSendMessage("Book Rx delivery")}
-                className="border border-gray-200 rounded-full px-3 py-1 mr-2 mb-2"
-                style={{ backgroundColor: "#e6f4f1" }}
+                className={`border rounded-full px-3 py-1 mr-2 mb-2 ${
+                  isDarkMode
+                    ? "bg-emerald-900/30 border-emerald-800"
+                    : "bg-emerald-50 border-emerald-100"
+                }`}
               >
-                <Text className={`text-xs`} style={{ color: "#114131" }}>
+                <Text
+                  className={`text-xs ${
+                    isDarkMode ? "text-emerald-300" : "text-emerald-800"
+                  }`}
+                >
                   Book Rx delivery
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleSendMessage("Book meal delivery")}
-                className="border border-gray-200 rounded-full px-3 py-1 mr-2 mb-2"
-                style={{ backgroundColor: "#e6f4f1" }}
+                className={`border rounded-full px-3 py-1 mr-2 mb-2 ${
+                  isDarkMode
+                    ? "bg-emerald-900/30 border-emerald-800"
+                    : "bg-emerald-50 border-emerald-100"
+                }`}
               >
-                <Text className={`text-xs`} style={{ color: "#114131" }}>
+                <Text
+                  className={`text-xs ${
+                    isDarkMode ? "text-emerald-300" : "text-emerald-800"
+                  }`}
+                >
                   Book meal delivery
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleSendMessage("Book fitness class")}
-                className="border border-gray-200 rounded-full px-3 py-1 mr-2 mb-2"
-                style={{ backgroundColor: "#e6f4f1" }}
+                className={`border rounded-full px-3 py-1 mr-2 mb-2 ${
+                  isDarkMode
+                    ? "bg-emerald-900/30 border-emerald-800"
+                    : "bg-emerald-50 border-emerald-100"
+                }`}
               >
-                <Text className={`text-xs`} style={{ color: "#114131" }}>
+                <Text
+                  className={`text-xs ${
+                    isDarkMode ? "text-emerald-300" : "text-emerald-800"
+                  }`}
+                >
                   Book fitness class
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleSendMessage("Book supplement delivery")}
-                className="border border-gray-200 rounded-full px-3 py-1 mr-2 mb-2"
-                style={{ backgroundColor: "#e6f4f1" }}
+                className={`border rounded-full px-3 py-1 mr-2 mb-2 ${
+                  isDarkMode
+                    ? "bg-emerald-900/30 border-emerald-800"
+                    : "bg-emerald-50 border-emerald-100"
+                }`}
               >
-                <Text className={`text-xs`} style={{ color: "#114131" }}>
+                <Text
+                  className={`text-xs ${
+                    isDarkMode ? "text-emerald-300" : "text-emerald-800"
+                  }`}
+                >
                   Book supplement delivery
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleSendMessage("Book appointment")}
-                className="border border-gray-200 rounded-full px-3 py-1 mb-2"
-                style={{ backgroundColor: "#e6f4f1" }}
+                className={`border rounded-full px-3 py-1 mb-2 ${
+                  isDarkMode
+                    ? "bg-emerald-900/30 border-emerald-800"
+                    : "bg-emerald-50 border-emerald-100"
+                }`}
               >
-                <Text className={`text-xs`} style={{ color: "#114131" }}>
+                <Text
+                  className={`text-xs ${
+                    isDarkMode ? "text-emerald-300" : "text-emerald-800"
+                  }`}
+                >
                   Book appointment
                 </Text>
               </TouchableOpacity>

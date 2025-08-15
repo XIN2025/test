@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
 import { useUser } from "@/context/UserContext";
+import { useTheme } from "@/context/ThemeContext";
 import {
   Target,
   Plus,
@@ -95,6 +96,7 @@ interface DeleteFileButtonProps {
 
 const DeleteFileButton: React.FC<DeleteFileButtonProps> = ({ onDelete }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const { isDarkMode } = useTheme();
 
   const handleDelete = async () => {
     setIsLoading(true);
@@ -111,13 +113,28 @@ const DeleteFileButton: React.FC<DeleteFileButtonProps> = ({ onDelete }) => {
       onPress={handleDelete}
       disabled={isLoading}
       className={`px-2 py-1 rounded ${
-        isLoading ? "bg-gray-100" : "bg-red-100"
+        isLoading
+          ? isDarkMode
+            ? "bg-gray-700"
+            : "bg-gray-100"
+          : isDarkMode
+          ? "bg-red-900/50"
+          : "bg-red-100"
       }`}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color="#dc2626" />
+        <ActivityIndicator
+          size="small"
+          color={isDarkMode ? "#f87171" : "#dc2626"}
+        />
       ) : (
-        <Text className="text-[10px] font-semibold text-red-600">Delete</Text>
+        <Text
+          className={`text-[10px] font-semibold ${
+            isDarkMode ? "text-red-400" : "text-red-600"
+          }`}
+        >
+          Delete
+        </Text>
       )}
     </TouchableOpacity>
   );
@@ -129,6 +146,7 @@ interface ActionItemCardProps {
 }
 
 const ActionItemCard: React.FC<ActionItemCardProps> = ({ item, onPress }) => {
+  const { isDarkMode } = useTheme();
   const scheduledDays = Object.entries(item.weekly_schedule || {})
     .filter(
       ([key, value]) =>
@@ -149,23 +167,45 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item, onPress }) => {
 
   return (
     <TouchableOpacity className="mt-3" onPress={onPress}>
-      <View className="bg-white shadow rounded-lg p-4">
-        <View>
-          <Text className="font-semibold text-gray-800 mb-1">{item.title}</Text>
-          <Text className="text-sm text-gray-600 mb-2">{item.description}</Text>
-          <View className="flex-row flex-wrap">
+      <View
+        className={`shadow rounded-lg p-4 ${
+          isDarkMode ? "bg-gray-800 border border-gray-700" : "bg-white"
+        }`}
+      >
+        <Text
+          className={`text-base font-medium mb-1 ${
+            isDarkMode ? "text-gray-100" : "text-gray-800"
+          }`}
+        >
+          {item.title}
+        </Text>
+        <Text
+          className={`text-sm mb-2 ${
+            isDarkMode ? "text-gray-300" : "text-gray-600"
+          }`}
+        >
+          {item.description}
+        </Text>
+        {scheduledDays.length > 0 && (
+          <View className="flex-row flex-wrap mt-1">
             {scheduledDays.map((day) => (
               <View
                 key={day}
-                className="bg-emerald-100 rounded-full px-2 py-1 mr-2 mb-1"
+                className={`rounded px-2 py-1 mr-1 mb-1 ${
+                  isDarkMode ? "bg-gray-700" : "bg-gray-100"
+                }`}
               >
-                <Text className="text-xs text-emerald-800">
+                <Text
+                  className={`text-xs ${
+                    isDarkMode ? "text-gray-300" : "text-gray-600"
+                  }`}
+                >
                   {day.charAt(0).toUpperCase() + day.slice(1, 3)}
                 </Text>
               </View>
             ))}
           </View>
-        </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -817,9 +857,22 @@ export default function GoalsScreen() {
   // Inline banner to inform user while plan is being generated
   const GeneratingBanner = () =>
     generatingPlan ? (
-      <View className="mx-4 mt-3 mb-1 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex-row items-center">
-        <ActivityIndicator size="small" color="#059669" />
-        <Text className="ml-2 text-sm text-emerald-900">
+      <View
+        className={`mx-4 mt-3 mb-1 rounded-lg px-3 py-2 flex-row items-center border ${
+          isDarkMode
+            ? "bg-emerald-950/50 border-emerald-900"
+            : "bg-emerald-50 border-emerald-200"
+        }`}
+      >
+        <ActivityIndicator
+          size="small"
+          color={isDarkMode ? "#34d399" : "#059669"}
+        />
+        <Text
+          className={`ml-2 text-sm ${
+            isDarkMode ? "text-emerald-400" : "text-emerald-900"
+          }`}
+        >
           Generating plan… You can come back later once it is ready, as creating
           a detailed plan may take a while.
         </Text>
@@ -961,8 +1014,13 @@ export default function GoalsScreen() {
     } catch (error) {
       console.error("Error generating plan:", error);
       Alert.alert(
-        "Error",
-        error instanceof Error ? error.message : "Failed to generate plan"
+        isDarkMode ? "Error" : "Error",
+        error instanceof Error ? error.message : "Failed to generate plan",
+        undefined,
+        {
+          cancelable: true,
+          userInterfaceStyle: isDarkMode ? "dark" : "light",
+        }
       );
     } finally {
       setGeneratingPlan(false);
@@ -1013,18 +1071,29 @@ export default function GoalsScreen() {
   const completionRate =
     totalGoals > 0 ? (completedGoals / totalGoals) * 100 : 0;
 
+  const { isDarkMode } = useTheme();
+
   if (loading && goals.length === 0) {
     return (
       <SafeAreaView className="flex-1">
         <LinearGradient
-          colors={["#ecfdf5", "#f0fdfa"]}
+          colors={isDarkMode ? ["#1a1a1a", "#2d2d2d"] : ["#ecfdf5", "#f0fdfa"]}
           className="flex-1"
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
           <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#059669" />
-            <Text className="text-gray-600 mt-4">Loading goals...</Text>
+            <ActivityIndicator
+              size="large"
+              color={isDarkMode ? "#34d399" : "#059669"}
+            />
+            <Text
+              className={`mt-4 ${
+                isDarkMode ? "text-gray-400" : "text-gray-600"
+              }`}
+            >
+              Loading goals...
+            </Text>
           </View>
         </LinearGradient>
       </SafeAreaView>
@@ -1034,26 +1103,40 @@ export default function GoalsScreen() {
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#f0f9f6", "#e6f4f1"]}
+        colors={isDarkMode ? ["#111827", "#1f2937"] : ["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
         {/* Header */}
-        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4">
+        <View
+          className={`shadow-sm border-b px-4 py-4 ${
+            isDarkMode
+              ? "bg-gray-900 border-gray-800"
+              : "bg-white border-gray-100"
+          }`}
+        >
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View
                 className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: "#114131" }}
+                style={{ backgroundColor: isDarkMode ? "#1f6f51" : "#114131" }}
               >
                 <Target size={20} color="#fff" />
               </View>
               <View>
-                <Text className="font-semibold text-gray-800">
+                <Text
+                  className={`font-semibold ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
                   Weekly Goals
                 </Text>
-                <Text className="text-sm text-gray-600">
+                <Text
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
                   {formatDate(weekStart)} - {formatDate(weekEnd)}
                 </Text>
               </View>
@@ -1064,11 +1147,17 @@ export default function GoalsScreen() {
                   onPress={openPreferences}
                   accessibilityLabel="Set Weekly Time Preferences"
                   className="w-8 h-8 rounded-full items-center justify-center"
-                  style={{ backgroundColor: "#114131" }}
+                  style={{
+                    backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  }}
                 >
                   <Star size={16} color="#fff" />
                 </TouchableOpacity>
-                <Text className="text-[10px] text-gray-800 mt-1 text-center w-20">
+                <Text
+                  className={`text-[10px] mt-1 text-center w-20 ${
+                    isDarkMode ? "text-gray-300" : "text-gray-800"
+                  }`}
+                >
                   Set Weekly Time Preferences
                 </Text>
               </View>
@@ -1077,11 +1166,17 @@ export default function GoalsScreen() {
                   onPress={() => setShowUploadModal(true)}
                   accessibilityLabel="Open File Manager"
                   className="w-8 h-8 rounded-full items-center justify-center"
-                  style={{ backgroundColor: "#114131" }}
+                  style={{
+                    backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  }}
                 >
                   <BookOpen size={16} color="#fff" />
                 </TouchableOpacity>
-                <Text className="text-[10px] text-gray-800 mt-1 text-center w-20">
+                <Text
+                  className={`text-[10px] ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  } mt-1 text-center w-20`}
+                >
                   Open File Manager
                 </Text>
               </View>
@@ -1090,11 +1185,17 @@ export default function GoalsScreen() {
                   onPress={() => setShowAddGoal(true)}
                   accessibilityLabel="Create New Goal"
                   className="w-8 h-8 rounded-full items-center justify-center"
-                  style={{ backgroundColor: "#114131" }}
+                  style={{
+                    backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  }}
                 >
                   <Plus size={16} color="#fff" />
                 </TouchableOpacity>
-                <Text className="text-[10px] text-gray-800 mt-1 text-center w-20">
+                <Text
+                  className={`text-[10px] ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  } mt-1 text-center w-20`}
+                >
                   Create New Goal
                 </Text>
               </View>
@@ -1103,8 +1204,20 @@ export default function GoalsScreen() {
         </View>
 
         {error && (
-          <View className="bg-red-50 border border-red-200 mx-4 mt-4 p-3 rounded-lg">
-            <Text className="text-red-700 text-sm">{error}</Text>
+          <View
+            className={`mx-4 mt-4 p-3 rounded-lg border ${
+              isDarkMode
+                ? "bg-red-950/50 border-red-900"
+                : "bg-red-50 border-red-200"
+            }`}
+          >
+            <Text
+              className={`text-sm ${
+                isDarkMode ? "text-red-400" : "text-red-700"
+              }`}
+            >
+              {error}
+            </Text>
           </View>
         )}
 
@@ -1542,7 +1655,12 @@ export default function GoalsScreen() {
 
             {/* Goals List */}
             {goals.map((goal: ExtendedGoal) => (
-              <Card key={goal.id} className="border-0">
+              <Card
+                key={goal.id}
+                className={`border-0 ${
+                  isDarkMode ? "bg-gray-800" : "bg-white"
+                }`}
+              >
                 <View className="p-4">
                   <View className="mb-4">
                     <View className="flex-row items-center justify-between mb-2">
@@ -1550,7 +1668,11 @@ export default function GoalsScreen() {
                         <Text className="text-lg mr-2">
                           {getCategoryIcon(goal.category)}
                         </Text>
-                        <Text className="text-lg font-semibold text-gray-800">
+                        <Text
+                          className={`text-lg font-semibold ${
+                            isDarkMode ? "text-gray-100" : "text-gray-800"
+                          }`}
+                        >
                           {goal.title}
                         </Text>
                       </View>
@@ -1577,7 +1699,11 @@ export default function GoalsScreen() {
                         </TouchableOpacity>
                       )}
                     </View>
-                    <Text className="text-sm text-gray-600 mb-2">
+                    <Text
+                      className={`text-sm mb-2 ${
+                        isDarkMode ? "text-gray-300" : "text-gray-600"
+                      }`}
+                    >
                       {goal.description}
                     </Text>
                     <View className="flex-row items-center">
@@ -1594,7 +1720,11 @@ export default function GoalsScreen() {
                   {/* Action Items */}
                   {(goal.action_plan?.action_items?.length ?? 0) > 0 && (
                     <View className="mt-4">
-                      <Text className="text-lg font-semibold mb-2">
+                      <Text
+                        className={`text-lg font-semibold mb-2 ${
+                          isDarkMode ? "text-gray-100" : "text-gray-800"
+                        }`}
+                      >
                         Action Items
                       </Text>
                       <View>
@@ -1671,32 +1801,83 @@ export default function GoalsScreen() {
             )}
 
             {/* Quick Actions */}
-            <Card className="border-0">
+            <Card
+              className={`border-0 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            >
               <View className="p-4">
-                <Text className="text-lg font-semibold text-gray-800 mb-3">
+                <Text
+                  className={`text-lg font-semibold mb-3 ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
                   Quick Actions
                 </Text>
                 <View className="space-y-2">
-                  <TouchableOpacity className="flex-row items-center p-3 bg-gray-50 rounded-lg">
-                    <Calendar size={20} color="#059669" className="mr-3" />
-                    <Text className="flex-1 text-gray-800">
+                  <TouchableOpacity
+                    className={`flex-row items-center p-3 rounded-lg ${
+                      isDarkMode ? "bg-gray-700" : "bg-gray-50"
+                    }`}
+                  >
+                    <Calendar
+                      size={20}
+                      color={isDarkMode ? "#34d399" : "#059669"}
+                      className="mr-3"
+                    />
+                    <Text
+                      className={`flex-1 ${
+                        isDarkMode ? "text-gray-100" : "text-gray-800"
+                      }`}
+                    >
                       View Monthly Overview
                     </Text>
-                    <ArrowRight size={16} color="#64748b" />
+                    <ArrowRight
+                      size={16}
+                      color={isDarkMode ? "#a1a1aa" : "#64748b"}
+                    />
                   </TouchableOpacity>
-                  <TouchableOpacity className="flex-row items-center p-3 bg-gray-50 rounded-lg">
-                    <TrendingUp size={20} color="#059669" className="mr-3" />
-                    <Text className="flex-1 text-gray-800">
+                  <TouchableOpacity
+                    className={`flex-row items-center p-3 rounded-lg ${
+                      isDarkMode ? "bg-gray-700" : "bg-gray-50"
+                    }`}
+                  >
+                    <TrendingUp
+                      size={20}
+                      color={isDarkMode ? "#34d399" : "#059669"}
+                      className="mr-3"
+                    />
+                    <Text
+                      className={`flex-1 ${
+                        isDarkMode ? "text-gray-100" : "text-gray-800"
+                      }`}
+                    >
                       Progress Analytics
                     </Text>
-                    <ArrowRight size={16} color="#64748b" />
+                    <ArrowRight
+                      size={16}
+                      color={isDarkMode ? "#a1a1aa" : "#64748b"}
+                    />
                   </TouchableOpacity>
-                  <TouchableOpacity className="flex-row items-center p-3 bg-gray-50 rounded-lg">
-                    <Star size={20} color="#059669" className="mr-3" />
-                    <Text className="flex-1 text-gray-800">
+                  <TouchableOpacity
+                    className={`flex-row items-center p-3 rounded-lg ${
+                      isDarkMode ? "bg-gray-700" : "bg-gray-50"
+                    }`}
+                  >
+                    <Star
+                      size={20}
+                      color={isDarkMode ? "#34d399" : "#059669"}
+                      className="mr-3"
+                    />
+                    <Text
+                      className={`flex-1 ${
+                        isDarkMode ? "text-gray-100" : "text-gray-800"
+                      }`}
+                    >
                       Achievement Badges
                     </Text>
-                    <ArrowRight size={16} color="#64748b" />
+                    <ArrowRight
+                      size={16}
+                      color={isDarkMode ? "#a1a1aa" : "#64748b"}
+                    />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1707,8 +1888,16 @@ export default function GoalsScreen() {
         {/* Add Goal Modal */}
         {showAddGoal && (
           <View className="absolute inset-0 bg-black bg-opacity-50 justify-center items-center">
-            <View className="bg-white rounded-lg p-6 m-4 w-full max-w-sm">
-              <Text className="text-xl font-semibold text-gray-800 mb-4">
+            <View
+              className={`rounded-lg p-6 m-4 w-full max-w-sm ${
+                isDarkMode ? "bg-gray-800" : "bg-white"
+              }`}
+            >
+              <Text
+                className={`text-xl font-semibold mb-4 ${
+                  isDarkMode ? "text-gray-100" : "text-gray-800"
+                }`}
+              >
                 Add New Goal
               </Text>
 
@@ -1718,7 +1907,12 @@ export default function GoalsScreen() {
                 onChangeText={(text) =>
                   setFormData({ ...formData, title: text })
                 }
-                className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
+                className={`rounded-lg px-3 py-2 mb-3 border ${
+                  isDarkMode
+                    ? "bg-gray-700 border-gray-600 text-gray-100"
+                    : "bg-white border-gray-300 text-gray-800"
+                }`}
+                placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
               />
 
               <TextInput
@@ -1727,16 +1921,27 @@ export default function GoalsScreen() {
                 onChangeText={(text) =>
                   setFormData({ ...formData, description: text })
                 }
-                className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
+                className={`rounded-lg px-3 py-2 mb-3 border ${
+                  isDarkMode
+                    ? "bg-gray-700 border-gray-600 text-gray-100"
+                    : "bg-white border-gray-300 text-gray-800"
+                }`}
+                placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
                 multiline
               />
 
               {/* Show Suggestions Button */}
               <TouchableOpacity
                 onPress={() => setShowSuggestions(!showSuggestions)}
-                className="mb-3 p-2 bg-gray-100 rounded-lg"
+                className={`mb-3 p-2 rounded-lg ${
+                  isDarkMode ? "bg-gray-700" : "bg-gray-100"
+                }`}
               >
-                <Text className="text-sm text-gray-600 text-center">
+                <Text
+                  className={`text-sm text-center ${
+                    isDarkMode ? "text-gray-200" : "text-gray-600"
+                  }`}
+                >
                   {showSuggestions ? "Hide Suggestions" : "Show Suggestions"}
                 </Text>
               </TouchableOpacity>
@@ -1744,7 +1949,11 @@ export default function GoalsScreen() {
               {/* Goal Suggestions */}
               {showSuggestions && (
                 <View className="mb-4">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
+                  <Text
+                    className={`text-sm font-medium mb-2 ${
+                      isDarkMode ? "text-gray-200" : "text-gray-700"
+                    }`}
+                  >
                     SUGGESTIONS
                   </Text>
                   <View className="space-y-2">
@@ -1760,9 +1969,17 @@ export default function GoalsScreen() {
                         onPress={() => {
                           setFormData({ ...formData, title: suggestion });
                         }}
-                        className="bg-gray-50 border border-gray-200 rounded-lg p-3"
+                        className={`border rounded-lg p-3 ${
+                          isDarkMode
+                            ? "bg-gray-700 border-gray-600"
+                            : "bg-gray-50 border-gray-200"
+                        }`}
                       >
-                        <Text className="text-sm text-gray-700">
+                        <Text
+                          className={`text-sm ${
+                            isDarkMode ? "text-gray-200" : "text-gray-700"
+                          }`}
+                        >
                           {suggestion}
                         </Text>
                       </TouchableOpacity>
@@ -1772,7 +1989,11 @@ export default function GoalsScreen() {
               )}
 
               <View className="flex-row justify-between mb-3">
-                <Text className="text-sm font-medium text-gray-700">
+                <Text
+                  className={`text-sm font-medium ${
+                    isDarkMode ? "text-gray-200" : "text-gray-700"
+                  }`}
+                >
                   Priority:
                 </Text>
                 <View className="flex-row">
@@ -1782,19 +2003,20 @@ export default function GoalsScreen() {
                       onPress={() => setFormData({ ...formData, priority })}
                       className={`px-3 py-1 rounded mr-1 ${
                         formData.priority === priority
-                          ? "bg-gray-200"
+                          ? isDarkMode
+                            ? "bg-emerald-700"
+                            : "bg-emerald-900"
+                          : isDarkMode
+                          ? "bg-gray-700"
                           : "bg-gray-200"
                       }`}
-                      style={
-                        formData.priority === priority
-                          ? { backgroundColor: "#114131" }
-                          : {}
-                      }
                     >
                       <Text
                         className={`text-xs ${
                           formData.priority === priority
                             ? "text-white"
+                            : isDarkMode
+                            ? "text-gray-200"
                             : "text-gray-700"
                         }`}
                       >
@@ -1806,7 +2028,11 @@ export default function GoalsScreen() {
               </View>
 
               <View className="flex-row justify-between mb-3">
-                <Text className="text-sm font-medium text-gray-700">
+                <Text
+                  className={`text-sm font-medium ${
+                    isDarkMode ? "text-gray-200" : "text-gray-700"
+                  }`}
+                >
                   Category:
                 </Text>
                 <View className="flex-row">
@@ -1824,19 +2050,20 @@ export default function GoalsScreen() {
                       onPress={() => setFormData({ ...formData, category })}
                       className={`px-2 py-1 rounded mr-1 ${
                         formData.category === category
-                          ? "bg-gray-200"
+                          ? isDarkMode
+                            ? "bg-emerald-700"
+                            : "bg-emerald-900"
+                          : isDarkMode
+                          ? "bg-gray-700"
                           : "bg-gray-200"
                       }`}
-                      style={
-                        formData.category === category
-                          ? { backgroundColor: "#114131" }
-                          : {}
-                      }
                     >
                       <Text
                         className={`text-xs ${
                           formData.category === category
                             ? "text-white"
+                            : isDarkMode
+                            ? "text-gray-200"
                             : "text-gray-700"
                         }`}
                       >
@@ -1853,14 +2080,24 @@ export default function GoalsScreen() {
                     setShowAddGoal(false);
                     setShowSuggestions(false);
                   }}
-                  className="flex-1 bg-gray-300 px-4 py-2 rounded-lg mr-2"
+                  className={`flex-1 px-4 py-2 rounded-lg mr-2 ${
+                    isDarkMode ? "bg-gray-700" : "bg-gray-300"
+                  }`}
                 >
-                  <Text className="text-center text-gray-700">Cancel</Text>
+                  <Text
+                    className={`text-center ${
+                      isDarkMode ? "text-gray-200" : "text-gray-700"
+                    }`}
+                  >
+                    Cancel
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleAddGoal}
                   className="flex-1 px-4 py-2 rounded-lg ml-2"
-                  style={{ backgroundColor: "#114131" }}
+                  style={{
+                    backgroundColor: isDarkMode ? "#059669" : "#114131",
+                  }}
                 >
                   <Text className="text-center text-white">Add Goal</Text>
                 </TouchableOpacity>
@@ -1878,6 +2115,7 @@ export default function GoalsScreen() {
             totalGoals={totalGoals}
             onSave={handleSaveReflection}
             onClose={() => setShowReflection(false)}
+            isDarkMode={isDarkMode}
           />
         )}
 

@@ -457,7 +457,10 @@ export default function ProfileDashboard() {
                           resizeMode="cover"
                         />
                       ) : (
-                        <User size={32} color="#059669" />
+                        <User
+                          size={32}
+                          color={isDarkMode ? "#34d399" : "#059669"}
+                        />
                       )}
                     </View>
                     <TouchableOpacity
@@ -469,11 +472,21 @@ export default function ProfileDashboard() {
                     </TouchableOpacity>
                   </View>
                   <View className="flex-1">
-                    <Text className="text-xl font-bold text-gray-800">
+                    <Text
+                      className={`text-xl font-bold ${
+                        isDarkMode ? "text-gray-100" : "text-gray-800"
+                      }`}
+                    >
                       {profile.name}
                     </Text>
-                    <Text className="text-gray-600">{profile.email}</Text>
-                    <Text className="text-sm text-emerald-600">
+                    <Text
+                      className={`${
+                        isDarkMode ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
+                      {profile.email}
+                    </Text>
+                    <Text className="text-sm text-emerald-500">
                       Premium Member
                     </Text>
                   </View>
@@ -481,26 +494,52 @@ export default function ProfileDashboard() {
                     className="p-2"
                     onPress={() => setIsEditing(true)}
                   >
-                    <Edit size={16} color="#64748b" />
+                    <Edit
+                      size={16}
+                      color={isDarkMode ? "#9ca3af" : "#64748b"}
+                    />
                   </TouchableOpacity>
                 </View>
 
                 {/* Health Stats */}
                 <View className="grid grid-cols-2 gap-3">
                   {healthStats.map((stat, index) => (
-                    <View key={index} className="bg-gray-50 p-3 rounded-lg">
+                    <View
+                      key={index}
+                      className={`p-3 rounded-lg ${
+                        isDarkMode ? "bg-gray-700/50" : "bg-gray-50"
+                      }`}
+                    >
                       <View className="flex-row items-center justify-between mb-1">
                         <stat.icon
                           size={16}
-                          color={stat.color
-                            .replace("text-", "")
-                            .replace("-600", "")}
+                          color={
+                            isDarkMode
+                              ? stat.color.includes("green")
+                                ? "#34d399"
+                                : stat.color.includes("blue")
+                                ? "#60a5fa"
+                                : stat.color.includes("purple")
+                                ? "#a78bfa"
+                                : "#fbbf24"
+                              : stat.color
+                                  .replace("text-", "")
+                                  .replace("-600", "")
+                          }
                         />
-                        <Text className="text-lg font-bold text-gray-800">
+                        <Text
+                          className={`text-lg font-bold ${
+                            isDarkMode ? "text-gray-100" : "text-gray-800"
+                          }`}
+                        >
                           {stat.value}
                         </Text>
                       </View>
-                      <Text className="text-xs text-gray-600">
+                      <Text
+                        className={`text-xs ${
+                          isDarkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
                         {stat.label}
                       </Text>
                     </View>
@@ -510,18 +549,29 @@ export default function ProfileDashboard() {
             </Card>
 
             {/* Personal Information */}
-            <Card className="border-0">
+            <Card
+              className={`border-0 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            >
               <View className="p-4">
                 <View className="flex-row justify-between items-center mb-4">
-                  <Text className="text-lg font-semibold text-gray-800">
+                  <Text
+                    className={`text-lg font-semibold ${
+                      isDarkMode ? "text-gray-100" : "text-gray-800"
+                    }`}
+                  >
                     Personal Information
                   </Text>
                   {!isEditing && (
                     <TouchableOpacity
                       onPress={() => setIsEditing(true)}
-                      className="bg-emerald-100 p-2 rounded-full"
+                      className={`${
+                        isDarkMode ? "bg-emerald-900" : "bg-emerald-100"
+                      } p-2 rounded-full`}
                     >
-                      <Edit size={16} color="#059669" />
+                      <Edit
+                        size={16}
+                        color={isDarkMode ? "#34d399" : "#059669"}
+                      />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -534,18 +584,33 @@ export default function ProfileDashboard() {
                         onChangeText={(text) =>
                           setEditForm((prev) => ({ ...prev, full_name: text }))
                         }
-                        className="bg-gray-50 p-2 rounded-md"
+                        className={`p-2 rounded-md ${
+                          isDarkMode
+                            ? "bg-gray-700 text-gray-100"
+                            : "bg-gray-50 text-gray-800"
+                        }`}
                         placeholder="Enter full name"
+                        placeholderTextColor={
+                          isDarkMode ? "#9ca3af" : "#6b7280"
+                        }
                       />
                     ) : (
-                      <Text className="font-medium text-gray-800">
+                      <Text
+                        className={`font-medium ${
+                          isDarkMode ? "text-gray-100" : "text-gray-800"
+                        }`}
+                      >
                         {profile.name}
                       </Text>
                     )}
                   </View>
                   <View className="py-2 border-b border-gray-100">
                     <Text className="text-gray-600 mb-1">Email</Text>
-                    <Text className="font-medium text-gray-800">
+                    <Text
+                      className={`font-medium ${
+                        isDarkMode ? "text-gray-100" : "text-gray-800"
+                      }`}
+                    >
                       {profile.email}
                     </Text>
                   </View>
@@ -560,12 +625,23 @@ export default function ProfileDashboard() {
                             phone_number: text,
                           }))
                         }
-                        className="bg-gray-50 p-2 rounded-md"
+                        className={`p-2 rounded-md ${
+                          isDarkMode
+                            ? "bg-gray-700 text-gray-100"
+                            : "bg-gray-50 text-gray-800"
+                        }`}
                         placeholder="Enter phone number (min. 10 digits)"
+                        placeholderTextColor={
+                          isDarkMode ? "#9ca3af" : "#6b7280"
+                        }
                         keyboardType="phone-pad"
                       />
                     ) : (
-                      <Text className="font-medium text-gray-800">
+                      <Text
+                        className={`font-medium ${
+                          isDarkMode ? "text-gray-100" : "text-gray-800"
+                        }`}
+                      >
                         {profile.phone_number || "Not set"}
                       </Text>
                     )}
@@ -586,11 +662,22 @@ export default function ProfileDashboard() {
                             date_of_birth: text,
                           }))
                         }
-                        className="bg-gray-50 p-2 rounded-md"
+                        className={`p-2 rounded-md ${
+                          isDarkMode
+                            ? "bg-gray-700 text-gray-100"
+                            : "bg-gray-50 text-gray-800"
+                        }`}
                         placeholder="YYYY-MM-DD"
+                        placeholderTextColor={
+                          isDarkMode ? "#9ca3af" : "#6b7280"
+                        }
                       />
                     ) : (
-                      <Text className="font-medium text-gray-800">
+                      <Text
+                        className={`font-medium ${
+                          isDarkMode ? "text-gray-100" : "text-gray-800"
+                        }`}
+                      >
                         {profile.date_of_birth || "Not set"}
                       </Text>
                     )}
@@ -625,8 +712,15 @@ export default function ProfileDashboard() {
                               }
                             }
                           }}
-                          className="bg-gray-50 p-2 rounded-md"
+                          className={`p-2 rounded-md ${
+                            isDarkMode
+                              ? "bg-gray-700 text-gray-100"
+                              : "bg-gray-50 text-gray-800"
+                          }`}
                           placeholder="Enter blood type (e.g., A+)"
+                          placeholderTextColor={
+                            isDarkMode ? "#9ca3af" : "#6b7280"
+                          }
                           autoCapitalize="characters"
                           maxLength={3}
                         />
@@ -644,7 +738,11 @@ export default function ProfileDashboard() {
                         </Text>
                       </>
                     ) : (
-                      <Text className="font-medium text-gray-800">
+                      <Text
+                        className={`font-medium ${
+                          isDarkMode ? "text-gray-100" : "text-gray-800"
+                        }`}
+                      >
                         {profile.blood_type || "Not set"}
                       </Text>
                     )}
@@ -679,42 +777,70 @@ export default function ProfileDashboard() {
             </Card>
 
             {/* Preferences */}
-            <Card className="border-0">
+            <Card
+              className={`border-0 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            >
               <View className="p-4">
-                <Text className="text-lg font-semibold text-gray-800 mb-4">
+                <Text
+                  className={`text-lg font-semibold mb-4 ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
                   Preferences
                 </Text>
                 <View className="space-y-4">
                   <View className="flex-row items-center justify-between">
                     <View>
-                      <Text className="font-medium text-gray-800">
+                      <Text
+                        className={`font-medium ${
+                          isDarkMode ? "text-gray-100" : "text-gray-800"
+                        }`}
+                      >
                         Push Notifications
                       </Text>
-                      <Text className="text-sm text-gray-600">
+                      <Text
+                        className={`text-sm ${
+                          isDarkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
                         Receive health reminders
                       </Text>
                     </View>
                     <Switch
                       value={notificationsEnabled}
                       onValueChange={handleNotificationToggle}
-                      trackColor={{ false: "#d1d5db", true: "#10b981" }}
+                      trackColor={{
+                        false: isDarkMode ? "#374151" : "#d1d5db",
+                        true: "#10b981",
+                      }}
                       thumbColor="#ffffff"
                       disabled={loading}
                     />
                   </View>
                   <View className="flex-row items-center justify-between">
                     <View>
-                      <Text className="font-medium text-gray-800">
+                      <Text
+                        className={`font-medium ${
+                          isDarkMode ? "text-gray-100" : "text-gray-800"
+                        }`}
+                      >
                         Dark Mode
                       </Text>
-                      <Text className="text-sm text-gray-600">
+                      <Text
+                        className={`text-sm ${
+                          isDarkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
                         Use dark theme
                       </Text>
                     </View>
                     <Switch
                       value={isDarkMode}
                       onValueChange={toggleDarkMode}
-                      trackColor={{ false: "#d1d5db", true: "#10b981" }}
+                      trackColor={{
+                        false: isDarkMode ? "#374151" : "#d1d5db",
+                        true: "#10b981",
+                      }}
                       thumbColor="#ffffff"
                     />
                   </View>
@@ -723,9 +849,15 @@ export default function ProfileDashboard() {
             </Card>
 
             {/* Menu Items */}
-            <Card className="border-0">
+            <Card
+              className={`border-0 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            >
               <View className="p-4">
-                <Text className="text-lg font-semibold text-gray-800 mb-4">
+                <Text
+                  className={`text-lg font-semibold mb-4 ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
                   Settings
                 </Text>
                 <View className="space-y-1">
@@ -734,33 +866,54 @@ export default function ProfileDashboard() {
                       key={index}
                       className={`flex-row items-center p-3 rounded-lg ${
                         index === menuItems.length - 1
-                          ? "bg-red-50"
+                          ? isDarkMode
+                            ? "bg-red-900/50"
+                            : "bg-red-50"
+                          : isDarkMode
+                          ? "bg-gray-700/50"
                           : "bg-gray-50"
                       }`}
                     >
-                      <item.icon
-                        size={20}
-                        color={
-                          index === menuItems.length - 1 ? "#ef4444" : "#64748b"
-                        }
-                        className="mr-3"
-                      />
+                      <View
+                        className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
+                          isDarkMode ? "bg-gray-600" : "bg-gray-100"
+                        }`}
+                      >
+                        <item.icon
+                          size={18}
+                          color={
+                            index === menuItems.length - 1
+                              ? isDarkMode
+                                ? "#f87171"
+                                : "#ef4444"
+                              : isDarkMode
+                              ? "#9ca3af"
+                              : "#64748b"
+                          }
+                        />
+                      </View>
                       <View className="flex-1">
                         <Text
                           className={`font-medium ${
                             index === menuItems.length - 1
-                              ? "text-red-600"
+                              ? isDarkMode
+                                ? "text-red-400"
+                                : "text-red-600"
+                              : isDarkMode
+                              ? "text-gray-100"
                               : "text-gray-800"
                           }`}
                         >
                           {item.title}
                         </Text>
-                        <Text className="text-sm text-gray-600">
+                        <Text
+                          className={`text-sm ${
+                            isDarkMode ? "text-gray-400" : "text-gray-600"
+                          }`}
+                        >
                           {item.subtitle}
                         </Text>
                       </View>
-                      {/* ArrowRight icon is not imported, so it's commented out */}
-                      {/* <ArrowRight size={16} color="#64748b" /> */}
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -769,7 +922,11 @@ export default function ProfileDashboard() {
 
             {/* App Version */}
             <View className="items-center py-4">
-              <Text className="text-sm text-gray-500">
+              <Text
+                className={`text-sm ${
+                  isDarkMode ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
                 Evra Health App v1.0.0
               </Text>
             </View>

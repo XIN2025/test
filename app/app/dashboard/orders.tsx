@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
-// @ts-ignore
+import { useTheme } from "@/context/ThemeContext";
 import {
   ShoppingBag,
   Package,
@@ -133,27 +132,45 @@ export default function OrdersPage() {
     }
   };
 
+  const { isDarkMode } = useTheme();
+
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#f0f9f6", "#e6f4f1"]}
+        colors={isDarkMode ? ["#1a1a1a", "#2d2d2d"] : ["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
         {/* Fixed Header */}
-        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 z-10">
+        <View
+          className={`shadow-sm border-b px-4 py-4 z-10 ${
+            isDarkMode
+              ? "bg-gray-900 border-gray-800"
+              : "bg-white border-gray-100"
+          }`}
+        >
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View
                 className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: "#114131" }}
+                style={{ backgroundColor: isDarkMode ? "#1f6f51" : "#114131" }}
               >
                 <ShoppingBag size={20} color="#fff" />
               </View>
               <View>
-                <Text className="font-semibold text-gray-800">Orders</Text>
-                <Text className="text-sm text-gray-600">
+                <Text
+                  className={`font-semibold ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
+                  Orders
+                </Text>
+                <Text
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
                   Track your purchases
                 </Text>
               </View>
@@ -172,25 +189,39 @@ export default function OrdersPage() {
                   onPress={() => setSelectedStatus(filter.id)}
                   className={`flex-row items-center px-3 py-2 rounded-full border ${
                     selectedStatus === filter.id
-                      ? "bg-white border-gray-200"
-                      : "bg-white border-gray-200"
+                      ? "border-emerald-600"
+                      : isDarkMode
+                      ? "border-gray-700"
+                      : "border-gray-200"
                   }`}
                   style={{
                     backgroundColor:
-                      selectedStatus === filter.id ? "#059669" : "#ffffff",
-                    borderColor:
-                      selectedStatus === filter.id ? "#059669" : "#e5e7eb",
+                      selectedStatus === filter.id
+                        ? isDarkMode
+                          ? "#065f46"
+                          : "#059669"
+                        : isDarkMode
+                        ? "#1f2937"
+                        : "#ffffff",
                   }}
                 >
                   <filter.icon
                     size={16}
-                    color={selectedStatus === filter.id ? "#fff" : "#64748b"}
+                    color={
+                      selectedStatus === filter.id
+                        ? "#fff"
+                        : isDarkMode
+                        ? "#9ca3af"
+                        : "#64748b"
+                    }
                     className="mr-1"
                   />
                   <Text
                     className={`text-sm font-medium ${
                       selectedStatus === filter.id
                         ? "text-white"
+                        : isDarkMode
+                        ? "text-gray-300"
                         : "text-gray-700"
                     }`}
                   >
@@ -204,37 +235,66 @@ export default function OrdersPage() {
             {filteredOrders.map((order) => {
               const StatusIcon = getStatusIcon(order.status);
               return (
-                <Card key={order.id} className="border-0">
+                <Card
+                  key={order.id}
+                  className={`border-0 ${
+                    isDarkMode ? "bg-gray-800" : "bg-white"
+                  }`}
+                >
                   <View className="p-4">
                     {/* Order Header */}
                     <View className="flex-row items-center justify-between mb-3">
                       <View>
-                        <Text className="font-semibold text-gray-800">
+                        <Text
+                          className={`font-semibold ${
+                            isDarkMode ? "text-gray-100" : "text-gray-800"
+                          }`}
+                        >
                           {order.orderNumber}
                         </Text>
-                        <Text className="text-sm text-gray-600">
+                        <Text
+                          className={`text-sm ${
+                            isDarkMode ? "text-gray-400" : "text-gray-600"
+                          }`}
+                        >
                           {order.date}
                         </Text>
                       </View>
                       <View className="items-end">
                         <Text
-                          className="font-semibold"
-                          style={{ color: "#059669" }}
+                          className={`font-semibold ${
+                            isDarkMode ? "text-emerald-400" : "text-emerald-600"
+                          }`}
                         >
                           ${order.total.toFixed(2)}
                         </Text>
                         <View className="flex-row items-center mt-1">
                           <StatusIcon
                             size={14}
-                            color={getStatusColor(order.status)
-                              .replace("text-", "")
-                              .replace("-600", "")}
+                            color={
+                              isDarkMode
+                                ? getStatusColor(order.status)
+                                    .replace("text-", "")
+                                    .replace("-700", "")
+                                    .replace("green", "#34d399")
+                                    .replace("blue", "#60a5fa")
+                                    .replace("amber", "#fbbf24")
+                                    .replace("red", "#f87171")
+                                : getStatusColor(order.status)
+                                    .replace("text-", "")
+                                    .replace("-600", "")
+                            }
                             className="mr-1"
                           />
                           <Text
-                            className={`text-xs font-medium ${getStatusColor(
-                              order.status
-                            )}`}
+                            className={`text-xs font-medium ${
+                              isDarkMode
+                                ? getStatusColor(order.status).replace(
+                                    "-600",
+                                    "-400"
+                                  )
+                                : getStatusColor(order.status)
+                            }`}
                           >
                             {getStatusText(order.status)}
                           </Text>
@@ -247,22 +307,43 @@ export default function OrdersPage() {
                       {order.items.map((item) => (
                         <View
                           key={item.id}
-                          className="flex-row items-center justify-between p-2 bg-gray-50 rounded-lg"
+                          className={`flex-row items-center justify-between p-2 rounded-lg ${
+                            isDarkMode ? "bg-gray-700/50" : "bg-gray-50"
+                          }`}
                         >
                           <View className="flex-row items-center">
-                            <View className="w-8 h-8 bg-gray-200 rounded items-center justify-center mr-2">
-                              <Package size={16} color="#64748b" />
+                            <View
+                              className={`w-8 h-8 rounded items-center justify-center mr-2 ${
+                                isDarkMode ? "bg-gray-600" : "bg-gray-200"
+                              }`}
+                            >
+                              <Package
+                                size={16}
+                                color={isDarkMode ? "#9ca3af" : "#64748b"}
+                              />
                             </View>
                             <View>
-                              <Text className="font-medium text-gray-800">
+                              <Text
+                                className={`font-medium ${
+                                  isDarkMode ? "text-gray-100" : "text-gray-800"
+                                }`}
+                              >
                                 {item.name}
                               </Text>
-                              <Text className="text-xs text-gray-600">
+                              <Text
+                                className={`text-xs ${
+                                  isDarkMode ? "text-gray-400" : "text-gray-600"
+                                }`}
+                              >
                                 Qty: {item.quantity}
                               </Text>
                             </View>
                           </View>
-                          <Text className="font-medium text-gray-800">
+                          <Text
+                            className={`font-medium ${
+                              isDarkMode ? "text-gray-100" : "text-gray-800"
+                            }`}
+                          >
                             ${(item.price * item.quantity).toFixed(2)}
                           </Text>
                         </View>
@@ -272,22 +353,31 @@ export default function OrdersPage() {
                     {/* Tracking Info */}
                     {order.trackingNumber && (
                       <View
-                        className="p-3 rounded-lg mb-3"
-                        style={{ backgroundColor: "#f0fdf4" }}
+                        className={`p-3 rounded-lg mb-3 ${
+                          isDarkMode ? "bg-emerald-950/50" : "bg-emerald-50"
+                        }`}
                       >
                         <Text
-                          className="text-sm font-medium mb-1"
-                          style={{ color: "#166534" }}
+                          className={`text-sm font-medium mb-1 ${
+                            isDarkMode ? "text-emerald-400" : "text-emerald-800"
+                          }`}
                         >
                           Tracking Information
                         </Text>
-                        <Text className="text-xs" style={{ color: "#15803d" }}>
+                        <Text
+                          className={`text-xs ${
+                            isDarkMode ? "text-emerald-400" : "text-emerald-700"
+                          }`}
+                        >
                           Tracking #: {order.trackingNumber}
                         </Text>
                         {order.estimatedDelivery && (
                           <Text
-                            className="text-xs"
-                            style={{ color: "#15803d" }}
+                            className={`text-xs ${
+                              isDarkMode
+                                ? "text-emerald-400"
+                                : "text-emerald-700"
+                            }`}
                           >
                             Estimated Delivery: {order.estimatedDelivery}
                           </Text>
@@ -298,22 +388,38 @@ export default function OrdersPage() {
                     {/* Action Buttons */}
                     <View className="flex-row space-x-2">
                       <TouchableOpacity
-                        className="flex-1 py-2 rounded-lg"
-                        style={{ backgroundColor: "#059669" }}
+                        className={`flex-1 py-2 rounded-lg ${
+                          isDarkMode ? "bg-emerald-600" : "bg-emerald-600"
+                        }`}
                       >
                         <Text className="text-white text-center font-medium">
                           Track Order
                         </Text>
                       </TouchableOpacity>
                       {order.status === "delivered" && (
-                        <TouchableOpacity className="flex-1 bg-gray-100 py-2 rounded-lg">
-                          <Text className="text-gray-700 text-center font-medium">
+                        <TouchableOpacity
+                          className={`flex-1 py-2 rounded-lg ${
+                            isDarkMode ? "bg-gray-700" : "bg-gray-100"
+                          }`}
+                        >
+                          <Text
+                            className={`text-center font-medium ${
+                              isDarkMode ? "text-gray-100" : "text-gray-700"
+                            }`}
+                          >
                             Reorder
                           </Text>
                         </TouchableOpacity>
                       )}
-                      <TouchableOpacity className="bg-gray-100 p-2 rounded-lg">
-                        <ArrowRight size={16} color="#64748b" />
+                      <TouchableOpacity
+                        className={`p-2 rounded-lg ${
+                          isDarkMode ? "bg-gray-700" : "bg-gray-100"
+                        }`}
+                      >
+                        <ArrowRight
+                          size={16}
+                          color={isDarkMode ? "#9ca3af" : "#64748b"}
+                        />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -323,13 +429,29 @@ export default function OrdersPage() {
 
             {/* Empty State */}
             {filteredOrders.length === 0 && (
-              <Card className="border-0">
+              <Card
+                className={`border-0 ${
+                  isDarkMode ? "bg-gray-800" : "bg-white"
+                }`}
+              >
                 <View className="p-8 items-center">
-                  <ShoppingBag size={48} color="#d1d5db" className="mb-4" />
-                  <Text className="text-lg font-semibold text-gray-800 mb-2">
+                  <ShoppingBag
+                    size={48}
+                    color={isDarkMode ? "#374151" : "#d1d5db"}
+                    className="mb-4"
+                  />
+                  <Text
+                    className={`text-lg font-semibold mb-2 ${
+                      isDarkMode ? "text-gray-100" : "text-gray-800"
+                    }`}
+                  >
                     No Orders Found
                   </Text>
-                  <Text className="text-sm text-gray-600 text-center">
+                  <Text
+                    className={`text-sm text-center ${
+                      isDarkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
                     {selectedStatus === "all"
                       ? "You haven't placed any orders yet."
                       : `No ${selectedStatus} orders found.`}

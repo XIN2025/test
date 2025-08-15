@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
-// @ts-ignore
+import { useTheme } from "@/context/ThemeContext";
 import {
   Pill,
   Plus,
@@ -106,33 +105,54 @@ export default function SupplementsPage() {
     ));
   };
 
+  const { isDarkMode } = useTheme();
+
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#f0f9f6", "#e6f4f1"]}
+        colors={isDarkMode ? ["#1a1a1a", "#2d2d2d"] : ["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
         {/* Fixed Header */}
-        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 z-10">
+        <View
+          className={`shadow-sm border-b px-4 py-4 z-10 ${
+            isDarkMode
+              ? "bg-gray-900 border-gray-800"
+              : "bg-white border-gray-100"
+          }`}
+        >
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View
                 className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: "#114131" }}
+                style={{ backgroundColor: isDarkMode ? "#1f6f51" : "#114131" }}
               >
                 <Pill size={20} color="#fff" />
               </View>
               <View>
-                <Text className="font-semibold text-gray-800">Supplements</Text>
-                <Text className="text-sm text-gray-600">
+                <Text
+                  className={`font-semibold ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
+                  Supplements
+                </Text>
+                <Text
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
                   Your health essentials
                 </Text>
               </View>
             </View>
             <TouchableOpacity className="p-2">
-              <ShoppingCart size={20} color="#64748b" />
+              <ShoppingCart
+                size={20}
+                color={isDarkMode ? "#9ca3af" : "#64748b"}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -149,13 +169,19 @@ export default function SupplementsPage() {
                   className={`flex-row items-center px-3 py-2 rounded-full border ${
                     selectedCategory === category.id
                       ? "bg-emerald-600 border-emerald-600"
+                      : isDarkMode
+                      ? "bg-gray-800 border-gray-700"
                       : "bg-white border-gray-200"
                   }`}
                 >
                   <category.icon
                     size={16}
                     color={
-                      selectedCategory === category.id ? "#fff" : "#64748b"
+                      selectedCategory === category.id
+                        ? "#fff"
+                        : isDarkMode
+                        ? "#9ca3af"
+                        : "#64748b"
                     }
                     className="mr-1"
                   />
@@ -163,6 +189,8 @@ export default function SupplementsPage() {
                     className={`text-sm font-medium ${
                       selectedCategory === category.id
                         ? "text-white"
+                        : isDarkMode
+                        ? "text-gray-300"
                         : "text-gray-700"
                     }`}
                   >
@@ -173,15 +201,25 @@ export default function SupplementsPage() {
             </View>
 
             {/* Recommended Section */}
-            <Card className="border-0">
+            <Card
+              className={`border-0 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            >
               <View className="p-4">
                 <View className="flex-row items-center mb-3">
                   <Star size={20} color="#fbbf24" className="mr-2" />
-                  <Text className="text-lg font-semibold text-gray-800">
+                  <Text
+                    className={`text-lg font-semibold ${
+                      isDarkMode ? "text-gray-100" : "text-gray-800"
+                    }`}
+                  >
                     Recommended for You
                   </Text>
                 </View>
-                <Text className="text-sm text-gray-600 mb-4">
+                <Text
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  } mb-4`}
+                >
                   Based on your health profile and recent activity
                 </Text>
                 {supplements
@@ -189,32 +227,61 @@ export default function SupplementsPage() {
                   .map((supplement) => (
                     <View
                       key={supplement.id}
-                      className="flex-row items-center p-3 bg-emerald-50 rounded-lg mb-2"
+                      className={`flex-row items-center p-3 rounded-lg mb-2 ${
+                        isDarkMode ? "bg-emerald-900/30" : "bg-emerald-50"
+                      }`}
                     >
-                      <View className="w-12 h-12 bg-emerald-100 rounded-lg items-center justify-center mr-3">
-                        <Pill size={24} color="#059669" />
+                      <View
+                        className={`w-12 h-12 rounded-lg items-center justify-center mr-3 ${
+                          isDarkMode ? "bg-emerald-800/50" : "bg-emerald-100"
+                        }`}
+                      >
+                        <Pill
+                          size={24}
+                          color={isDarkMode ? "#34d399" : "#059669"}
+                        />
                       </View>
                       <View className="flex-1">
-                        <Text className="font-semibold text-gray-800">
+                        <Text
+                          className={`font-semibold ${
+                            isDarkMode ? "text-gray-100" : "text-gray-800"
+                          }`}
+                        >
                           {supplement.name}
                         </Text>
-                        <Text className="text-xs text-gray-600">
+                        <Text
+                          className={`text-xs ${
+                            isDarkMode ? "text-gray-400" : "text-gray-600"
+                          }`}
+                        >
                           {supplement.description}
                         </Text>
                         <View className="flex-row items-center mt-1">
                           <View className="flex-row items-center mr-2">
                             {renderStars(supplement.rating)}
                           </View>
-                          <Text className="text-xs text-gray-500">
+                          <Text
+                            className={`text-xs ${
+                              isDarkMode ? "text-gray-500" : "text-gray-500"
+                            }`}
+                          >
                             ({supplement.rating})
                           </Text>
                         </View>
                       </View>
                       <View className="items-end">
-                        <Text className="font-semibold text-emerald-600">
+                        <Text
+                          className={`font-semibold ${
+                            isDarkMode ? "text-emerald-400" : "text-emerald-600"
+                          }`}
+                        >
                           ${supplement.price.toFixed(2)}
                         </Text>
-                        <TouchableOpacity className="bg-emerald-600 px-3 py-1 rounded-full mt-1">
+                        <TouchableOpacity
+                          className={`px-3 py-1 rounded-full mt-1 ${
+                            isDarkMode ? "bg-emerald-700" : "bg-emerald-600"
+                          }`}
+                        >
                           <Text className="text-xs text-white font-medium">
                             Add
                           </Text>
@@ -226,42 +293,87 @@ export default function SupplementsPage() {
             </Card>
 
             {/* All Supplements */}
-            <Card className="border-0">
+            <Card
+              className={`border-0 ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
+            >
               <View className="p-4">
-                <Text className="text-lg font-semibold text-gray-800 mb-4">
+                <Text
+                  className={`text-lg font-semibold mb-4 ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
                   All Supplements
                 </Text>
                 {filteredSupplements.map((supplement) => (
                   <View
                     key={supplement.id}
-                    className="border-b border-gray-100 pb-4 mb-4 last:border-b-0"
+                    className={`border-b pb-4 mb-4 last:border-b-0 ${
+                      isDarkMode ? "border-gray-700" : "border-gray-100"
+                    }`}
                   >
                     <View className="flex-row items-start">
-                      <View className="w-16 h-16 bg-gray-100 rounded-lg items-center justify-center mr-3">
-                        <Pill size={28} color="#64748b" />
+                      <View
+                        className={`w-16 h-16 rounded-lg items-center justify-center mr-3 ${
+                          isDarkMode ? "bg-gray-700" : "bg-gray-100"
+                        }`}
+                      >
+                        <Pill
+                          size={28}
+                          color={isDarkMode ? "#9ca3af" : "#64748b"}
+                        />
                       </View>
                       <View className="flex-1">
                         <View className="flex-row items-center justify-between">
-                          <Text className="font-semibold text-gray-800">
+                          <Text
+                            className={`font-semibold ${
+                              isDarkMode ? "text-gray-100" : "text-gray-800"
+                            }`}
+                          >
                             {supplement.name}
                           </Text>
-                          <Text className="font-semibold text-emerald-600">
+                          <Text
+                            className={`font-semibold ${
+                              isDarkMode
+                                ? "text-emerald-400"
+                                : "text-emerald-600"
+                            }`}
+                          >
                             ${supplement.price.toFixed(2)}
                           </Text>
                         </View>
-                        <Text className="text-sm text-gray-600 mt-1">
+                        <Text
+                          className={`text-sm mt-1 ${
+                            isDarkMode ? "text-gray-400" : "text-gray-600"
+                          }`}
+                        >
                           {supplement.description}
                         </Text>
                         <View className="flex-row items-center mt-2 space-x-4">
                           <View className="flex-row items-center">
-                            <Clock size={12} color="#64748b" className="mr-1" />
-                            <Text className="text-xs text-gray-500">
+                            <Clock
+                              size={12}
+                              color={isDarkMode ? "#9ca3af" : "#64748b"}
+                              className="mr-1"
+                            />
+                            <Text
+                              className={`text-xs ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
                               {supplement.frequency}
                             </Text>
                           </View>
                           <View className="flex-row items-center">
-                            <Pill size={12} color="#64748b" className="mr-1" />
-                            <Text className="text-xs text-gray-500">
+                            <Pill
+                              size={12}
+                              color={isDarkMode ? "#9ca3af" : "#64748b"}
+                              className="mr-1"
+                            />
+                            <Text
+                              className={`text-xs ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
                               {supplement.dosage}
                             </Text>
                           </View>
@@ -269,7 +381,11 @@ export default function SupplementsPage() {
                         <View className="flex-row items-center justify-between mt-2">
                           <View className="flex-row items-center">
                             {renderStars(supplement.rating)}
-                            <Text className="text-xs text-gray-500 ml-1">
+                            <Text
+                              className={`text-xs ml-1 ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
                               ({supplement.rating})
                             </Text>
                           </View>
@@ -282,7 +398,11 @@ export default function SupplementsPage() {
                             <TouchableOpacity
                               className={`px-3 py-1 rounded-full ${
                                 supplement.inStock
-                                  ? "bg-emerald-600"
+                                  ? isDarkMode
+                                    ? "bg-emerald-700"
+                                    : "bg-emerald-600"
+                                  : isDarkMode
+                                  ? "bg-gray-700"
                                   : "bg-gray-300"
                               }`}
                               disabled={!supplement.inStock}
@@ -291,6 +411,8 @@ export default function SupplementsPage() {
                                 className={`text-xs font-medium ${
                                   supplement.inStock
                                     ? "text-white"
+                                    : isDarkMode
+                                    ? "text-gray-400"
                                     : "text-gray-500"
                                 }`}
                               >

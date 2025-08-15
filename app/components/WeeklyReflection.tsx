@@ -6,7 +6,6 @@ import {
   TextInput,
   ScrollView,
 } from "react-native";
-// @ts-ignore
 import {
   BookOpen,
   Star,
@@ -27,6 +26,7 @@ interface WeeklyReflectionProps {
   initialReflection?: string;
   initialRating?: number;
   initialGoals?: string[];
+  isDarkMode: boolean;
 }
 
 export default function WeeklyReflection({
@@ -39,6 +39,7 @@ export default function WeeklyReflection({
   initialReflection,
   initialRating,
   initialGoals,
+  isDarkMode,
 }: WeeklyReflectionProps) {
   const [reflection, setReflection] = useState(initialReflection || "");
   const [rating, setRating] = useState(initialRating || 0);
@@ -77,30 +78,62 @@ export default function WeeklyReflection({
 
   return (
     <View className="absolute inset-0 bg-black bg-opacity-50 justify-center items-center">
-      <View className="bg-white rounded-lg m-4 w-full max-w-md max-h-[90%]">
+      <View
+        className={`rounded-lg m-4 w-full max-w-md max-h-[90%] ${
+          isDarkMode ? "bg-gray-800" : "bg-white"
+        }`}
+      >
         <ScrollView className="p-6">
           {/* Header */}
           <View className="flex-row items-center mb-4">
-            <BookOpen size={24} color="#3b82f6" className="mr-2" />
-            <Text className="text-xl font-semibold text-gray-800">
+            <BookOpen
+              size={24}
+              color={isDarkMode ? "#60a5fa" : "#3b82f6"}
+              className="mr-2"
+            />
+            <Text
+              className={`text-xl font-semibold ${
+                isDarkMode ? "text-gray-100" : "text-gray-800"
+              }`}
+            >
               Weekly Reflection
             </Text>
           </View>
 
           {/* Week Summary */}
-          <Card className="border-0 bg-blue-50 mb-4">
-            <View className="p-4">
-              <Text className="text-sm font-medium text-blue-800 mb-2">
+          <Card className="border-0">
+            <View
+              className={`p-4 rounded-lg ${
+                isDarkMode ? "bg-gray-700" : "bg-blue-50"
+              }`}
+            >
+              <Text
+                className={`text-sm font-medium mb-2 ${
+                  isDarkMode ? "text-gray-100" : "text-blue-800"
+                }`}
+              >
                 Week of {formatDate(weekStart)} - {formatDate(weekEnd)}
               </Text>
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center">
-                  <Target size={16} color="#3b82f6" className="mr-1" />
-                  <Text className="text-sm text-blue-700">
+                  <Target
+                    size={16}
+                    color={isDarkMode ? "#34d399" : "#3b82f6"}
+                    className="mr-1"
+                  />
+                  <Text
+                    className={`text-sm ${
+                      isDarkMode ? "text-gray-200" : "text-blue-700"
+                    }`}
+                  >
                     {completedGoals}/{totalGoals} goals completed
                   </Text>
                 </View>
-                <Text className="text-sm font-semibold text-blue-800">
+                <Text
+                  className={`text-sm font-semibold ${
+                    isDarkMode ? "text-emerald-400" : "text-blue-800"
+                  }`}
+                >
                   {completionRate.toFixed(0)}%
                 </Text>
               </View>
@@ -109,7 +142,11 @@ export default function WeeklyReflection({
 
           {/* Week Rating */}
           <View className="mb-4">
-            <Text className="text-sm font-medium text-gray-700 mb-2">
+            <Text
+              className={`text-sm font-medium mb-2 ${
+                isDarkMode ? "text-gray-300" : "text-gray-700"
+              }`}
+            >
               How would you rate this week?
             </Text>
             <View className="flex-row justify-center">
@@ -121,13 +158,23 @@ export default function WeeklyReflection({
                 >
                   <Star
                     size={24}
-                    color={star <= rating ? "#fbbf24" : "#d1d5db"}
+                    color={
+                      star <= rating
+                        ? "#fbbf24"
+                        : isDarkMode
+                        ? "#4b5563"
+                        : "#d1d5db"
+                    }
                     fill={star <= rating ? "#fbbf24" : "none"}
                   />
                 </TouchableOpacity>
               ))}
             </View>
-            <Text className="text-xs text-gray-500 text-center mt-1">
+            <Text
+              className={`text-xs text-center mt-1 ${
+                isDarkMode ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
               {rating === 0 && "Tap to rate"}
               {rating === 1 && "Very challenging"}
               {rating === 2 && "Somewhat difficult"}
@@ -139,48 +186,80 @@ export default function WeeklyReflection({
 
           {/* Reflection */}
           <View className="mb-4">
-            <Text className="text-sm font-medium text-gray-700 mb-2">
+            <Text
+              className={`text-sm font-medium mb-2 ${
+                isDarkMode ? "text-gray-300" : "text-gray-700"
+              }`}
+            >
               What went well this week?
             </Text>
             <TextInput
               placeholder="Share your thoughts on your achievements, challenges, and learnings..."
+              placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
               value={reflection}
               onChangeText={setReflection}
               multiline
               numberOfLines={4}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              className={`rounded-lg px-3 py-2 text-sm border ${
+                isDarkMode
+                  ? "bg-gray-700 border-gray-600 text-gray-100"
+                  : "bg-white border-gray-300 text-gray-800"
+              }`}
               textAlignVertical="top"
             />
           </View>
 
           {/* Next Week Goals */}
           <View className="mb-4">
-            <Text className="text-sm font-medium text-gray-700 mb-2">
+            <Text
+              className={`text-sm font-medium mb-2 ${
+                isDarkMode ? "text-gray-300" : "text-gray-700"
+              }`}
+            >
               Goals for next week
             </Text>
             {nextWeekGoals.map((goal, index) => (
               <View key={index} className="flex-row items-center mb-2">
                 <TextInput
                   placeholder={`Goal ${index + 1}`}
+                  placeholderTextColor={isDarkMode ? "#6b7280" : "#9ca3af"}
                   value={goal}
                   onChangeText={(text) => handleUpdateGoal(index, text)}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 mr-2 text-sm"
+                  className={`flex-1 rounded-lg px-3 py-2 mr-2 text-sm border ${
+                    isDarkMode
+                      ? "bg-gray-700 border-gray-600 text-gray-100"
+                      : "bg-white border-gray-300 text-gray-800"
+                  }`}
                 />
                 {nextWeekGoals.length > 1 && (
                   <TouchableOpacity
                     onPress={() => handleRemoveGoal(index)}
-                    className="w-8 h-8 bg-red-100 rounded-full items-center justify-center"
+                    className={`w-8 h-8 rounded-full items-center justify-center ${
+                      isDarkMode ? "bg-red-900/30" : "bg-red-100"
+                    }`}
                   >
-                    <Text className="text-red-600 text-sm">×</Text>
+                    <Text
+                      className={isDarkMode ? "text-red-400" : "text-red-600"}
+                    >
+                      ×
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>
             ))}
             <TouchableOpacity
               onPress={handleAddGoal}
-              className="bg-gray-100 px-3 py-2 rounded-lg self-start"
+              className={`px-3 py-2 rounded-lg self-start ${
+                isDarkMode ? "bg-gray-700" : "bg-gray-100"
+              }`}
             >
-              <Text className="text-sm text-gray-700">+ Add Goal</Text>
+              <Text
+                className={`text-sm ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                + Add Goal
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -188,15 +267,23 @@ export default function WeeklyReflection({
           <View className="flex-row mt-4">
             <TouchableOpacity
               onPress={onClose}
-              className="flex-1 bg-gray-300 px-4 py-2 rounded-lg mr-2"
+              className={`flex-1 px-4 py-2 rounded-lg mr-2 ${
+                isDarkMode ? "bg-gray-700" : "bg-gray-300"
+              }`}
             >
-              <Text className="text-center text-gray-700 font-medium">
+              <Text
+                className={`text-center font-medium ${
+                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
                 Skip
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleSave}
-              className="flex-1 bg-blue-600 px-4 py-2 rounded-lg ml-2"
+              className={`flex-1 px-4 py-2 rounded-lg ml-2 ${
+                isDarkMode ? "bg-blue-900" : "bg-blue-600"
+              }`}
             >
               <Text className="text-center text-white font-medium">
                 Save Reflection

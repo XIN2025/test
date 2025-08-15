@@ -20,7 +20,8 @@ interface PreferencesFormData {
   healthGoals: string[];
   conditions: string[];
   atRiskConditions: string[];
-  communicationStyle: string;
+  tonalStyle: string;
+  verbosityStyle: string;
   notifications: boolean;
 }
 
@@ -54,7 +55,8 @@ const conditionsList = [
   "Auto-Immune / Inflammation Related Fatigue",
 ];
 
-const communicationStyles = ["Formal", "Friendly", "Concise", "Detailed"];
+const tonalStyles = ["Formal", "Friendly"];
+const verbosityStyles = ["Concise", "Detailed"];
 
 const genderOptions = ["Male", "Female", "Other"];
 
@@ -68,7 +70,8 @@ export default function InitialPreferences() {
     healthGoals: [],
     conditions: [],
     atRiskConditions: [],
-    communicationStyle: "",
+    tonalStyle: "",
+    verbosityStyle: "",
     notifications: false,
   });
 
@@ -89,8 +92,13 @@ export default function InitialPreferences() {
       newErrors.gender = genderResult.error;
     }
 
-    if (!formData.communicationStyle.trim()) {
-      newErrors.communicationStyle = "Communication style is required";
+    if (!formData.tonalStyle.trim()) {
+      newErrors.communicationStyle =
+        "Please select a tone (Formal or Friendly)";
+    }
+    if (!formData.verbosityStyle.trim()) {
+      newErrors.communicationStyle =
+        "Please select a style (Concise or Detailed)";
     }
 
     setErrors(newErrors);
@@ -135,7 +143,10 @@ export default function InitialPreferences() {
         healthGoals: formData.healthGoals,
         conditions: formData.conditions,
         atRiskConditions: formData.atRiskConditions,
-        communicationStyle: formData.communicationStyle || "",
+        communicationStyle: {
+          tone: formData.tonalStyle || "",
+          verbosity: formData.verbosityStyle || "",
+        },
         notifications: formData.notifications,
       };
 
@@ -160,7 +171,8 @@ export default function InitialPreferences() {
   const isFormValid =
     formData.age.trim().length > 0 &&
     formData.gender.trim().length > 0 &&
-    formData.communicationStyle.trim().length > 0 &&
+    formData.tonalStyle.trim().length > 0 &&
+    formData.verbosityStyle.trim().length > 0 &&
     Object.keys(errors).length === 0;
 
   return (
@@ -392,31 +404,30 @@ export default function InitialPreferences() {
             <Text className="mb-2 text-gray-700 font-medium">
               Preferred Communication Style *
             </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {communicationStyles.map((style) => (
+
+            {/* Tone Selection */}
+            <Text className="text-sm text-gray-600 mb-2">Tone</Text>
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              {tonalStyles.map((style) => (
                 <TouchableOpacity
                   key={style}
                   className={`px-3 py-2 rounded-full border ${
-                    formData.communicationStyle === style
+                    formData.tonalStyle === style
                       ? "border-gray-300"
                       : "bg-gray-100 border-gray-300"
                   }`}
                   style={{
                     backgroundColor:
-                      formData.communicationStyle === style
-                        ? "#059669"
-                        : "#f3f4f6",
+                      formData.tonalStyle === style ? "#059669" : "#f3f4f6",
                     borderColor:
-                      formData.communicationStyle === style
-                        ? "#059669"
-                        : "#d1d5db",
+                      formData.tonalStyle === style ? "#059669" : "#d1d5db",
                   }}
-                  onPress={() => handleInputChange("communicationStyle", style)}
+                  onPress={() => handleInputChange("tonalStyle", style)}
                   disabled={loading}
                 >
                   <Text
                     className={`text-sm font-medium ${
-                      formData.communicationStyle === style
+                      formData.tonalStyle === style
                         ? "text-white"
                         : "text-gray-700"
                     }`}
@@ -426,6 +437,40 @@ export default function InitialPreferences() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Verbosity Selection */}
+            <Text className="text-sm text-gray-600 mb-2">Detail Level</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {verbosityStyles.map((style) => (
+                <TouchableOpacity
+                  key={style}
+                  className={`px-3 py-2 rounded-full border ${
+                    formData.verbosityStyle === style
+                      ? "border-gray-300"
+                      : "bg-gray-100 border-gray-300"
+                  }`}
+                  style={{
+                    backgroundColor:
+                      formData.verbosityStyle === style ? "#059669" : "#f3f4f6",
+                    borderColor:
+                      formData.verbosityStyle === style ? "#059669" : "#d1d5db",
+                  }}
+                  onPress={() => handleInputChange("verbosityStyle", style)}
+                  disabled={loading}
+                >
+                  <Text
+                    className={`text-sm font-medium ${
+                      formData.verbosityStyle === style
+                        ? "text-white"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {style}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             {errors.communicationStyle && (
               <Text className="text-red-500 text-sm mt-1">
                 {errors.communicationStyle}

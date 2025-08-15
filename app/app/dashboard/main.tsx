@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useTheme } from "@/context/ThemeContext";
 // @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
 // @ts-ignore
@@ -83,6 +84,7 @@ export default function MainDashboard() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { userEmail: ctxEmail, userName: ctxName } = useUser();
+  const { isDarkMode } = useTheme();
   const userEmail = (params?.email as string) || ctxEmail || "";
   const userName = (params?.name as string) || ctxName || "";
   const { goals } = useGoals({ userEmail });
@@ -309,7 +311,7 @@ export default function MainDashboard() {
   return (
     <SafeAreaView className="flex-1">
       <LinearGradient
-        colors={["#f0f9f6", "#e6f4f1"]}
+        colors={isDarkMode ? ["#0f172a", "#1e293b"] : ["#f0f9f6", "#e6f4f1"]}
         className="flex-1"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -420,27 +422,46 @@ export default function MainDashboard() {
           </View>
         )}
         {/* Fixed Header */}
-        <View className="bg-white shadow-sm border-b border-gray-100 px-4 py-4 z-10">
+        <View
+          className={`shadow-sm px-4 py-4 z-10 ${
+            isDarkMode
+              ? "bg-gray-900 border-b border-gray-800"
+              : "bg-white border-b border-gray-100"
+          }`}
+        >
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <View
-                className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                style={{ backgroundColor: "#114131" }}
+                className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
+                  isDarkMode ? "bg-emerald-900" : "bg-emerald-800"
+                }`}
               >
                 <Heart size={20} color="#fff" />
               </View>
               <View>
-                <Text className="font-semibold text-gray-800">
+                <Text
+                  className={`font-semibold ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
                   {`Good morning, ${userName || "User"}!`}
                 </Text>
-                <Text className="text-sm text-gray-600">
+                <Text
+                  className={`text-sm ${
+                    isDarkMode ? "text-gray-400" : "text-gray-600"
+                  }`}
+                >
                   Ready for a healthy day?
                 </Text>
               </View>
             </View>
             <View className="flex-row items-center">
-              <Bell size={20} color="#64748b" className="mr-2" />
-              <Settings size={20} color="#64748b" />
+              <Bell
+                size={20}
+                color={isDarkMode ? "#9ca3af" : "#64748b"}
+                className="mr-2"
+              />
+              <Settings size={20} color={isDarkMode ? "#9ca3af" : "#64748b"} />
             </View>
           </View>
         </View>
@@ -462,22 +483,42 @@ export default function MainDashboard() {
                   className="mb-3"
                 >
                   <Card className="border-0">
-                    <View className="items-center p-4">
+                    <View
+                      className={`items-center p-4 rounded-xl ${
+                        isDarkMode ? "bg-gray-800" : "bg-white"
+                      }`}
+                    >
                       <MessageCircle
                         size={32}
-                        color="#114131"
+                        color={isDarkMode ? "#34d399" : "#114131"}
                         className="mb-2"
                       />
-                      <Text className="text-sm font-medium text-gray-800">
+                      <Text
+                        className={`text-sm font-medium ${
+                          isDarkMode ? "text-gray-100" : "text-gray-800"
+                        }`}
+                      >
                         Chat with EVRA
                       </Text>
                     </View>
                   </Card>
                 </TouchableOpacity>
                 <Card className="border-0">
-                  <View className="items-center p-4">
-                    <Calendar size={32} color="#114131" className="mb-2" />
-                    <Text className="text-sm font-medium text-gray-800">
+                  <View
+                    className={`items-center p-4 rounded-xl ${
+                      isDarkMode ? "bg-gray-800" : "bg-white"
+                    }`}
+                  >
+                    <Calendar
+                      size={32}
+                      color={isDarkMode ? "#34d399" : "#114131"}
+                      className="mb-2"
+                    />
+                    <Text
+                      className={`text-sm font-medium ${
+                        isDarkMode ? "text-gray-100" : "text-gray-800"
+                      }`}
+                    >
                       Book Appointment
                     </Text>
                   </View>
@@ -517,10 +558,22 @@ export default function MainDashboard() {
 
             {/* Health Metrics */}
             <Card className="border-0">
-              <View className="p-4">
+              <View
+                className={`p-4 rounded-xl ${
+                  isDarkMode ? "bg-gray-800" : "bg-white"
+                }`}
+              >
                 <View className="flex-row items-center mb-3">
-                  <TrendingUp size={20} color="#114131" className="mr-2" />
-                  <Text className="text-lg font-semibold text-gray-800">
+                  <TrendingUp
+                    size={20}
+                    color={isDarkMode ? "#34d399" : "#114131"}
+                    className="mr-2"
+                  />
+                  <Text
+                    className={`text-lg font-semibold ${
+                      isDarkMode ? "text-gray-100" : "text-gray-800"
+                    }`}
+                  >
                     Today's Metrics
                   </Text>
                 </View>
@@ -532,23 +585,41 @@ export default function MainDashboard() {
                     <View className="flex-row items-center">
                       <metric.icon
                         size={20}
-                        color={metric.color
-                          .replace("text-", "")
-                          .replace("-500", "")}
+                        color={
+                          isDarkMode
+                            ? metric.color
+                                .replace("text-", "")
+                                .replace("-500", "-400")
+                            : metric.color
+                                .replace("text-", "")
+                                .replace("-500", "")
+                        }
                         className="mr-2"
                       />
-                      <Text className="text-sm font-medium text-gray-700">
+                      <Text
+                        className={`text-sm font-medium ${
+                          isDarkMode ? "text-gray-300" : "text-gray-700"
+                        }`}
+                      >
                         {metric.label}
                       </Text>
                     </View>
                     <View className="items-end">
-                      <Text className="text-sm font-semibold text-gray-800">
+                      <Text
+                        className={`text-sm font-semibold ${
+                          isDarkMode ? "text-gray-100" : "text-gray-800"
+                        }`}
+                      >
                         {metric.value}
                       </Text>
                       <Text
                         className={`text-xs ${
                           metric.status === "normal" || metric.status === "good"
-                            ? "text-green-700"
+                            ? isDarkMode
+                              ? "text-green-400"
+                              : "text-green-700"
+                            : isDarkMode
+                            ? "text-amber-400"
                             : "text-amber-600"
                         }`}
                       >
@@ -560,16 +631,28 @@ export default function MainDashboard() {
               </View>
             </Card>
 
-            {/* Today’s Action Items (collapsible) */}
+            {/* Today's Action Items (collapsible) */}
             <Card className="border-0">
-              <View className="p-4">
+              <View
+                className={`p-4 rounded-xl ${
+                  isDarkMode ? "bg-gray-800" : "bg-white"
+                }`}
+              >
                 <View className="flex-row items-center mb-3">
-                  <Text className="text-lg font-semibold text-gray-800">
-                    Today’s Action Items
+                  <Text
+                    className={`text-lg font-semibold ${
+                      isDarkMode ? "text-gray-100" : "text-gray-800"
+                    }`}
+                  >
+                    Today's Action Items
                   </Text>
                 </View>
                 {todaysItems.length === 0 ? (
-                  <Text className="text-sm text-gray-600">
+                  <Text
+                    className={`text-sm ${
+                      isDarkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
                     No scheduled items for today.
                   </Text>
                 ) : (
@@ -584,13 +667,15 @@ export default function MainDashboard() {
                       <View className="flex-row items-center flex-1">
                         <TouchableOpacity
                           onPress={() => toggleItemCompleted(it.id)}
-                          className="w-5 h-5 rounded border mr-3 items-center justify-center"
-                          style={{ borderColor: "#94a3b8" }}
+                          className={`w-5 h-5 rounded border mr-3 items-center justify-center ${
+                            isDarkMode ? "border-gray-600" : "border-gray-300"
+                          }`}
                         >
                           {completedItems.has(it.id) && (
                             <View
-                              className="w-3 h-3 rounded"
-                              style={{ backgroundColor: "#114131" }}
+                              className={`w-3 h-3 rounded ${
+                                isDarkMode ? "bg-emerald-500" : "bg-emerald-600"
+                              }`}
                             />
                           )}
                         </TouchableOpacity>
@@ -598,21 +683,33 @@ export default function MainDashboard() {
                           <Text
                             className={`text-sm ${
                               completedItems.has(it.id)
-                                ? "text-gray-500 line-through"
+                                ? isDarkMode
+                                  ? "text-gray-500 line-through"
+                                  : "text-gray-500 line-through"
+                                : isDarkMode
+                                ? "text-gray-100"
                                 : "text-gray-800"
                             }`}
                           >
                             {it.title}
                           </Text>
                           {it.goalTitle && (
-                            <Text className="text-xs text-gray-500">
+                            <Text
+                              className={`text-xs ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
                               {it.goalTitle}
                             </Text>
                           )}
                         </View>
                       </View>
                       <View className="items-end ml-3">
-                        <Text className="text-xs text-gray-600 font-medium">
+                        <Text
+                          className={`text-xs font-medium ${
+                            isDarkMode ? "text-gray-400" : "text-gray-600"
+                          }`}
+                        >
                           {it.start_time && it.end_time
                             ? `${formatTimeHM(it.start_time)} - ${formatTimeHM(
                                 it.end_time
@@ -630,11 +727,13 @@ export default function MainDashboard() {
                   <TouchableOpacity
                     onPress={() => setShowAllTodayItems((v) => !v)}
                     className="mt-1 self-start px-3 py-1 rounded-full"
-                    style={{ backgroundColor: "#e6f4f1" }}
+                    style={{
+                      backgroundColor: isDarkMode ? "#064e3b" : "#e6f4f1",
+                    }}
                   >
                     <Text
                       className="text-xs font-medium"
-                      style={{ color: "#114131" }}
+                      style={{ color: isDarkMode ? "#34d399" : "#114131" }}
                     >
                       {showAllTodayItems
                         ? "Show less"
@@ -649,21 +748,37 @@ export default function MainDashboard() {
 
             {/* Weekly Goals Summary (from goals endpoint) */}
             <Card className="border-0">
-              <View className="p-4">
+              <View
+                className={`p-4 rounded-xl ${
+                  isDarkMode ? "bg-gray-800" : "bg-white"
+                }`}
+              >
                 <View className="flex-row items-center justify-between mb-3">
                   <View className="flex-row items-center">
-                    <Target size={20} color="#114131" className="mr-2" />
-                    <Text className="text-lg font-semibold text-gray-800">
+                    <Target
+                      size={20}
+                      color={isDarkMode ? "#34d399" : "#114131"}
+                      className="mr-2"
+                    />
+                    <Text
+                      className={`text-lg font-semibold ${
+                        isDarkMode ? "text-gray-100" : "text-gray-800"
+                      }`}
+                    >
                       Weekly Goals
                     </Text>
                   </View>
                   <TouchableOpacity
                     className="px-3 py-1 rounded-full"
-                    style={{ backgroundColor: "#e6f4f1" }}
+                    style={{
+                      backgroundColor: isDarkMode ? "#064e3b" : "#e6f4f1",
+                    }}
                   >
                     <Text
                       className="text-xs font-medium"
-                      style={{ color: "#114131" }}
+                      style={{
+                        color: isDarkMode ? "#34d399" : "#114131",
+                      }}
                     >
                       {`${
                         (goals || []).filter((g: any) => g.completed).length
@@ -672,7 +787,13 @@ export default function MainDashboard() {
                   </TouchableOpacity>
                 </View>
                 {(goals || []).length === 0 ? (
-                  <Text className="text-sm text-gray-600">No goals yet.</Text>
+                  <Text
+                    className={`text-sm ${
+                      isDarkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    No goals yet.
+                  </Text>
                 ) : (
                   <View className="space-y-2">
                     {(goals as any[]).slice(0, 5).map((g: any) => (
@@ -685,15 +806,27 @@ export default function MainDashboard() {
                             className="w-2 h-2 rounded-full mr-2"
                             style={{
                               backgroundColor: g.completed
-                                ? "#10b981"
+                                ? isDarkMode
+                                  ? "#34d399"
+                                  : "#10b981"
+                                : isDarkMode
+                                ? "#4b5563"
                                 : "#94a3b8",
                             }}
                           />
-                          <Text className="text-sm text-gray-700 flex-1">
+                          <Text
+                            className={`text-sm flex-1 ${
+                              isDarkMode ? "text-gray-300" : "text-gray-700"
+                            }`}
+                          >
                             {g.title}
                           </Text>
                         </View>
-                        <Text className="text-xs text-gray-500">
+                        <Text
+                          className={`text-xs ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
                           {g.completed ? "Done" : ""}
                         </Text>
                       </View>
@@ -702,7 +835,9 @@ export default function MainDashboard() {
                 )}
                 <TouchableOpacity
                   className="mt-3 p-2 rounded-lg"
-                  style={{ backgroundColor: "#e6f4f1" }}
+                  style={{
+                    backgroundColor: isDarkMode ? "#064e3b" : "#e6f4f1",
+                  }}
                   onPress={() =>
                     router.push({
                       pathname: "./goals",
@@ -712,7 +847,9 @@ export default function MainDashboard() {
                 >
                   <Text
                     className="text-center text-sm font-medium"
-                    style={{ color: "#114131" }}
+                    style={{
+                      color: isDarkMode ? "#34d399" : "#114131",
+                    }}
                   >
                     View All Goals
                   </Text>
@@ -723,16 +860,22 @@ export default function MainDashboard() {
             {/* Recent Insights */}
             <Card className="border-0">
               <View
-                className="p-4 rounded-lg"
-                style={{ backgroundColor: "#e6f4f1" }}
+                className={`p-4 rounded-lg ${
+                  isDarkMode ? "bg-emerald-900/70" : "bg-emerald-100"
+                }`}
               >
                 <Text
-                  className="text-sm font-medium mb-1"
-                  style={{ color: "#114131" }}
+                  className={`text-sm font-medium mb-1 ${
+                    isDarkMode ? "text-emerald-100" : "text-emerald-900"
+                  }`}
                 >
                   Great progress on your sleep schedule! 🌙
                 </Text>
-                <Text className="text-xs" style={{ color: "#114131" }}>
+                <Text
+                  className={`text-xs ${
+                    isDarkMode ? "text-emerald-200" : "text-emerald-800"
+                  }`}
+                >
                   You've maintained 7+ hours of sleep for 5 consecutive days.
                   Keep it up!
                 </Text>
