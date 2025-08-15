@@ -1484,42 +1484,66 @@ export default function GoalsScreen() {
             }}
           >
             <View
-              className="bg-white rounded-xl w-full max-w-md mx-4 p-5"
+              className={`rounded-xl w-full max-w-md mx-4 p-5 ${
+                isDarkMode ? "bg-gray-900" : "bg-white"
+              }`}
               style={{ elevation: 20 }}
             >
               <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-lg font-semibold text-gray-800">
+                <Text
+                  className={`text-lg font-semibold ${
+                    isDarkMode ? "text-gray-100" : "text-gray-800"
+                  }`}
+                >
                   Weekly Preferences
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowPreferencesModal(false)}
                   className="p-1"
                 >
-                  <X size={20} color="#6b7280" />
+                  <X size={20} color={isDarkMode ? "#d1d5db" : "#6b7280"} />
                 </TouchableOpacity>
               </View>
 
               {preferencesLoading ? (
                 <View className="py-6 items-center">
-                  <ActivityIndicator color="#059669" />
+                  <ActivityIndicator
+                    color={isDarkMode ? "#34d399" : "#059669"}
+                  />
                 </View>
               ) : (
                 <ScrollView style={{ maxHeight: 420 }}>
                   {Object.values(PillarType).map((pillar) => (
                     <View
                       key={pillar}
-                      className="mb-4 p-3 rounded-lg border border-gray-100 bg-gray-50"
+                      className={`mb-4 p-3 rounded-lg border ${
+                        isDarkMode
+                          ? "border-gray-700 bg-gray-800"
+                          : "border-gray-100 bg-gray-50"
+                      }`}
                     >
-                      <Text className="font-semibold text-gray-800 mb-2">
+                      <Text
+                        className={`font-semibold mb-2 ${
+                          isDarkMode ? "text-gray-100" : "text-gray-800"
+                        }`}
+                      >
                         {pillar}
                       </Text>
                       <View className="flex-row mb-2">
                         <View className="flex-1 mr-2">
-                          <Text className="text-xs text-gray-600 mb-1">
+                          <Text
+                            className={`text-xs mb-1 ${
+                              isDarkMode ? "text-gray-400" : "text-gray-600"
+                            }`}
+                          >
                             Preferred Time (HH:mm)
                           </Text>
                           <TextInput
-                            className="border border-gray-300 rounded px-2 py-1"
+                            className={`border rounded px-2 py-1 ${
+                              isDarkMode
+                                ? "bg-gray-900 border-gray-700 text-gray-100"
+                                : "bg-white border-gray-300 text-gray-800"
+                            }`}
                             value={
                               timePreferences[pillar]?.preferred_time || ""
                             }
@@ -1527,14 +1551,25 @@ export default function GoalsScreen() {
                               updatePrefField(pillar, "preferred_time", t)
                             }
                             placeholder="07:00"
+                            placeholderTextColor={
+                              isDarkMode ? "#9ca3af" : undefined
+                            }
                           />
                         </View>
                         <View className="w-28">
-                          <Text className="text-xs text-gray-600 mb-1">
+                          <Text
+                            className={`text-xs mb-1 ${
+                              isDarkMode ? "text-gray-400" : "text-gray-600"
+                            }`}
+                          >
                             Duration (min)
                           </Text>
                           <TextInput
-                            className="border border-gray-300 rounded px-2 py-1"
+                            className={`border rounded px-2 py-1 ${
+                              isDarkMode
+                                ? "bg-gray-900 border-gray-700 text-gray-100"
+                                : "bg-white border-gray-300 text-gray-800"
+                            }`}
                             keyboardType="numeric"
                             value={String(
                               timePreferences[pillar]?.duration_minutes ?? 30
@@ -1547,17 +1582,28 @@ export default function GoalsScreen() {
                               )
                             }
                             placeholder="30"
+                            placeholderTextColor={
+                              isDarkMode ? "#9ca3af" : undefined
+                            }
                           />
                         </View>
                       </View>
 
                       <View className="flex-row mb-2">
                         <View className="w-40">
-                          <Text className="text-xs text-gray-600 mb-1">
+                          <Text
+                            className={`text-xs mb-1 ${
+                              isDarkMode ? "text-gray-400" : "text-gray-600"
+                            }`}
+                          >
                             Reminder (min)
                           </Text>
                           <TextInput
-                            className="border border-gray-300 rounded px-2 py-1"
+                            className={`border rounded px-2 py-1 ${
+                              isDarkMode
+                                ? "bg-gray-900 border-gray-700 text-gray-100"
+                                : "bg-white border-gray-300 text-gray-800"
+                            }`}
                             keyboardType="numeric"
                             value={String(
                               timePreferences[pillar]
@@ -1571,11 +1617,18 @@ export default function GoalsScreen() {
                               )
                             }
                             placeholder="10"
+                            placeholderTextColor={
+                              isDarkMode ? "#9ca3af" : undefined
+                            }
                           />
                         </View>
                       </View>
 
-                      <Text className="text-xs text-gray-600 mb-1">
+                      <Text
+                        className={`text-xs mb-1 ${
+                          isDarkMode ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
                         Days of Week
                       </Text>
                       <View className="flex-row">
@@ -1589,12 +1642,22 @@ export default function GoalsScreen() {
                                 key={`${pillar}-${idx}`}
                                 onPress={() => toggleDay(pillar, idx)}
                                 className={`mr-2 px-2 py-1 rounded ${
-                                  active ? "bg-emerald-600" : "bg-gray-200"
+                                  active
+                                    ? isDarkMode
+                                      ? "bg-emerald-700"
+                                      : "bg-emerald-600"
+                                    : isDarkMode
+                                    ? "bg-gray-700"
+                                    : "bg-gray-200"
                                 }`}
                               >
                                 <Text
                                   className={`text-xs ${
-                                    active ? "text-white" : "text-gray-700"
+                                    active
+                                      ? "text-white"
+                                      : isDarkMode
+                                      ? "text-gray-200"
+                                      : "text-gray-700"
                                   }`}
                                 >
                                   {label}
@@ -1612,15 +1675,29 @@ export default function GoalsScreen() {
               <View className="flex-row justify-end mt-3">
                 <TouchableOpacity
                   onPress={() => setShowPreferencesModal(false)}
-                  className="px-4 py-2 rounded-lg bg-gray-200 mr-2"
+                  className={`px-4 py-2 rounded-lg ${
+                    isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                  } mr-2`}
                 >
-                  <Text className="text-sm text-gray-700">Cancel</Text>
+                  <Text
+                    className={`text-sm ${
+                      isDarkMode ? "text-gray-200" : "text-gray-700"
+                    }`}
+                  >
+                    Cancel
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   disabled={preferencesLoading}
                   onPress={savePreferences}
                   className={`px-4 py-2 rounded-lg ${
-                    preferencesLoading ? "bg-emerald-300" : "bg-emerald-600"
+                    preferencesLoading
+                      ? isDarkMode
+                        ? "bg-emerald-900"
+                        : "bg-emerald-300"
+                      : isDarkMode
+                      ? "bg-emerald-700"
+                      : "bg-emerald-600"
                   }`}
                 >
                   <Text className="text-sm font-medium text-white">Save</Text>
