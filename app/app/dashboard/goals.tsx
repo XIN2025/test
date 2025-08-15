@@ -1077,7 +1077,7 @@ export default function GoalsScreen() {
     return (
       <SafeAreaView className="flex-1">
         <LinearGradient
-          colors={isDarkMode ? ["#1a1a1a", "#2d2d2d"] : ["#ecfdf5", "#f0fdfa"]}
+          colors={isDarkMode ? ["#111827", "#1f2937"] : ["#f0f9f6", "#e6f4f1"]}
           className="flex-1"
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
