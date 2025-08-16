@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
@@ -12,7 +12,19 @@ export default function VerifyLoginOtpScreen() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, isAuthenticated, isLoading } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace("/dashboard/main");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  // Don't render if loading or already authenticated
+  if (isLoading || isAuthenticated) {
+    return null;
+  }
 
   const handleVerify = async () => {
     setLoading(true);

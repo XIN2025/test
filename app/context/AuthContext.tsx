@@ -6,6 +6,7 @@ import React, {
   PropsWithChildren,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 interface AuthUser {
   email: string;
@@ -22,6 +23,43 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Storage helper functions
+const storageHelpers = {
+  async setItem(key: string, value: string) {
+    if (Platform.OS === "web") {
+      // Use localStorage for web instead of SecureStore
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(key, value);
+      }
+    } else {
+      await AsyncStorage.setItem(key, value);
+    }
+  },
+
+  async getItem(key: string): Promise<string | null> {
+    if (Platform.OS === "web") {
+      // Use localStorage for web instead of SecureStore
+      if (typeof window !== "undefined" && window.localStorage) {
+        return window.localStorage.getItem(key);
+      }
+      return null;
+    } else {
+      return await AsyncStorage.getItem(key);
+    }
+  },
+
+  async removeItem(key: string) {
+    if (Platform.OS === "web") {
+      // Use localStorage for web instead of SecureStore
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.removeItem(key);
+      }
+    } else {
+      await AsyncStorage.removeItem(key);
+    }
+  },
+};
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +71,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const checkAuthState = async () => {
     try {
-      const userData = await AsyncStorage.getItem("user");
+      const userData = await storageHelpers.getItem("user");
       if (userData) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
@@ -48,7 +86,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const login = async (email: string, name: string) => {
     try {
       const userData = { email, name };
-      await AsyncStorage.setItem("user", JSON.stringify(userData));
+      await storageHelpers.setItem("user", JSON.stringify(userData));
       setUser(userData);
     } catch (error) {
       console.error("Error saving user data:", error);
@@ -58,7 +96,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem("user");
+      await storageHelpers.removeItem("user");
       setUser(null);
     } catch (error) {
       console.error("Error logging out:", error);

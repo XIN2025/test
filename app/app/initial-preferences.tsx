@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -64,7 +64,14 @@ const genderOptions = ["Male", "Female", "Other"];
 export default function InitialPreferences() {
   const { email, name } = useLocalSearchParams();
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, isAuthenticated, isLoading } = useAuth();
+
+  // Redirect if already authenticated and not setting initial preferences
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && !email) {
+      router.replace("/dashboard/main");
+    }
+  }, [isAuthenticated, isLoading, email, router]);
 
   const [formData, setFormData] = useState<PreferencesFormData>({
     age: "",

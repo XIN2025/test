@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
 import Constants from "expo-constants";
+import { useAuth } from "@/context/AuthContext";
 
 // TypeScript interfaces
 interface LoginFormData {
@@ -24,6 +25,19 @@ export default function LoginScreen() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace("/dashboard/main");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  // Don't render if loading or already authenticated
+  if (isLoading || isAuthenticated) {
+    return null;
+  }
 
   // Validation functions
   const validateEmail = (email: string): string | undefined => {
