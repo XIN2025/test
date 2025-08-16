@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useUser } from "../../context/UserContext";
+import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import {
   View,
@@ -50,7 +50,8 @@ export default function ChatPage() {
     Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
 
   // Get user's email from context
-  const { userEmail } = useUser();
+  const { user } = useAuth();
+  const userEmail = user?.email || "";
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });

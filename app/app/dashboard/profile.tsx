@@ -13,10 +13,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
-import { useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Platform } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   Heart,
   User,
@@ -34,15 +35,13 @@ import {
   Check,
 } from "lucide-react-native";
 import Card from "@/components/ui/card";
-import { useUser } from "@/context/UserContext";
 
 export default function ProfileDashboard() {
-  const { userEmail: contextEmail } = useUser();
-  const params = useLocalSearchParams();
-  const { email } = params;
-  const actualEmail = email || contextEmail;
-  console.log("Profile params:", params);
-  console.log("Context email:", contextEmail);
+  const { user } = useAuth();
+  const actualEmail = user?.email || "";
+  const router = useRouter();
+  const { logout } = useAuth();
+  console.log("Profile user:", user);
   console.log("Using email:", actualEmail);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -365,6 +364,39 @@ export default function ProfileDashboard() {
       color: "text-amber-600",
     },
   ];
+
+  const handleLogout = async () => {
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to sign out?");
+      if (confirmed) {
+        try {
+          await logout();
+          router.replace("/login");
+        } catch (error) {
+          window.alert("Failed to sign out. Please try again.");
+        }
+      }
+    } else {
+      Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace("/login");
+            } catch (error) {
+              Alert.alert("Error", "Failed to sign out. Please try again.");
+            }
+          },
+        },
+      ]);
+    }
+  };
 
   const menuItems = [
     {
@@ -864,6 +896,12 @@ export default function ProfileDashboard() {
                   {menuItems.map((item, index) => (
                     <TouchableOpacity
                       key={index}
+                      onPress={() => {
+                        if (item.title === "Sign Out") {
+                          handleLogout();
+                        }
+                        // Add other handlers for other menu items if needed
+                      }}
                       className={`flex-row items-center p-3 rounded-lg ${
                         index === menuItems.length - 1
                           ? isDarkMode

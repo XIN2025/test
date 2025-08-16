@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import asyncio
 from .services.db import get_db, close_db
 from .services.graph_db import get_graph_db, close_graph_db
 from .services.vector_store import get_vector_store
@@ -11,6 +12,14 @@ from .routers.upload import upload_router
 from .routers.goals import goals_router
 from .routers.preferences import preferences_router
 from .services.email_utils import send_email
+
+# Set up better event loop for improved async performance
+try:
+    import uvloop
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+except ImportError:
+    # uvloop not available on Windows, use default
+    pass
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,7 +38,12 @@ async def lifespan(app: FastAPI):
     close_db()
     close_graph_db()
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    title="Medical RAG API", 
+    description="Medical RAG API with async support",
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,6 +52,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add async middleware for better concurrency
+@app.middleware("http")
+async def add_async_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Async-Enabled"] = "true"
+    return response
 
 app.include_router(auth_router)
 app.include_router(user_router)

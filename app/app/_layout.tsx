@@ -3,6 +3,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View, Text } from "react-native";
 import { useFonts } from "../hooks/useFonts";
 import { ThemeProvider } from "../context/ThemeContext";
+import { AuthProvider } from "../context/AuthContext";
 import "./global.css";
 
 export default function RootLayout() {
@@ -10,26 +11,30 @@ export default function RootLayout() {
 
   if (!fontsLoaded) {
     return (
-      <ThemeProvider>
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "#f0fdf4",
-          }}
-        >
-          <Text style={{ color: "#059669", fontSize: 18 }}>Loading...</Text>
-        </View>
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "#f0fdf4",
+            }}
+          >
+            <Text style={{ color: "#059669", fontSize: 18 }}>Loading...</Text>
+          </View>
+        </ThemeProvider>
+      </AuthProvider>
     );
   }
 
   return (
-    <ThemeProvider>
-      <SafeAreaProvider>
-        <Stack screenOptions={{ headerShown: false }} />
-      </SafeAreaProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <SafeAreaProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

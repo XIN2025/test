@@ -1,4 +1,4 @@
-import { Tabs, useLocalSearchParams } from "expo-router";
+import { Tabs } from "expo-router";
 import React from "react";
 import {
   Heart,
@@ -9,14 +9,11 @@ import {
   Target,
   Globe,
 } from "lucide-react-native";
-import { UserProvider } from "@/context/UserContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 function TabsNavigator() {
   const { isDarkMode } = useTheme();
-  const params = useLocalSearchParams();
-  const userEmail = (params?.email as string) || "";
-  const userName = (params?.name as string) || "";
 
   return (
     <Tabs
@@ -92,10 +89,6 @@ function TabsNavigator() {
       />
       <Tabs.Screen
         name="profile"
-        initialParams={{
-          email: userEmail,
-          name: userName,
-        }}
         options={{
           title: "Profile",
           tabBarLabel: "Profile",
@@ -109,15 +102,11 @@ function TabsNavigator() {
 }
 
 export default function DashboardTabsLayout() {
-  const params = useLocalSearchParams();
-  const userEmail = (params?.email as string) || "";
-  const userName = (params?.name as string) || "";
-
   return (
     <ThemeProvider>
-      <UserProvider value={{ userEmail, userName }}>
+      <ProtectedRoute>
         <TabsNavigator />
-      </UserProvider>
+      </ProtectedRoute>
     </ThemeProvider>
   );
 }

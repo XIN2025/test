@@ -13,9 +13,8 @@ import {
 import * as DocumentPicker from "expo-document-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams } from "expo-router";
-import { useUser } from "@/context/UserContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   Target,
   Plus,
@@ -317,19 +316,16 @@ interface ExtendedGoal extends Goal {
 import { goalsApi } from "@/services/goalsApi";
 
 export default function GoalsScreen() {
-  const params = useLocalSearchParams();
-  const { userEmail: ctxEmail, userName: ctxName } = useUser();
-  const userEmail = ctxEmail || (params?.email as string);
-  const userName = ctxName || (params?.name as string) || "";
+  const { user } = useAuth();
+  const userEmail = user?.email || "";
+  const userName = user?.name || "";
 
   useEffect(() => {
     console.log("Current user context:", {
-      ctxEmail,
-      ctxName,
-      params,
       userEmail,
+      userName,
     });
-  }, [ctxEmail, ctxName, params]);
+  }, [userEmail, userName]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
@@ -564,7 +560,7 @@ export default function GoalsScreen() {
   ) => {
     try {
       if (!userEmail) {
-        console.error("User email missing. Context:", { ctxEmail, params });
+        console.error("User email missing. Context:", { userEmail, user });
         throw new Error("User email is required for document upload");
       }
 

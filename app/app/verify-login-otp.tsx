@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
 import Constants from "expo-constants";
+import { useAuth } from "@/context/AuthContext";
 
 export default function VerifyLoginOtpScreen() {
   const { email } = useLocalSearchParams();
@@ -11,6 +12,7 @@ export default function VerifyLoginOtpScreen() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleVerify = async () => {
     setLoading(true);
@@ -63,6 +65,10 @@ export default function VerifyLoginOtpScreen() {
         return;
       }
       const userName = data?.user?.name ?? "";
+
+      // Set user as authenticated in the auth context
+      await login(normalizedEmail, userName);
+
       if (prefsData.exists) {
         Alert.alert("Success", "Login successful!");
         router.push({

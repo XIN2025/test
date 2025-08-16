@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,9 @@ import {
   Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
 // @ts-ignore
 import { LinearGradient } from "expo-linear-gradient";
 // @ts-ignore
@@ -30,7 +31,6 @@ import Card from "@/components/ui/card";
 // @ts-ignore
 import { tw } from "nativewind";
 import { useGoals } from "@/hooks/useGoals";
-import { useUser } from "@/context/UserContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width, height } = Dimensions.get("window");
@@ -82,17 +82,25 @@ const walkthrough = [
 
 export default function MainDashboard() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const { userEmail: ctxEmail, userName: ctxName } = useUser();
+  const { user } = useAuth();
   const { isDarkMode } = useTheme();
-  const userEmail = (params?.email as string) || ctxEmail || "";
-  const userName = (params?.name as string) || ctxName || "";
-  const { goals } = useGoals({ userEmail });
+  const userEmail = user?.email || "";
+  const userName = user?.name || "";
+  const { goals, loadGoals } = useGoals({ userEmail });
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [animation] = useState(new Animated.Value(1));
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
   const [showAllTodayItems, setShowAllTodayItems] = useState(false);
+
+  // Refresh goals data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (userEmail && loadGoals) {
+        loadGoals();
+      }
+    }, [userEmail, loadGoals])
+  );
   const healthMetrics = [
     {
       icon: Heart,
@@ -474,12 +482,7 @@ export default function MainDashboard() {
               {/* Quick Actions - Left Side */}
               <View className="w-1/2 pr-2">
                 <TouchableOpacity
-                  onPress={() =>
-                    router.push({
-                      pathname: "./chat",
-                      params: { email: userEmail, name: userName },
-                    })
-                  }
+                  onPress={() => router.push("./chat")}
                   className="mb-3"
                 >
                   <Card className="border-0">
@@ -838,12 +841,7 @@ export default function MainDashboard() {
                   style={{
                     backgroundColor: isDarkMode ? "#064e3b" : "#e6f4f1",
                   }}
-                  onPress={() =>
-                    router.push({
-                      pathname: "./goals",
-                      params: { email: userEmail, name: userName },
-                    })
-                  }
+                  onPress={() => router.push("./goals")}
                 >
                   <Text
                     className="text-center text-sm font-medium"

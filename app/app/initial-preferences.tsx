@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import EvraLogo from "../components/EvraLogo";
 import { validateAge, validateGender } from "../utils/validation";
 import { userApi, handleApiError } from "../utils/api";
+import { useAuth } from "@/context/AuthContext";
 
 // TypeScript interfaces
 interface PreferencesFormData {
@@ -61,8 +62,9 @@ const verbosityStyles = ["Concise", "Detailed"];
 const genderOptions = ["Male", "Female", "Other"];
 
 export default function InitialPreferences() {
-  const { email } = useLocalSearchParams();
+  const { email, name } = useLocalSearchParams();
   const router = useRouter();
+  const { login } = useAuth();
 
   const [formData, setFormData] = useState<PreferencesFormData>({
     age: "",
@@ -155,9 +157,14 @@ export default function InitialPreferences() {
       const normalizedEmail = Array.isArray(email)
         ? email[0]
         : String(email || "");
+      const normalizedName = Array.isArray(name) ? name[0] : String(name || "");
+
+      // Set user as authenticated in the auth context
+      await login(normalizedEmail, normalizedName);
+
       router.push({
         pathname: "./dashboard/main",
-        params: { email: normalizedEmail },
+        params: { email: normalizedEmail, name: normalizedName },
       });
     } catch (err) {
       const errorMessage = handleApiError(err);

@@ -5,6 +5,7 @@ from typing import Dict, Any
 import asyncio
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from ..services.document_processor import DocumentProcessor
 from ..services.progress_tracker import ProgressTracker
 from ..config import MAX_FILE_SIZE
@@ -19,13 +20,21 @@ upload_router = APIRouter(prefix="/upload", tags=["upload"])
 # Global progress tracker
 progress_tracker = ProgressTracker()
 
+# Thread pool for CPU-intensive tasks to avoid blocking the event loop
+executor = ThreadPoolExecutor(max_workers=4)
+
 @upload_router.post("/document")
 async def upload_document(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     email: str = Query(..., description="User email for document ownership")
 ):
-    """Upload and process a document with progress tracking"""
+    """Upload and process a document with true async processing"""
+    
+    logger.info(f"Received upload request for file: {file.filename}")
+    
+    # Extract file extension
+    file_extension = file.filename.split(".")[-1].lower() if "." in file.filename else "txt"
+    """Upload and process a document with true async processing"""
     
     logger.info(f"Received upload request for file: {file.filename}")
     
@@ -47,40 +56,26 @@ async def upload_document(
     upload_id = progress_tracker.create_upload_session(file.filename)
     
     try:
-        # Read file content immediately before the request handler completes
+        # Read file content
         content = await file.read()
         if len(content) > MAX_FILE_SIZE:
             logger.error(f"File too large: {len(content)} bytes")
             progress_tracker.update_progress(upload_id, 0, "File too large", "failed")
             raise HTTPException(status_code=400, detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB")
+        
         logger.info(f"Read {len(content)} bytes from file {file.filename}")
         
-        # Start processing in background with the file content and user email
-        background_tasks.add_task(
-            process_document_background,
-            upload_id,
-            file.filename,
-            content,
-            file_extension,
-            email  # Pass the email to background task
+        # Create initial Mongo record immediately
+        await create_initial_file_record(upload_id, file.filename, len(content), file_extension, email)
+        
+        # Start processing in a separate task to avoid blocking
+        asyncio.create_task(
+            run_document_processing_async(
+                upload_id, file.filename, content, file_extension, email
+            )
         )
         
-        # Create initial Mongo record (status = processing)
-        db = get_db()
-        files_col = db.get_collection("uploaded_files")
-        files_col.insert_one({
-            "upload_id": upload_id,
-            "filename": file.filename,
-            "size": len(content),
-            "extension": file_extension,
-            "status": "processing",
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
-            "entities": [],
-            "relationships": [],
-            "user_email": email  # Add user email to record
-        })
-
+        # Return immediately - don't wait for processing
         return {
             "success": True,
             "upload_id": upload_id,
@@ -220,70 +215,96 @@ async def delete_uploaded_file(upload_id: str):
 
     return {"success": True, "message": "File and associated graph data deleted"}
 
-async def process_document_background(upload_id: str, filename: str, content: bytes, file_extension: str, user_email: str):
-    """Background task to process uploaded document with real-time progress updates"""
-    logger.info(f"Starting background processing for upload {upload_id} for user {user_email}")
+async def create_initial_file_record(upload_id: str, filename: str, size: int, extension: str, email: str):
+    """Create initial file record in MongoDB asynchronously"""
+    try:
+        db = get_db()
+        files_col = db.get_collection("uploaded_files")
+        # Consider using an async MongoDB client (e.g., Motor) for true async safety
+        # Or ensure that the DB client is thread-safe before using in run_in_executor
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            executor,
+            lambda: files_col.insert_one({
+                "upload_id": upload_id,
+                "filename": filename,
+                "size": size,
+                "extension": extension,
+                "status": "processing",
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "entities": [],
+                "relationships": [],
+                "user_email": email
+            })
+        )
+    except Exception as e:
+        logger.error(f"Error creating initial file record: {e}")
+
+async def run_document_processing_async(upload_id: str, filename: str, content: bytes, file_extension: str, user_email: str):
+    """Run document processing in thread pool to avoid blocking the event loop"""
+    try:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            executor,
+            process_document_sync,
+            upload_id, filename, content, file_extension, user_email
+        )
+    except Exception as e:
+        logger.error(f"Error in async document processing: {e}")
+        progress_tracker.update_progress(
+            upload_id, 0, f"Processing failed: {str(e)}", "failed", error_message=str(e)
+        )
+
+def process_document_sync(upload_id: str, filename: str, content: bytes, file_extension: str, user_email: str):
+    """Synchronous document processing function to run in thread pool"""
+    logger.info(f"Starting document processing for upload {upload_id} for user {user_email}")
     
     def progress_callback(percentage: int, message: str):
         """Callback function to update progress"""
-        progress_tracker.update_progress(
-            upload_id, 
-            percentage, 
-            message, 
-            "processing"
-        )
+        progress_tracker.update_progress(upload_id, percentage, message, "processing")
         logger.info(f"Progress update for {upload_id}: {percentage}% - {message}")
     
     try:
         # Initialize document processor
-        try:
-            processor = DocumentProcessor()
-            logger.info("Document processor initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize document processor: {e}")
-            raise Exception(f"Failed to initialize document processor: {str(e)}")
+        processor = DocumentProcessor()
+        logger.info("Document processor initialized successfully")
 
         # Initial progress update
         progress_tracker.update_progress(upload_id, 20, "Starting document analysis...", "processing")
 
-        # Process document based on type with progress callback
+        # Process document based on type
         if file_extension == 'pdf':
             result = processor.process_pdf_file(content, filename, user_email, progress_callback)
         elif file_extension in ['docx', 'doc']:
-            # For now, treat as text file since we don't have Word processing
             text_content = content.decode('utf-8')
             result = processor.process_text_file(text_content, filename, user_email, progress_callback)
         else:  # txt file
             text_content = content.decode('utf-8')
             result = processor.process_text_file(text_content, filename, user_email, progress_callback)
 
-        # Check if processing was successful
         if not result.get('success'):
             raise Exception(result.get('error', 'Unknown processing error'))
 
         entities = result.get('entities', [])
         relationships = result.get('relationships', [])
 
-        # Persist entities/relationships to Mongo record
-        try:
-            db = get_db()
-            col = db.get_collection("uploaded_files")
-            col.update_one(
-                {"upload_id": upload_id},
-                {"$set": {
-                    "status": "completed",
-                    "updated_at": datetime.utcnow(),
-                    "entities": entities,
-                    "relationships": relationships,
-                }}
-            )
-        except Exception as e:
-            logger.error(f"Failed updating Mongo record for upload {upload_id}: {e}")
+        # Update MongoDB record
+        db = get_db()
+        col = db.get_collection("uploaded_files")
+        col.update_one(
+            {"upload_id": upload_id},
+            {"$set": {
+                "status": "completed",
+                "updated_at": datetime.utcnow(),
+                "entities": entities,
+                "relationships": relationships,
+            }}
+        )
 
-        # Final progress update with completion
+        # Final progress update
         progress_tracker.update_progress(
-            upload_id,
-            100,
+            upload_id, 100,
             f"Analysis complete! Extracted {len(entities)} entities and {len(relationships)} relationships",
             "completed",
             entities_count=len(entities),
@@ -295,16 +316,16 @@ async def process_document_background(upload_id: str, filename: str, content: by
     except Exception as e:
         logger.error(f"Error processing document for upload {upload_id}: {e}")
         progress_tracker.update_progress(
-            upload_id, 
-            0, 
-            f"Processing failed: {str(e)}", 
-            "failed", 
-            error_message=str(e)
-        ) 
+            upload_id, 0, f"Processing failed: {str(e)}", "failed", error_message=str(e)
+        )
+        
         # Update record status to failed
         try:
             db = get_db()
             col = db.get_collection("uploaded_files")
-            col.update_one({"upload_id": upload_id}, {"$set": {"status": "failed", "updated_at": datetime.utcnow(), "error": str(e)}})
+            col.update_one(
+                {"upload_id": upload_id}, 
+                {"$set": {"status": "failed", "updated_at": datetime.utcnow(), "error": str(e)}}
+            )
         except Exception:
             pass

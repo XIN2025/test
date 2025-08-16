@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query, Body
 from typing import List, Optional
 from datetime import datetime, timedelta
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from ..schemas.goals import (
     GoalCreate, GoalUpdate, Goal, GoalProgressUpdate, GoalNote,
     WeeklyReflection, GoalStats, GoalResponse
@@ -11,6 +13,9 @@ from pydantic import EmailStr
 
 goals_router = APIRouter()
 goals_service = GoalsService()
+
+# Thread pool for CPU-intensive tasks
+executor = ThreadPoolExecutor(max_workers=4)
 
 @goals_router.get("/api/goals/stats", response_model=GoalResponse)
 async def get_goal_stats(user_email: EmailStr = Query(...), weeks: int = Query(4, ge=1, le=52)):
@@ -69,9 +74,15 @@ async def get_current_week_goals(user_email: EmailStr = Query(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @goals_router.post("/api/goals", response_model=GoalResponse)
-def create_goal(goal_data: GoalCreate):
+async def create_goal(goal_data: GoalCreate):
     try:
-        goal = goals_service.create_goal(goal_data)
+        # Run goal creation in thread pool to avoid blocking
+        loop = asyncio.get_event_loop()
+        goal = await loop.run_in_executor(
+            executor,
+            goals_service.create_goal,
+            goal_data
+        )
         return GoalResponse(success=True, message="Goal created successfully", data={"goal": goal.dict()})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -90,26 +101,7 @@ async def get_user_goals(user_email: EmailStr = Query(...), week_start: Optional
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@goals_router.post("/api/goals/{goal_id}/generate-plan", response_model=GoalResponse)
-async def generate_goal_plan(
-    goal_id: str,
-    user_email: EmailStr = Query(...),
-    preferences: List[PillarTimePreferences] = Body(...),
-):
-    try:
-        result = goals_service.generate_goal_plan(goal_id, user_email, preferences)
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["message"])
-            
-        return GoalResponse(
-            success=True,
-            message="Goal plan generated successfully",
-            data=result["data"]
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
 
 @goals_router.get("/api/goals/{goal_id}", response_model=GoalResponse)
 async def get_goal(goal_id: str, user_email: EmailStr = Query(...)):
@@ -178,10 +170,14 @@ async def generate_goal_plan(
     pillar_preferences: List[PillarTimePreferences] = Body(default=[])
 ):
     try:
-        result = goals_service.generate_goal_plan(
-            goal_id=goal_id,
-            user_email=user_email,
-            pillar_preferences=pillar_preferences
+        # Run goal plan generation in thread pool to avoid blocking
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            executor,
+            goals_service.generate_goal_plan,
+            goal_id,
+            user_email,
+            pillar_preferences
         )
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result["message"])
