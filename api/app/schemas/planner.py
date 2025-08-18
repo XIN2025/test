@@ -39,6 +39,10 @@ class WeeklyActionSchedule(BaseModel):
     total_weekly_duration: str  # HH:MM:SS format
     pillar_distribution: Dict[str, float]  # percentage of time per pillar
 
+class WeeklyCompletionStatus(BaseModel):
+    week_start: datetime
+    is_complete: bool = False
+
 class ActionItem(BaseModel):
     title: str
     description: str
@@ -48,6 +52,7 @@ class ActionItem(BaseModel):
     success_criteria: List[str]
     adaptation_notes: Optional[List[str]] = None  # Health-specific adaptations
     weekly_schedule: Optional[WeeklyActionSchedule] = None  # New field
+    weekly_completion: List[WeeklyCompletionStatus] = Field(default_factory=list, description="Completion status for each week")
 
 class ActionPlan(BaseModel):
     goal_id: str

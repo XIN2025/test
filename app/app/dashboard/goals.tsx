@@ -15,6 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import { CircularProgressRing } from "@/components/CircularProgressRing";
+import { useActionCompletions } from "@/hooks/useActionCompletions";
 import {
   Target,
   Plus,
@@ -266,7 +268,11 @@ interface ActionItem {
   prerequisites: string[];
   success_criteria: string[];
   adaptation_notes: string[];
-  weekly_schedule: WeeklyActionSchedule;
+  weekly_completion?: Array<{
+    week_start: string;
+    is_complete: boolean;
+  }>;
+  weekly_schedule?: any; // Using any for now to avoid complex type definitions
 }
 
 // Extend the Goal interface to include action_plan
@@ -320,12 +326,21 @@ export default function GoalsScreen() {
   const userEmail = user?.email || "";
   const userName = user?.name || "";
 
+  // Action completions hook for tracking completion percentages
+  const {
+    completionStats,
+    getGoalCompletionPercentage,
+    markCompletion,
+    loading: completionLoading,
+  } = useActionCompletions(userEmail);
+
   useEffect(() => {
     console.log("Current user context:", {
       userEmail,
       userName,
     });
   }, [userEmail, userName]);
+
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
@@ -1811,23 +1826,41 @@ export default function GoalsScreen() {
                 <View className="p-4">
                   <View className="mb-4">
                     <View className="flex-row items-center justify-between mb-2">
-                      <View className="flex-row items-center">
+                      <View className="flex-row items-center flex-1">
                         <Text className="text-lg mr-2">
                           {getCategoryIcon(goal.category)}
                         </Text>
                         <Text
-                          className={`text-lg font-semibold ${
+                          className={`text-lg font-semibold flex-1 ${
                             isDarkMode ? "text-gray-100" : "text-gray-800"
                           }`}
                         >
                           {goal.title}
                         </Text>
+                        {/* Circular Progress Ring */}
+                        <View className="ml-3">
+                          <CircularProgressRing
+                            size={50}
+                            strokeWidth={4}
+                            progress={getGoalCompletionPercentage(goal.id)}
+                            color={
+                              getGoalCompletionPercentage(goal.id) >= 80
+                                ? "#10b981" // Green for high completion
+                                : getGoalCompletionPercentage(goal.id) >= 50
+                                ? "#f59e0b" // Yellow for medium completion
+                                : "#ef4444" // Red for low completion
+                            }
+                            backgroundColor={isDarkMode ? "#374151" : "#e5e7eb"}
+                            showPercentage={true}
+                            textColor={isDarkMode ? "#d1d5db" : "#374151"}
+                          />
+                        </View>
                       </View>
                       {!goal.action_plan && (
                         <TouchableOpacity
                           onPress={() => handleGeneratePlan(goal.id, goal)}
                           disabled={generatingPlan}
-                          className={`px-3 py-1.5 bg-emerald-600 rounded-lg flex-row items-center ${
+                          className={`px-3 py-1.5 bg-emerald-600 rounded-lg flex-row items-center ml-2 ${
                             generatingPlan ? "opacity-50" : ""
                           }`}
                         >

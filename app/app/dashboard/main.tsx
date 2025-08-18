@@ -28,6 +28,8 @@ import {
   Target,
 } from "lucide-react-native";
 import Card from "@/components/ui/card";
+import { CircularProgressRing } from "@/components/CircularProgressRing";
+import { useActionCompletions } from "@/hooks/useActionCompletions";
 // @ts-ignore
 import { tw } from "nativewind";
 import { useGoals } from "@/hooks/useGoals";
@@ -87,19 +89,34 @@ export default function MainDashboard() {
   const userEmail = user?.email || "";
   const userName = user?.name || "";
   const { goals, loadGoals } = useGoals({ userEmail });
+  const {
+    completionStats,
+    getGoalCompletionPercentage,
+    markCompletion,
+    loadCompletionStats,
+    loading: completionLoading,
+  } = useActionCompletions(userEmail);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [animation] = useState(new Animated.Value(1));
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
   const [showAllTodayItems, setShowAllTodayItems] = useState(false);
+  const [recentInteractions, setRecentInteractions] = useState<
+    Map<string, number>
+  >(new Map());
 
   // Refresh goals data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      if (userEmail && loadGoals) {
-        loadGoals();
+      if (userEmail) {
+        if (loadGoals) {
+          loadGoals();
+        }
+        if (loadCompletionStats) {
+          loadCompletionStats();
+        }
       }
-    }, [userEmail, loadGoals])
+    }, [userEmail, loadGoals, loadCompletionStats])
   );
   const healthMetrics = [
     {
@@ -260,11 +277,196 @@ export default function MainDashboard() {
     return items;
   }, [goals, dayKey]);
 
-  const toggleItemCompleted = (id: string) => {
+  // Helper to check if an action item is completed for the current week
+  const isActionItemCompletedThisWeek = useCallback(
+    (actionItem: any): boolean => {
+      if (!actionItem?.weekly_completion) {
+        console.log(
+          `No weekly_completion data for action item: ${actionItem?.title}`
+        );
+        return false;
+      }
+
+      // Get the start of the current week (Monday)
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Get Monday
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() + mondayOffset);
+      weekStart.setHours(0, 0, 0, 0);
+
+      console.log(
+        `Checking weekly completion for ${
+          actionItem.title
+        }, current week start: ${weekStart.toDateString()}`
+      );
+      console.log(`Weekly completion data:`, actionItem.weekly_completion);
+
+      // Check if there's a completion entry for this week
+      const isComplete = actionItem.weekly_completion.some(
+        (completion: any) => {
+          const completionWeekStart = new Date(completion.week_start);
+          const matches =
+            completionWeekStart.toDateString() === weekStart.toDateString();
+          console.log(
+            `  Week ${completionWeekStart.toDateString()}: complete=${
+              completion.is_complete
+            }, matches=${matches}`
+          );
+          return matches && completion.is_complete;
+        }
+      );
+
+      console.log(`Final result for ${actionItem.title}: ${isComplete}`);
+      return isComplete;
+    },
+    []
+  );
+
+  // Sync completed items from backend completion stats (with delay to allow backend processing)
+  useEffect(() => {
+    if (!todaysItems.length) return;
+
+    // Add a small delay to allow recent API calls to complete
+    const timeoutId = setTimeout(() => {
+      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+      const now = Date.now();
+      const newCompletedItems = new Set(completedItems); // Start with current state
+
+      // Check each today's item against completion stats and weekly completion status
+      todaysItems.forEach((item) => {
+        const goalId = item.id.split("-")[0];
+        const goalStats = completionStats?.[goalId];
+
+        // Skip if this item was recently interacted with (within last 5 seconds)
+        const lastInteraction = recentInteractions.get(item.id);
+        if (lastInteraction && now - lastInteraction < 5000) {
+          return; // Don't override recent user interaction
+        }
+
+        // First check weekly completion status from action items
+        let isCompletedByWeeklyStatus = false;
+        const goal = (goals as any[]).find((g: any) => g.id === goalId);
+        if (goal?.action_plan?.action_items) {
+          const actionItem = goal.action_plan.action_items.find(
+            (ai: any) => ai.title === item.title
+          );
+          if (actionItem) {
+            isCompletedByWeeklyStatus =
+              isActionItemCompletedThisWeek(actionItem);
+          }
+        }
+
+        // Then check daily completion stats as fallback
+        let isCompletedByDailyStats = false;
+        if (goalStats?.daily_stats) {
+          // Find today's stats
+          const todayStats = goalStats.daily_stats.find((ds: any) => {
+            const statsDate = new Date(ds.date).toISOString().split("T")[0];
+            return statsDate === today;
+          });
+
+          // If this action item is in today's completed items list, mark as completed
+          if (todayStats?.action_items?.includes(item.title)) {
+            isCompletedByDailyStats = true;
+          }
+        }
+
+        // Use either weekly completion status or daily stats
+        if (isCompletedByWeeklyStatus || isCompletedByDailyStats) {
+          newCompletedItems.add(item.id);
+        } else {
+          // If not completed by either method, remove from completed state
+          newCompletedItems.delete(item.id);
+        }
+      });
+
+      setCompletedItems(newCompletedItems);
+    }, 100); // 100ms delay
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    completionStats,
+    todaysItems,
+    recentInteractions,
+    goals,
+    isActionItemCompletedThisWeek,
+  ]);
+
+  // Clean up old interactions
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      const now = Date.now();
+      setRecentInteractions((prev) => {
+        const newMap = new Map();
+        prev.forEach((timestamp, id) => {
+          if (now - timestamp < 10000) {
+            // Keep interactions for 10 seconds
+            newMap.set(id, timestamp);
+          }
+        });
+        return newMap;
+      });
+    }, 5000); // Clean up every 5 seconds
+
+    return () => clearInterval(cleanup);
+  }, []);
+
+  const toggleItemCompleted = async (id: string) => {
+    // Find the action item details from todaysItems
+    const actionItem = todaysItems.find((item) => item.id === id);
+    if (!actionItem) return;
+
+    // Extract goal ID from the item ID (format: goalId-top-dayKey-index or goalId-ai-aIdx-dayKey-sIdx)
+    const goalId = actionItem.id.split("-")[0];
+
+    // Mark this item as recently interacted with
+    setRecentInteractions((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(id, Date.now());
+      return newMap;
+    });
+
+    // Toggle local state immediately for UI responsiveness
     setCompletedItems((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      const isCompleted = next.has(id);
+
+      if (isCompleted) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      // Call API to mark completion
+      markCompletion(goalId, actionItem.title, !isCompleted)
+        .then(() => {
+          // Add a small delay to allow backend processing to complete
+          setTimeout(() => {
+            // Refresh goals data to get the updated weekly completion status
+            if (loadGoals) {
+              loadGoals();
+            }
+            // Also refresh completion stats
+            if (loadCompletionStats) {
+              loadCompletionStats();
+            }
+          }, 500); // 500ms delay to allow backend processing
+        })
+        .catch((error) => {
+          console.error("Failed to mark completion:", error);
+          // Revert local state on error
+          setCompletedItems((prevState) => {
+            const revertSet = new Set(prevState);
+            if (isCompleted) {
+              revertSet.add(id);
+            } else {
+              revertSet.delete(id);
+            }
+            return revertSet;
+          });
+        });
+
       return next;
     });
   };
@@ -798,42 +1000,79 @@ export default function MainDashboard() {
                     No goals yet.
                   </Text>
                 ) : (
-                  <View className="space-y-2">
-                    {(goals as any[]).slice(0, 5).map((g: any) => (
-                      <View
-                        key={g.id}
-                        className="flex-row items-center justify-between"
-                      >
-                        <View className="flex-row items-center flex-1">
-                          <View
-                            className="w-2 h-2 rounded-full mr-2"
-                            style={{
-                              backgroundColor: g.completed
-                                ? isDarkMode
-                                  ? "#34d399"
-                                  : "#10b981"
-                                : isDarkMode
-                                ? "#4b5563"
-                                : "#94a3b8",
-                            }}
-                          />
-                          <Text
-                            className={`text-sm flex-1 ${
-                              isDarkMode ? "text-gray-300" : "text-gray-700"
-                            }`}
-                          >
-                            {g.title}
-                          </Text>
-                        </View>
-                        <Text
-                          className={`text-xs ${
-                            isDarkMode ? "text-gray-400" : "text-gray-500"
-                          }`}
+                  <View className="space-y-3">
+                    {(goals as any[]).slice(0, 5).map((g: any) => {
+                      const completionPercentage = getGoalCompletionPercentage(
+                        g.id
+                      );
+                      return (
+                        <View
+                          key={g.id}
+                          className="flex-row items-center justify-between"
                         >
-                          {g.completed ? "Done" : ""}
-                        </Text>
-                      </View>
-                    ))}
+                          <View className="flex-row items-center flex-1">
+                            {/* Circular Progress Ring */}
+                            <View className="mr-3">
+                              <CircularProgressRing
+                                size={40}
+                                strokeWidth={3}
+                                progress={completionPercentage}
+                                color={
+                                  completionPercentage >= 80
+                                    ? "#10b981" // Green for high completion
+                                    : completionPercentage >= 50
+                                    ? "#f59e0b" // Yellow for medium completion
+                                    : "#ef4444" // Red for low completion
+                                }
+                                backgroundColor={
+                                  isDarkMode ? "#374151" : "#e5e7eb"
+                                }
+                                showPercentage={false}
+                                textColor={isDarkMode ? "#d1d5db" : "#374151"}
+                              />
+                            </View>
+                            <View className="flex-1">
+                              <Text
+                                className={`text-sm font-medium ${
+                                  isDarkMode ? "text-gray-200" : "text-gray-800"
+                                }`}
+                              >
+                                {g.title}
+                              </Text>
+                              <Text
+                                className={`text-xs ${
+                                  isDarkMode ? "text-gray-400" : "text-gray-600"
+                                }`}
+                              >
+                                {completionPercentage.toFixed(0)}% completed
+                                this week
+                              </Text>
+                            </View>
+                          </View>
+                          <View className="items-end">
+                            <View
+                              className="w-3 h-3 rounded-full"
+                              style={{
+                                backgroundColor: g.completed
+                                  ? isDarkMode
+                                    ? "#34d399"
+                                    : "#10b981"
+                                  : isDarkMode
+                                  ? "#4b5563"
+                                  : "#94a3b8",
+                              }}
+                            />
+                            <Text
+                              className={`text-xs mt-1 ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
+                              {g.completed ? "Done" : "Active"}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
                 )}
                 <TouchableOpacity

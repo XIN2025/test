@@ -2,14 +2,16 @@ from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 import logging
 import asyncio
+import re
 from ..schemas.goals import Goal
-from ..schemas.planner import ActionPlan, ActionItem, TimeEstimate, ActionPriority
+from ..schemas.planner import ActionPlan, ActionItem, TimeEstimate, ActionPriority, WeeklyCompletionStatus
 from ..schemas.health_insights import HealthContext, HealthInsight
 from ..services.health_insights_service import get_health_insights_service
 from openai import OpenAI, RateLimitError
 import os
 import json
 import time
+import re
 from ..config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,23 @@ class PlannerService:
         
         self.health_insights_service = get_health_insights_service()
 
+    def _parse_iso_duration(self, duration_str: str) -> timedelta:
+        """Parse ISO 8601 duration string to timedelta"""
+        if not duration_str or not duration_str.startswith('PT'):
+            return timedelta(minutes=15)  # Default to 15 minutes
+        
+        # Parse PT15M, PT1H30M, etc.
+        pattern = r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?'
+        match = re.match(pattern, duration_str)
+        
+        if not match:
+            return timedelta(minutes=15)
+        
+        hours = int(match.group(1)) if match.group(1) else 0
+        minutes = int(match.group(2)) if match.group(2) else 0
+        seconds = int(match.group(3)) if match.group(3) else 0
+        
+        return timedelta(hours=hours, minutes=minutes, seconds=seconds)
 
     def create_action_plan(self, goal: Goal, context: List[str] = None, user_email: str = None) -> ActionPlan:
         """Create an action plan for a goal, considering health insights and context"""
@@ -61,10 +80,13 @@ class PlannerService:
             # 2. Generate action items with OpenAI
             action_items = self._generate_action_items(goal, health_insight)
             
-            # 3. Calculate total estimated time
+            # 3. Initialize weekly completion status for each action item
+            action_items = self._initialize_weekly_completion_status(action_items)
+            
+            # 4. Calculate total estimated time
             total_time = self._calculate_total_time(action_items)
             
-            # 4. Create action plan
+            # 5. Create action plan
             return ActionPlan(
                 goal_id=str(goal.id),
                 goal_title=goal.title,
@@ -104,6 +126,39 @@ class PlannerService:
                 if "quota" in str(e).lower():
                     logger.error("API quota exceeded")
                 raise
+
+    def _parse_iso_duration(self, duration_str: str) -> timedelta:
+        """Parse ISO 8601 duration string to timedelta object"""
+        # Handle duration strings like "PT30M" (30 minutes) or "PT1H" (1 hour)
+        try:
+            if not duration_str.startswith('PT'):
+                # If it's just a number, assume minutes
+                if duration_str.isdigit():
+                    return timedelta(minutes=int(duration_str))
+                # Return default if format is unrecognized
+                return timedelta(minutes=30)
+            
+            # Remove PT prefix
+            duration_str = duration_str[2:]
+            
+            hours = 0
+            minutes = 0
+            
+            # Extract hours if present
+            h_match = re.search(r'(\d+)H', duration_str)
+            if h_match:
+                hours = int(h_match.group(1))
+            
+            # Extract minutes if present
+            m_match = re.search(r'(\d+)M', duration_str)
+            if m_match:
+                minutes = int(m_match.group(1))
+            
+            return timedelta(hours=hours, minutes=minutes)
+            
+        except Exception as e:
+            logger.warning(f"Error parsing duration {duration_str}: {e}, using default 30 minutes")
+            return timedelta(minutes=30)
 
     def _generate_action_items(self, goal: Goal, health_insight: HealthInsight) -> List[ActionItem]:
         """Generate action items using OpenAI, considering health insights"""
@@ -156,8 +211,8 @@ class PlannerService:
                         description=item["description"],
                         priority=item.get("priority", "medium"),
                         time_estimate=TimeEstimate(
-                            min_duration=item.get("time_estimate", {}).get("min_duration", "PT15M"),
-                            max_duration=item.get("time_estimate", {}).get("max_duration", "PT30M"),
+                            min_duration=self._parse_iso_duration(item.get("time_estimate", {}).get("min_duration", "PT15M")),
+                            max_duration=self._parse_iso_duration(item.get("time_estimate", {}).get("max_duration", "PT30M")),
                             recommended_frequency=item.get("time_estimate", {}).get("recommended_frequency", "daily")
                         ),
                         prerequisites=item.get("prerequisites", []),
@@ -174,8 +229,8 @@ class PlannerService:
                     description="Begin with light physical activity while monitoring your health",
                     priority="medium",
                     time_estimate=TimeEstimate(
-                        min_duration="PT15M",
-                        max_duration="PT30M",
+                        min_duration=self._parse_iso_duration("PT15M"),
+                        max_duration=self._parse_iso_duration("PT30M"),
                         recommended_frequency="daily"
                     ),
                     prerequisites=["Comfortable clothes", "Water bottle"],
@@ -295,6 +350,27 @@ RULES:
                 ])
         
         return adaptations
+
+    def _initialize_weekly_completion_status(self, action_items: List[ActionItem]) -> List[ActionItem]:
+        """Initialize weekly completion status for each action item"""
+        # For a new goal, we typically plan for the current week and next few weeks
+        # Let's initialize completion status for the next 4 weeks (current + 3 future weeks)
+        start_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        # Find the Monday of the current week
+        days_since_monday = start_date.weekday()
+        current_week_start = start_date - timedelta(days=days_since_monday)
+        
+        for action_item in action_items:
+            weekly_completion = []
+            for week_offset in range(4):  # 4 weeks of planning
+                week_start = current_week_start + timedelta(weeks=week_offset)
+                weekly_completion.append(WeeklyCompletionStatus(
+                    week_start=week_start,
+                    is_complete=False
+                ))
+            action_item.weekly_completion = weekly_completion
+        
+        return action_items
 
     def _suggest_schedule(self, action_items: List[ActionItem], health_insight: HealthInsight) -> Dict:
         """Suggest a weekly schedule based on action items and health considerations"""

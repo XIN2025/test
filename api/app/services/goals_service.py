@@ -1,19 +1,23 @@
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, date
 from typing import List, Optional, Dict, Any, Tuple
 from bson import ObjectId
 from ..schemas.goals import GoalCreate, GoalUpdate, Goal, WeeklyReflection, GoalStats
 from ..schemas.planner import ActionPlan, WeeklyActionSchedule
 from ..schemas.scheduler import WeeklySchedule
 from ..schemas.preferences import PillarTimePreferences
+from ..schemas.action_completions import (
+    ActionItemCompletion, ActionItemCompletionCreate, ActionItemCompletionUpdate,
+    DailyCompletionStats, WeeklyCompletionStats
+)
 from .db import get_db
 from .planner_service import get_planner_service
 from .scheduler_service import get_scheduler_service
 from .graph_db import get_graph_db
 import logging
 
+# Set up logging
 logger = logging.getLogger(__name__)
-
-logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class GoalsService:
     def __init__(self):
@@ -23,6 +27,7 @@ class GoalsService:
         self.habits_collection = self.db["habit_goals"]
         self.action_plans_collection = self.db["action_plans"]
         self.schedules_collection = self.db["weekly_schedules"]
+        self.action_completions_collection = self.db["action_completions"]
         self.planner_service = get_planner_service()
         self.scheduler_service = get_scheduler_service()
         self.graph_db = get_graph_db()
@@ -467,3 +472,234 @@ class GoalsService:
                 "completion_rate": completion_rate
             }
         }
+
+    # Action Item Completion Tracking Methods
+    
+    async def mark_action_item_completion(self, user_email: str, completion_data: ActionItemCompletionCreate) -> ActionItemCompletion:
+        """Mark an action item as completed or update its completion status"""
+        logger.info(f"Marking action item completion: user={user_email}, goal_id={completion_data.goal_id}, action_item={completion_data.action_item_title}, completed={completion_data.completed}")
+        
+        completion_dict = completion_data.dict()
+        completion_dict["user_email"] = user_email
+        completion_dict["created_at"] = datetime.utcnow()
+        completion_dict["_id"] = ObjectId()
+        
+        # Ensure completion_date is a naive UTC datetime at start of day (MongoDB expects naive UTC)
+        completion_date = completion_data.completion_date
+        if isinstance(completion_date, date) and not isinstance(completion_date, datetime):
+            completion_date = datetime.combine(completion_date, time.min)
+        elif isinstance(completion_date, str):
+            completion_date = datetime.fromisoformat(completion_date.replace('Z', '+00:00'))
+        # Normalize to naive (UTC) and zero time to avoid tz-aware/naive mismatches
+        if isinstance(completion_date, datetime):
+            completion_date = completion_date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+        completion_dict["completion_date"] = completion_date
+        
+        # Check if completion already exists for this date and action item
+        existing = self.action_completions_collection.find_one({
+            "user_email": user_email,
+            "goal_id": completion_data.goal_id,
+            "action_item_title": completion_data.action_item_title,
+            "completion_date": completion_date
+        })
+        
+        if existing:
+            # Update existing completion
+            self.action_completions_collection.update_one(
+                {"_id": existing["_id"]},
+                {"$set": {
+                    "completed": completion_data.completed,
+                    "notes": completion_data.notes,
+                    "updated_at": datetime.utcnow()
+                }}
+            )
+            existing.update({
+                "completed": completion_data.completed,
+                "notes": completion_data.notes
+            })
+            result = ActionItemCompletion(**existing)
+        else:
+            # Create new completion record
+            db_result = self.action_completions_collection.insert_one(completion_dict)
+            completion_dict["id"] = str(db_result.inserted_id)
+            result = ActionItemCompletion(**completion_dict)
+        
+        # Update the weekly completion status in the action plan
+        logger.info(f"About to update weekly completion status...")
+        await self._update_weekly_completion_status(
+            user_email, 
+            completion_data.goal_id, 
+            completion_data.action_item_title, 
+            completion_date, 
+            completion_data.completed
+        )
+        logger.info(f"Finished updating weekly completion status")
+        
+        return result
+
+    async def _update_weekly_completion_status(self, user_email: str, goal_id: str, action_item_title: str, completion_date: datetime, completed: bool):
+        """Update the weekly completion status in the action plan"""
+        try:
+            # Find the Monday of the week for the completion date
+            days_since_monday = completion_date.weekday()
+            week_start = completion_date.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days_since_monday)
+            
+            logger.info(f"Updating weekly completion: goal_id={goal_id}, action_item={action_item_title}, week_start={week_start.date()}, completed={completed}")
+            
+            # Find the action plan for this goal
+            action_plan = self.action_plans_collection.find_one({
+                "goal_id": goal_id,
+                "user_email": user_email
+            })
+            
+            if not action_plan:
+                logger.warning(f"No action plan found for goal {goal_id}")
+                return
+            
+            # Update the weekly completion status for the specific action item
+            action_items = action_plan.get("action_items", [])
+            updated = False
+            
+            for action_item in action_items:
+                if action_item.get("title") == action_item_title:
+                    logger.info(f"Found matching action item: {action_item_title}")
+                    
+                    # Initialize weekly_completion if it doesn't exist
+                    if "weekly_completion" not in action_item:
+                        logger.info(f"Initializing weekly_completion for action item: {action_item_title}")
+                        action_item["weekly_completion"] = []
+                    
+                    weekly_completion = action_item.get("weekly_completion", [])
+                    
+                    # Find or create the weekly completion entry for this week
+                    week_entry = None
+                    for completion in weekly_completion:
+                        completion_week_start = completion.get("week_start")
+                        if isinstance(completion_week_start, str):
+                            completion_week_start = datetime.fromisoformat(completion_week_start.replace('Z', '+00:00'))
+                        
+                        if completion_week_start and completion_week_start.date() == week_start.date():
+                            week_entry = completion
+                            break
+                    
+                    if week_entry:
+                        logger.info(f"Updating existing week entry for {week_start.date()}: {completed}")
+                        week_entry["is_complete"] = completed
+                        updated = True
+                    else:
+                        logger.info(f"Creating new week entry for {week_start.date()}: {completed}")
+                        # Add new weekly completion entry
+                        weekly_completion.append({
+                            "week_start": week_start,
+                            "is_complete": completed
+                        })
+                        action_item["weekly_completion"] = weekly_completion
+                        updated = True
+                    break
+            
+            if updated:
+                # Update the action plan in the database
+                result = self.action_plans_collection.update_one(
+                    {"_id": action_plan["_id"]},
+                    {"$set": {"action_items": action_items, "updated_at": datetime.utcnow()}}
+                )
+                logger.info(f"Database update result - matched: {result.matched_count}, modified: {result.modified_count}")
+                logger.info(f"Successfully updated weekly completion status for {action_item_title} in goal {goal_id}")
+            else:
+                logger.warning(f"No update performed for action item {action_item_title} in goal {goal_id}")
+            
+        except Exception as e:
+            logger.error(f"Error updating weekly completion status: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+    def get_goal_completion_stats(self, goal_id: str, user_email: str, week_start: date) -> WeeklyCompletionStats:
+        """Calculate completion statistics for a goal for a specific week"""
+        week_end = week_start + timedelta(days=6)
+        
+        # Get the goal's weekly schedule
+        goal_plan = self.get_goal_plan(goal_id, user_email)
+        if not goal_plan or not goal_plan.get("weekly_schedule"):
+            return WeeklyCompletionStats(
+                goal_id=goal_id,
+                week_start=datetime.combine(week_start, time.min),  # Convert to datetime
+                week_end=datetime.combine(week_end, time.min),      # Convert to datetime
+                total_scheduled_days=0,
+                completed_days=0,
+                daily_stats=[],
+                overall_completion_percentage=0.0
+            )
+        
+        weekly_schedule = goal_plan["weekly_schedule"]
+        daily_schedules = weekly_schedule.get("daily_schedules", {})
+        
+        daily_stats = []
+        total_scheduled_days = 0
+        completed_days = 0
+        
+        # Check each day of the week
+        days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        for i, day in enumerate(days):
+            current_date = week_start + timedelta(days=i)
+            day_schedule = daily_schedules.get(day, {})
+            time_slots = day_schedule.get("time_slots", [])
+            
+            if time_slots:  # If there are scheduled action items for this day
+                total_scheduled_days += 1
+                
+                # Convert date to datetime for MongoDB query (MongoDB expects datetime objects)
+                current_datetime = datetime.combine(current_date, time.min)
+                
+                # Get completed action items for this date
+                completed_items = list(self.action_completions_collection.find({
+                    "user_email": user_email,
+                    "goal_id": goal_id,
+                    "completion_date": current_datetime,
+                    "completed": True
+                }))
+                
+                # Get all scheduled action items for this day
+                scheduled_action_items = []
+                for slot in time_slots:
+                    action_item = slot.get("action_item", "")
+                    if action_item and action_item not in scheduled_action_items:
+                        scheduled_action_items.append(action_item)
+                
+                completed_action_items = [item["action_item_title"] for item in completed_items]
+                completion_percentage = (len(completed_action_items) / len(scheduled_action_items) * 100) if scheduled_action_items else 0
+                
+                # If all action items for the day are completed, count as completed day
+                if completion_percentage == 100:
+                    completed_days += 1
+                
+                daily_stats.append(DailyCompletionStats(
+                    date=current_datetime,  # Use datetime instead of date
+                    total_scheduled_items=len(scheduled_action_items),
+                    completed_items=len(completed_action_items),
+                    completion_percentage=completion_percentage,
+                    action_items=completed_action_items  # Store completed items instead of scheduled items
+                ))
+        
+        overall_completion_percentage = (completed_days / total_scheduled_days * 100) if total_scheduled_days > 0 else 0
+        
+        return WeeklyCompletionStats(
+            goal_id=goal_id,
+            week_start=datetime.combine(week_start, time.min),  # Convert to datetime
+            week_end=datetime.combine(week_end, time.min),      # Convert to datetime
+            total_scheduled_days=total_scheduled_days,
+            completed_days=completed_days,
+            daily_stats=daily_stats,
+            overall_completion_percentage=overall_completion_percentage
+        )
+
+    def get_all_goals_completion_stats(self, user_email: str, week_start: date) -> Dict[str, WeeklyCompletionStats]:
+        """Get completion statistics for all user goals for a specific week"""
+        goals = self.get_user_goals(user_email)
+        completion_stats = {}
+        
+        for goal in goals:
+            goal_id = goal.get("id") or str(goal.get("_id"))
+            stats = self.get_goal_completion_stats(goal_id, user_email, week_start)
+            completion_stats[goal_id] = stats
+        
+        return completion_stats

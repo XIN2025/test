@@ -1,10 +1,20 @@
 export type GoalPriority = "high" | "medium" | "low";
-export type GoalCategory = "health" | "fitness" | "nutrition" | "mental" | "personal";
+export type GoalCategory =
+  | "health"
+  | "fitness"
+  | "nutrition"
+  | "mental"
+  | "personal";
 
 export interface TimeEstimate {
   min_duration: string;
   max_duration: string;
   recommended_frequency: string;
+}
+
+export interface WeeklyCompletionStatus {
+  week_start: string;
+  is_complete: boolean;
 }
 
 export interface ActionItem {
@@ -15,6 +25,7 @@ export interface ActionItem {
   prerequisites: string[];
   success_criteria: string[];
   adaptation_notes: string[];
+  weekly_completion?: WeeklyCompletionStatus[];
 }
 
 export interface ActionPlan {

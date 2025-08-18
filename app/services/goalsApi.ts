@@ -328,6 +328,57 @@ class GoalsApiService {
       body: JSON.stringify(prefs),
     });
   }
+
+  // Action Item Completion Methods
+  async markActionItemCompletion(
+    goalId: string,
+    userEmail: string,
+    completionData: {
+      action_item_title: string;
+      completion_date: string; // YYYY-MM-DD format
+      completed: boolean;
+      notes?: string;
+    }
+  ): Promise<any> {
+    const params = new URLSearchParams({ user_email: userEmail });
+    const response = await this.makeRequest<ApiResponse<any>>(
+      `/api/goals/${goalId}/action-items/complete?${params}`,
+      {
+        method: "POST",
+        body: JSON.stringify(completionData),
+      }
+    );
+    return response.data;
+  }
+
+  async getGoalCompletionStats(
+    goalId: string,
+    userEmail: string,
+    weekStart: string // YYYY-MM-DD format
+  ): Promise<any> {
+    const params = new URLSearchParams({
+      user_email: userEmail,
+      week_start: weekStart,
+    });
+    const response = await this.makeRequest<ApiResponse<any>>(
+      `/api/goals/${goalId}/completion-stats?${params}`
+    );
+    return response.data?.completion_stats;
+  }
+
+  async getAllGoalsCompletionStats(
+    userEmail: string,
+    weekStart: string // YYYY-MM-DD format
+  ): Promise<Record<string, any>> {
+    const params = new URLSearchParams({
+      user_email: userEmail,
+      week_start: weekStart,
+    });
+    const response = await this.makeRequest<ApiResponse<any>>(
+      `/api/goals/completion-stats?${params}`
+    );
+    return response.data?.completion_stats || {};
+  }
 }
 
 export const goalsApi = new GoalsApiService();

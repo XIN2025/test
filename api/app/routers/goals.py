@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi.concurrency import run_in_threadpool
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from ..schemas.goals import (
@@ -8,6 +9,7 @@ from ..schemas.goals import (
     WeeklyReflection, GoalStats, GoalResponse
 )
 from ..schemas.preferences import PillarTimePreferences
+from ..schemas.action_completions import ActionItemCompletionCreateRequest, ActionItemCompletionUpdate, ActionItemCompletionCreate
 from ..services.goals_service import GoalsService
 from pydantic import EmailStr
 
@@ -101,7 +103,28 @@ async def get_user_goals(user_email: EmailStr = Query(...), week_start: Optional
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
+@goals_router.get("/api/goals/completion-stats", response_model=GoalResponse)
+async def get_all_goals_completion_stats(
+    user_email: EmailStr = Query(...),
+    week_start: str = Query(..., description="Week start date in YYYY-MM-DD format")
+):
+    """Get completion statistics for all user goals for a specific week"""
+    try:
+        try:
+            week_start_date = datetime.strptime(week_start, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid week_start date format. Use YYYY-MM-DD")
+        
+        stats = goals_service.get_all_goals_completion_stats(user_email, week_start_date)
+        return GoalResponse(
+            success=True,
+            message="All goals completion statistics retrieved successfully",
+            data={"completion_stats": stats}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @goals_router.get("/api/goals/{goal_id}", response_model=GoalResponse)
 async def get_goal(goal_id: str, user_email: EmailStr = Query(...)):
@@ -185,6 +208,88 @@ async def generate_goal_plan(
             success=True,
             message="Goal plan generated successfully",
             data=result["data"]
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@goals_router.post("/api/goals/{goal_id}/action-items/complete", response_model=GoalResponse)
+async def mark_action_item_completion(
+    goal_id: str,
+    completion_data: ActionItemCompletionCreateRequest,
+    user_email: EmailStr = Query(...)
+):
+    """Mark an action item as completed for a specific date"""
+    try:
+        # Create the full completion data with goal_id from URL
+        full_completion_data = ActionItemCompletionCreate(
+            goal_id=goal_id,
+            action_item_title=completion_data.action_item_title,
+            completion_date=completion_data.completion_date,
+            completed=completion_data.completed,
+            notes=completion_data.notes
+        )
+        
+        completion = await goals_service.mark_action_item_completion(
+            user_email,
+            full_completion_data
+        )
+        return GoalResponse(
+            success=True,
+            message="Action item completion recorded successfully",
+            data={"completion": completion.dict()}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@goals_router.get("/api/goals/{goal_id}/action-plan", response_model=GoalResponse)
+async def get_goal_action_plan(
+    goal_id: str,
+    user_email: EmailStr = Query(...)
+):
+    """Get the action plan for a goal with current weekly completion status"""
+    try:
+        action_plan = goals_service.action_plans_collection.find_one({
+            "goal_id": goal_id,
+            "user_email": user_email
+        })
+        
+        if not action_plan:
+            raise HTTPException(status_code=404, detail="Action plan not found")
+        
+        # Convert ObjectId to string
+        action_plan["id"] = str(action_plan["_id"])
+        del action_plan["_id"]
+        
+        return GoalResponse(
+            success=True,
+            message="Action plan retrieved successfully",
+            data={"action_plan": action_plan}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@goals_router.get("/api/goals/{goal_id}/completion-stats", response_model=GoalResponse)
+async def get_goal_completion_stats(
+    goal_id: str,
+    user_email: EmailStr = Query(...),
+    week_start: str = Query(..., description="Week start date in YYYY-MM-DD format")
+):
+    """Get completion statistics for a goal for a specific week"""
+    try:
+        try:
+            week_start_date = datetime.strptime(week_start, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid week_start date format. Use YYYY-MM-DD")
+        
+        stats = goals_service.get_goal_completion_stats(goal_id, user_email, week_start_date)
+        return GoalResponse(
+            success=True,
+            message="Goal completion statistics retrieved successfully",
+            data={"completion_stats": stats.dict()}
         )
     except HTTPException:
         raise
