@@ -64,7 +64,7 @@ class DailyCompletionStats(BaseModel):
     total_scheduled_items: int
     completed_items: int
     completion_percentage: float
-action_items: list[str] = Field(default_factory=list)  # List of completed action item titles for this day
+    action_items: list[str] = Field(default_factory=list)  # List of completed action item titles for this day
 
 class WeeklyCompletionStats(BaseModel):
     """Weekly completion statistics for a goal"""

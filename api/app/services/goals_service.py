@@ -20,6 +20,32 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class GoalsService:
+    def get_daily_completion(self, user_email: str, month: int, year: int) -> Dict[str, int]:
+        """
+        Returns a mapping of YYYY-MM-DD to number of completed action items for the user in the given month/year.
+        """
+        from calendar import monthrange
+        start_date = datetime(year, month, 1)
+        last_day = monthrange(year, month)[1]
+        end_date = datetime(year, month, last_day, 23, 59, 59)
+        # Query all completions for this user in the month
+        completions = self.action_completions_collection.find({
+            "user_email": user_email,
+            "completed": True,
+            "completion_date": {"$gte": start_date, "$lte": end_date}
+        })
+        daily_counts = {}
+        for c in completions:
+            # Normalize to YYYY-MM-DD string
+            dt = c.get("completion_date")
+            if isinstance(dt, datetime):
+                day_str = dt.strftime("%Y-%m-%d")
+            elif isinstance(dt, date):
+                day_str = dt.isoformat()
+            else:
+                continue
+            daily_counts[day_str] = daily_counts.get(day_str, 0) + 1
+        return daily_counts
     def __init__(self):
         self.db = get_db()
         self.goals_collection = self.db["goals"]
@@ -559,29 +585,23 @@ class GoalsService:
             # Update the weekly completion status for the specific action item
             action_items = action_plan.get("action_items", [])
             updated = False
-            
             for action_item in action_items:
                 if action_item.get("title") == action_item_title:
                     logger.info(f"Found matching action item: {action_item_title}")
-                    
                     # Initialize weekly_completion if it doesn't exist
                     if "weekly_completion" not in action_item:
                         logger.info(f"Initializing weekly_completion for action item: {action_item_title}")
                         action_item["weekly_completion"] = []
-                    
                     weekly_completion = action_item.get("weekly_completion", [])
-                    
                     # Find or create the weekly completion entry for this week
                     week_entry = None
                     for completion in weekly_completion:
                         completion_week_start = completion.get("week_start")
                         if isinstance(completion_week_start, str):
                             completion_week_start = datetime.fromisoformat(completion_week_start.replace('Z', '+00:00'))
-                        
                         if completion_week_start and completion_week_start.date() == week_start.date():
                             week_entry = completion
                             break
-                    
                     if week_entry:
                         logger.info(f"Updating existing week entry for {week_start.date()}: {completed}")
                         week_entry["is_complete"] = completed

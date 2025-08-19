@@ -60,6 +60,23 @@ class GoalsApiService {
     return response.data!.goal;
   }
 
+  // Daily Completion (for streak calendar)
+  async getDailyCompletion(
+    userEmail: string,
+    month: number,
+    year: number
+  ): Promise<Record<string, number>> {
+    const params = new URLSearchParams({
+      user_email: userEmail,
+      month: month.toString(),
+      year: year.toString(),
+    });
+    const response = await this.makeRequest<
+      ApiResponse<{ daily_completion: Record<string, number> }>
+    >(`/api/goals/daily-completion?${params}`);
+    return response.data?.daily_completion || {};
+  }
+
   async getUserGoals(userEmail: string, weekStart?: string): Promise<Goal[]> {
     const params = new URLSearchParams({ user_email: userEmail });
     if (weekStart) {

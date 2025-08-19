@@ -109,11 +109,11 @@ export const useActionCompletions = (userEmail: string) => {
       const stats = completionStats[goalId];
       if (!stats) return null;
 
-const today = new Date().toISOString().split("T")[0];
-const todayStats = stats.daily_stats.find((day) => {
-  const statsDate = new Date(day.date).toISOString().split("T")[0];
-  return statsDate === today;
-});
+      const today = new Date().toISOString().split("T")[0];
+      const todayStats = stats.daily_stats.find((day) => {
+        const statsDate = new Date(day.date).toISOString().split("T")[0];
+        return statsDate === today;
+      });
       return todayStats || null;
     },
     [completionStats]

@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta, date
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from fastapi import Request
 from ..schemas.goals import (
     GoalCreate, GoalUpdate, Goal, GoalProgressUpdate, GoalNote,
     WeeklyReflection, GoalStats, GoalResponse
@@ -16,8 +17,31 @@ from pydantic import EmailStr
 goals_router = APIRouter()
 goals_service = GoalsService()
 
+
 # Thread pool for CPU-intensive tasks
 executor = ThreadPoolExecutor(max_workers=4)
+
+# --- DAILY COMPLETION ENDPOINT (STATIC, PLACE ABOVE DYNAMIC ROUTES) ---
+@goals_router.get("/api/goals/daily-completion", response_model=GoalResponse)
+async def get_daily_completion(
+    user_email: EmailStr = Query(...),
+    month: int = Query(..., ge=1, le=12),
+    year: int = Query(..., ge=2000, le=2100)
+):
+    """Return a mapping of YYYY-MM-DD to number of completed action items for the user in the given month/year."""
+    try:
+        # This method should be implemented in your GoalsService
+        daily_completion = goals_service.get_daily_completion(user_email, month, year)
+        return GoalResponse(
+            success=True,
+            message="Daily completion retrieved successfully",
+            data={"daily_completion": daily_completion}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Endpoint: Get daily completion counts for the user for a given month
+
 
 @goals_router.get("/api/goals/stats", response_model=GoalResponse)
 async def get_goal_stats(user_email: EmailStr = Query(...), weeks: int = Query(4, ge=1, le=52)):
@@ -125,6 +149,9 @@ async def get_all_goals_completion_stats(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+## --- MOVE ALL STATIC ROUTES ABOVE DYNAMIC ROUTES --- ##
 
 @goals_router.get("/api/goals/{goal_id}", response_model=GoalResponse)
 async def get_goal(goal_id: str, user_email: EmailStr = Query(...)):
