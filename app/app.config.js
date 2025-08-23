@@ -1,17 +1,19 @@
-import "dotenv/config";
-
 export default {
   expo: {
-    name: "app",
+    name: "Evra",
     slug: "app",
-    version: "1.0.0",
+    version: "1.0.3",
     orientation: "portrait",
     icon: "./assets/images/evra.png",
     scheme: "app",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     ios: {
+      bundleIdentifier: "com.evra.app",
       supportsTablet: true,
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       adaptiveIcon: {
@@ -41,7 +43,10 @@ export default {
       typedRoutes: true,
     },
     extra: {
-      API_BASE_URL: process.env.API_BASE_URL,
+      API_BASE_URL: "https://api.evra.opengig.work",
+      eas: {
+        projectId: "0da319d3-c739-435f-8d48-4036b2df3c77",
+      },
     },
   },
 };

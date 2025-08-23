@@ -1,18 +1,11 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-} from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import EvraLogo from "../components/EvraLogo";
-import { validateAge, validateGender } from "../utils/validation";
-import { userApi, handleApiError } from "../utils/api";
 import { useAuth } from "@/context/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import EvraLogo from "../components/EvraLogo";
+import { handleApiError, userApi } from "../utils/api";
+import { validateAge, validateGender } from "../utils/validation";
 
 // TypeScript interfaces
 interface PreferencesFormData {
@@ -102,12 +95,10 @@ export default function InitialPreferences() {
     }
 
     if (!formData.tonalStyle.trim()) {
-      newErrors.communicationStyle =
-        "Please select a tone (Formal or Friendly)";
+      newErrors.communicationStyle = "Please select a tone (Formal or Friendly)";
     }
     if (!formData.verbosityStyle.trim()) {
-      newErrors.communicationStyle =
-        "Please select a style (Concise or Detailed)";
+      newErrors.communicationStyle = "Please select a style (Concise or Detailed)";
     }
 
     setErrors(newErrors);
@@ -115,10 +106,7 @@ export default function InitialPreferences() {
   };
 
   // Form handlers
-  const handleInputChange = (
-    field: keyof PreferencesFormData,
-    value: string | boolean | string[]
-  ) => {
+  const handleInputChange = (field: keyof PreferencesFormData, value: string | boolean | string[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field as keyof PreferencesErrors]) {
@@ -126,11 +114,7 @@ export default function InitialPreferences() {
     }
   };
 
-  const toggleSelection = (
-    item: string,
-    list: string[],
-    apply: (newList: string[]) => void
-  ) => {
+  const toggleSelection = (item: string, list: string[], apply: (newList: string[]) => void) => {
     if (list.includes(item)) {
       apply(list.filter((i) => i !== item));
     } else {
@@ -152,25 +136,24 @@ export default function InitialPreferences() {
         healthGoals: formData.healthGoals,
         conditions: formData.conditions,
         atRiskConditions: formData.atRiskConditions,
-        communicationStyle: [formData.tonalStyle, formData.verbosityStyle]
-          .filter(Boolean)
-          .join(" - "),
+        communicationStyle: [formData.tonalStyle, formData.verbosityStyle].filter(Boolean).join(" - "),
         notifications: formData.notifications,
       };
 
       await userApi.savePreferences(preferences);
 
       console.log("Success! Navigating to dashboard...");
-      const normalizedEmail = Array.isArray(email)
-        ? email[0]
-        : String(email || "");
+      const normalizedEmail = Array.isArray(email) ? email[0] : String(email || "");
       const normalizedName = Array.isArray(name) ? name[0] : String(name || "");
 
       // Set user as authenticated in the auth context
       await login(normalizedEmail, normalizedName);
 
+      // Store walkthrough trigger in AsyncStorage since URL params get lost in tab navigation
+      await AsyncStorage.setItem(`showWalkthrough:${normalizedEmail}`, "register");
+
       router.push({
-        pathname: "./dashboard/main",
+        pathname: "/dashboard/main",
         params: { email: normalizedEmail, name: normalizedName },
       });
     } catch (err) {
@@ -196,28 +179,18 @@ export default function InitialPreferences() {
           <View style={{ marginBottom: 16 }}>
             <EvraLogo size={64} />
           </View>
-          <Text
-            className="text-3xl font-bold"
-            style={{ color: "#114131", fontFamily: "SourceSansPro" }}
-          >
+          <Text className="text-3xl font-bold" style={{ color: "#114131", fontFamily: "SourceSansPro" }}>
             Evra
           </Text>
-          <Text
-            className="mt-1"
-            style={{ color: "#114131", fontFamily: "Evra" }}
-          >
+          <Text className="mt-1" style={{ color: "#114131", fontFamily: "Evra" }}>
             Your Agent for Better Health
           </Text>
         </View>
 
         {/* Card */}
         <View className="bg-white w-full rounded-xl shadow-lg p-8 mb-8">
-          <Text className="text-2xl font-bold mb-2 text-center">
-            Tell us about yourself
-          </Text>
-          <Text className="text-gray-500 mb-6 text-center">
-            Help us personalize your health experience
-          </Text>
+          <Text className="text-2xl font-bold mb-2 text-center">Tell us about yourself</Text>
+          <Text className="text-gray-500 mb-6 text-center">Help us personalize your health experience</Text>
 
           {/* Age Input */}
           <View className="w-full mb-4">
@@ -228,13 +201,10 @@ export default function InitialPreferences() {
               }`}
               placeholder="Enter your age"
               value={formData.age}
-              onChangeText={(value) => {
+              onChangeText={(value: string) => {
                 // Only allow numbers and limit to reasonable age values
                 const numValue = value.replace(/[^0-9]/g, "");
-                if (
-                  numValue === "" ||
-                  (parseInt(numValue) >= 0 && parseInt(numValue) <= 120)
-                ) {
+                if (numValue === "" || (parseInt(numValue) >= 0 && parseInt(numValue) <= 120)) {
                   handleInputChange("age", numValue);
                 }
               }}
@@ -243,34 +213,38 @@ export default function InitialPreferences() {
               editable={!loading}
               autoComplete="off"
             />
-            {errors.age && (
-              <Text className="text-red-500 text-sm mt-1">{errors.age}</Text>
-            )}
+            {errors.age && <Text className="text-red-500 text-sm mt-1">{errors.age}</Text>}
           </View>
 
-          {/* Gender Input */}
+          {/* Gender Selection */}
           <View className="w-full mb-4">
-            <Text className="mb-1 text-gray-700">Gender *</Text>
-            <View
-              className={`border rounded-md overflow-hidden ${
-                errors.gender ? "border-red-500" : "border-gray-300"
-              }`}
-            >
-              <Picker
-                selectedValue={formData.gender}
-                onValueChange={(value) => handleInputChange("gender", value)}
-                enabled={!loading}
-                style={{ backgroundColor: "#F9FAFB", height: 50 }}
-              >
-                <Picker.Item label="Select gender" value="" />
-                {genderOptions.map((option) => (
-                  <Picker.Item key={option} label={option} value={option} />
-                ))}
-              </Picker>
+            <Text className="mb-2 text-gray-700 font-medium">Gender *</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {genderOptions.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  className={`px-4 py-3 rounded-full border ${
+                    formData.gender === option ? "border-gray-300" : "bg-gray-100 border-gray-300"
+                  }`}
+                  style={{
+                    backgroundColor: formData.gender === option ? "#059669" : "#f3f4f6",
+                    borderColor: formData.gender === option ? "#059669" : "#d1d5db",
+                    minWidth: 80,
+                  }}
+                  onPress={() => handleInputChange("gender", option)}
+                  disabled={loading}
+                >
+                  <Text
+                    className={`text-sm font-medium text-center ${
+                      formData.gender === option ? "text-white" : "text-gray-700"
+                    }`}
+                  >
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            {errors.gender && (
-              <Text className="text-red-500 text-sm mt-1">{errors.gender}</Text>
-            )}
+            {errors.gender && <Text className="text-red-500 text-sm mt-1">{errors.gender}</Text>}
           </View>
 
           {/* Health Goals */}
@@ -281,17 +255,11 @@ export default function InitialPreferences() {
                 <TouchableOpacity
                   key={goal}
                   className={`px-3 py-2 rounded-full border ${
-                    formData.healthGoals.includes(goal)
-                      ? "border-gray-300"
-                      : "bg-gray-100 border-gray-300"
+                    formData.healthGoals.includes(goal) ? "border-gray-300" : "bg-gray-100 border-gray-300"
                   }`}
                   style={{
-                    backgroundColor: formData.healthGoals.includes(goal)
-                      ? "#059669"
-                      : "#f3f4f6",
-                    borderColor: formData.healthGoals.includes(goal)
-                      ? "#059669"
-                      : "#d1d5db",
+                    backgroundColor: formData.healthGoals.includes(goal) ? "#059669" : "#f3f4f6",
+                    borderColor: formData.healthGoals.includes(goal) ? "#059669" : "#d1d5db",
                   }}
                   onPress={() =>
                     toggleSelection(goal, formData.healthGoals, (newGoals) =>
@@ -302,9 +270,7 @@ export default function InitialPreferences() {
                 >
                   <Text
                     className={`text-sm font-medium ${
-                      formData.healthGoals.includes(goal)
-                        ? "text-white"
-                        : "text-gray-700"
+                      formData.healthGoals.includes(goal) ? "text-white" : "text-gray-700"
                     }`}
                   >
                     {goal}
@@ -316,41 +282,28 @@ export default function InitialPreferences() {
 
           {/* Existing Conditions */}
           <View className="w-full mb-4">
-            <Text className="mb-2 text-gray-700 font-medium">
-              Existing Conditions
-            </Text>
+            <Text className="mb-2 text-gray-700 font-medium">Existing Conditions</Text>
             <View className="flex-row flex-wrap gap-2">
               {conditionsList.map((cond) => (
                 <TouchableOpacity
                   key={cond}
                   className={`px-3 py-2 rounded-full border ${
-                    formData.conditions.includes(cond)
-                      ? "border-gray-300"
-                      : "bg-gray-100 border-gray-300"
+                    formData.conditions.includes(cond) ? "border-gray-300" : "bg-gray-100 border-gray-300"
                   }`}
                   style={{
-                    backgroundColor: formData.conditions.includes(cond)
-                      ? "#059669"
-                      : "#f3f4f6",
-                    borderColor: formData.conditions.includes(cond)
-                      ? "#059669"
-                      : "#d1d5db",
+                    backgroundColor: formData.conditions.includes(cond) ? "#059669" : "#f3f4f6",
+                    borderColor: formData.conditions.includes(cond) ? "#059669" : "#d1d5db",
                   }}
                   onPress={() =>
-                    toggleSelection(
-                      cond,
-                      formData.conditions,
-                      (newConditions) =>
-                        handleInputChange("conditions", newConditions)
+                    toggleSelection(cond, formData.conditions, (newConditions) =>
+                      handleInputChange("conditions", newConditions)
                     )
                   }
                   disabled={loading}
                 >
                   <Text
                     className={`text-sm font-medium ${
-                      formData.conditions.includes(cond)
-                        ? "text-white"
-                        : "text-gray-700"
+                      formData.conditions.includes(cond) ? "text-white" : "text-gray-700"
                     }`}
                   >
                     {cond}
@@ -362,47 +315,29 @@ export default function InitialPreferences() {
 
           {/* At Risk Conditions */}
           <View className="w-full mb-4">
-            <Text className="mb-2 text-gray-700 font-medium">
-              At Risk Conditions
-            </Text>
-            <Text className="text-gray-500 text-sm mb-2">
-              Conditions you want to prevent
-            </Text>
+            <Text className="mb-2 text-gray-700 font-medium">At Risk Conditions</Text>
+            <Text className="text-gray-500 text-sm mb-2">Conditions you want to prevent</Text>
             <View className="flex-row flex-wrap gap-2">
               {conditionsList.map((cond) => (
                 <TouchableOpacity
                   key={cond}
                   className={`px-3 py-2 rounded-full border ${
-                    formData.atRiskConditions.includes(cond)
-                      ? "border-gray-300"
-                      : "bg-gray-100 border-gray-300"
+                    formData.atRiskConditions.includes(cond) ? "border-gray-300" : "bg-gray-100 border-gray-300"
                   }`}
                   style={{
-                    backgroundColor: formData.atRiskConditions.includes(cond)
-                      ? "#059669"
-                      : "#f3f4f6",
-                    borderColor: formData.atRiskConditions.includes(cond)
-                      ? "#059669"
-                      : "#d1d5db",
+                    backgroundColor: formData.atRiskConditions.includes(cond) ? "#059669" : "#f3f4f6",
+                    borderColor: formData.atRiskConditions.includes(cond) ? "#059669" : "#d1d5db",
                   }}
                   onPress={() =>
-                    toggleSelection(
-                      cond,
-                      formData.atRiskConditions,
-                      (newAtRiskConditions) =>
-                        handleInputChange(
-                          "atRiskConditions",
-                          newAtRiskConditions
-                        )
+                    toggleSelection(cond, formData.atRiskConditions, (newAtRiskConditions) =>
+                      handleInputChange("atRiskConditions", newAtRiskConditions)
                     )
                   }
                   disabled={loading}
                 >
                   <Text
                     className={`text-sm font-medium ${
-                      formData.atRiskConditions.includes(cond)
-                        ? "text-white"
-                        : "text-gray-700"
+                      formData.atRiskConditions.includes(cond) ? "text-white" : "text-gray-700"
                     }`}
                   >
                     {cond}
@@ -414,9 +349,7 @@ export default function InitialPreferences() {
 
           {/* Communication Style */}
           <View className="w-full mb-4">
-            <Text className="mb-2 text-gray-700 font-medium">
-              Preferred Communication Style *
-            </Text>
+            <Text className="mb-2 text-gray-700 font-medium">Preferred Communication Style *</Text>
 
             {/* Tone Selection */}
             <Text className="text-sm text-gray-600 mb-2">Tone</Text>
@@ -425,25 +358,17 @@ export default function InitialPreferences() {
                 <TouchableOpacity
                   key={style}
                   className={`px-3 py-2 rounded-full border ${
-                    formData.tonalStyle === style
-                      ? "border-gray-300"
-                      : "bg-gray-100 border-gray-300"
+                    formData.tonalStyle === style ? "border-gray-300" : "bg-gray-100 border-gray-300"
                   }`}
                   style={{
-                    backgroundColor:
-                      formData.tonalStyle === style ? "#059669" : "#f3f4f6",
-                    borderColor:
-                      formData.tonalStyle === style ? "#059669" : "#d1d5db",
+                    backgroundColor: formData.tonalStyle === style ? "#059669" : "#f3f4f6",
+                    borderColor: formData.tonalStyle === style ? "#059669" : "#d1d5db",
                   }}
                   onPress={() => handleInputChange("tonalStyle", style)}
                   disabled={loading}
                 >
                   <Text
-                    className={`text-sm font-medium ${
-                      formData.tonalStyle === style
-                        ? "text-white"
-                        : "text-gray-700"
-                    }`}
+                    className={`text-sm font-medium ${formData.tonalStyle === style ? "text-white" : "text-gray-700"}`}
                   >
                     {style}
                   </Text>
@@ -458,24 +383,18 @@ export default function InitialPreferences() {
                 <TouchableOpacity
                   key={style}
                   className={`px-3 py-2 rounded-full border ${
-                    formData.verbosityStyle === style
-                      ? "border-gray-300"
-                      : "bg-gray-100 border-gray-300"
+                    formData.verbosityStyle === style ? "border-gray-300" : "bg-gray-100 border-gray-300"
                   }`}
                   style={{
-                    backgroundColor:
-                      formData.verbosityStyle === style ? "#059669" : "#f3f4f6",
-                    borderColor:
-                      formData.verbosityStyle === style ? "#059669" : "#d1d5db",
+                    backgroundColor: formData.verbosityStyle === style ? "#059669" : "#f3f4f6",
+                    borderColor: formData.verbosityStyle === style ? "#059669" : "#d1d5db",
                   }}
                   onPress={() => handleInputChange("verbosityStyle", style)}
                   disabled={loading}
                 >
                   <Text
                     className={`text-sm font-medium ${
-                      formData.verbosityStyle === style
-                        ? "text-white"
-                        : "text-gray-700"
+                      formData.verbosityStyle === style ? "text-white" : "text-gray-700"
                     }`}
                   >
                     {style}
@@ -485,40 +404,26 @@ export default function InitialPreferences() {
             </View>
 
             {errors.communicationStyle && (
-              <Text className="text-red-500 text-sm mt-1">
-                {errors.communicationStyle}
-              </Text>
+              <Text className="text-red-500 text-sm mt-1">{errors.communicationStyle}</Text>
             )}
           </View>
 
           {/* Notifications */}
           <View className="w-full mb-6">
             <View className="flex-row items-center justify-between">
-              <Text className="text-gray-700 font-medium">
-                Enable Notifications
-              </Text>
+              <Text className="text-gray-700 font-medium">Enable Notifications</Text>
               <TouchableOpacity
                 className={`px-3 py-2 rounded-full border ${
-                  formData.notifications
-                    ? "border-gray-300"
-                    : "bg-gray-100 border-gray-300"
+                  formData.notifications ? "border-gray-300" : "bg-gray-100 border-gray-300"
                 }`}
                 style={{
-                  backgroundColor: formData.notifications
-                    ? "#059669"
-                    : "#f3f4f6",
+                  backgroundColor: formData.notifications ? "#059669" : "#f3f4f6",
                   borderColor: formData.notifications ? "#059669" : "#d1d5db",
                 }}
-                onPress={() =>
-                  handleInputChange("notifications", !formData.notifications)
-                }
+                onPress={() => handleInputChange("notifications", !formData.notifications)}
                 disabled={loading}
               >
-                <Text
-                  className={`text-sm font-medium ${
-                    formData.notifications ? "text-white" : "text-gray-700"
-                  }`}
-                >
+                <Text className={`text-sm font-medium ${formData.notifications ? "text-white" : "text-gray-700"}`}>
                   {formData.notifications ? "Yes" : "No"}
                 </Text>
               </TouchableOpacity>
@@ -527,16 +432,12 @@ export default function InitialPreferences() {
 
           {/* Submit Button */}
           <TouchableOpacity
-            className={`rounded-md w-full py-3 mt-2 mb-2 items-center ${
-              !isFormValid || loading ? "opacity-50" : ""
-            }`}
+            className={`rounded-md w-full py-3 mt-2 mb-2 items-center ${!isFormValid || loading ? "opacity-50" : ""}`}
             style={{ backgroundColor: loading ? "#9ca3af" : "#059669" }}
             onPress={handleSubmit}
             disabled={!isFormValid || loading}
           >
-            <Text className="text-white text-lg font-semibold">
-              {loading ? "Saving..." : "Save Preferences"}
-            </Text>
+            <Text className="text-white text-lg font-semibold">{loading ? "Saving..." : "Save Preferences"}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

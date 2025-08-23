@@ -4,6 +4,7 @@
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"

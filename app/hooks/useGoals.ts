@@ -1,14 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { goalsApi } from "../services/goalsApi";
-import {
-  Goal,
-  GoalCreate,
-  GoalUpdate,
-  GoalProgressUpdate,
-  GoalNote,
-  WeeklyReflection,
-  GoalStats,
-} from "../types/goals";
+import { Goal, GoalCreate, GoalStats, GoalUpdate, WeeklyReflection } from "../types/goals";
 
 interface UseGoalsOptions {
   userEmail: string;
@@ -30,6 +22,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
 
       try {
         const goalsData = await goalsApi.getUserGoals(userEmail, weekStart);
+        console.log("goalsData", goalsData);
         setGoals(goalsData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load goals");
@@ -46,7 +39,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
 
       try {
         const statsData = await goalsApi.getGoalStats(userEmail, weeks);
-        if (statsData && 'goal_progress' in statsData) {
+        if (statsData && "goal_progress" in statsData) {
           setStats(statsData);
         }
       } catch (err) {
@@ -73,8 +66,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
         setGoals((prev) => [newGoal, ...prev]);
         return newGoal;
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to create goal";
+        const errorMessage = err instanceof Error ? err.message : "Failed to create goal";
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -90,18 +82,11 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
       setError(null);
 
       try {
-        const updatedGoal = await goalsApi.updateGoal(
-          goalId,
-          updateData,
-          userEmail
-        );
-        setGoals((prev) =>
-          prev.map((goal) => (goal.id === goalId ? updatedGoal : goal))
-        );
+        const updatedGoal = await goalsApi.updateGoal(goalId, updateData, userEmail);
+        setGoals((prev) => prev.map((goal) => (goal.id === goalId ? updatedGoal : goal)));
         return updatedGoal;
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to update goal";
+        const errorMessage = err instanceof Error ? err.message : "Failed to update goal";
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -120,8 +105,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
         await goalsApi.deleteGoal(goalId, userEmail);
         setGoals((prev) => prev.filter((goal) => goal.id !== goalId));
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to delete goal";
+        const errorMessage = err instanceof Error ? err.message : "Failed to delete goal";
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -142,13 +126,10 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
           { goal_id: goalId, current_value: currentValue, note },
           userEmail
         );
-        setGoals((prev) =>
-          prev.map((goal) => (goal.id === goalId ? updatedGoal : goal))
-        );
+        setGoals((prev) => prev.map((goal) => (goal.id === goalId ? updatedGoal : goal)));
         return updatedGoal;
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to update goal progress";
+        const errorMessage = err instanceof Error ? err.message : "Failed to update goal progress";
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -164,18 +145,11 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
       setError(null);
 
       try {
-        const updatedGoal = await goalsApi.addGoalNote(
-          goalId,
-          { goal_id: goalId, note },
-          userEmail
-        );
-        setGoals((prev) =>
-          prev.map((goal) => (goal.id === goalId ? updatedGoal : goal))
-        );
+        const updatedGoal = await goalsApi.addGoalNote(goalId, { goal_id: goalId, note }, userEmail);
+        setGoals((prev) => prev.map((goal) => (goal.id === goalId ? updatedGoal : goal)));
         return updatedGoal;
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to add note";
+        const errorMessage = err instanceof Error ? err.message : "Failed to add note";
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -199,8 +173,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
         });
         return result;
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to save reflection";
+        const errorMessage = err instanceof Error ? err.message : "Failed to save reflection";
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {

@@ -1,91 +1,19 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import Constants from "expo-constants";
-import { Modal, Pressable } from "react-native";
-import { Flame } from "lucide-react-native";
-import axios from "axios";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Dimensions,
-  Animated,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useFocusEffect } from "expo-router";
-import { useTheme } from "@/context/ThemeContext";
-import { useAuth } from "@/context/AuthContext";
-// @ts-ignore
-import { LinearGradient } from "expo-linear-gradient";
-// @ts-ignore
-import {
-  Heart,
-  Activity,
-  Moon,
-  Droplets,
-  MessageCircle,
-  Calendar,
-  TrendingUp,
-  User,
-  Settings,
-  Bell,
-  Target,
-} from "lucide-react-native";
-import Card from "@/components/ui/card";
 import { CircularProgressRing } from "@/components/CircularProgressRing";
+import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { useActionCompletions } from "@/hooks/useActionCompletions";
-// @ts-ignore
-import { tw } from "nativewind";
 import { useGoals } from "@/hooks/useGoals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { Bell, Calendar, Flame, Heart, MessageCircle, Settings, Target } from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Dimensions, Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Tooltip from "react-native-walkthrough-tooltip";
 import { goalsApi } from "../../services/goalsApi";
 
-const { width, height } = Dimensions.get("window");
-
-const walkthrough = [
-  {
-    id: "welcome",
-    title: "Welcome to your Dashboard!",
-    description: "Let's take a quick tour of your health dashboard.",
-    target: { top: 80, left: width / 2 - 100 },
-    spotlightSize: 200,
-  },
-  {
-    id: "chat",
-    title: "Chat with EVRA",
-    description: "Get instant health guidance from your AI assistant.",
-    target: { top: 60, left: 40 },
-    spotlightSize: 140,
-  },
-  {
-    id: "health-score",
-    title: "Health Score",
-    description: "Your overall health score based on various metrics.",
-    target: { top: 110, right: 50 },
-    spotlightSize: 160,
-  },
-  {
-    id: "metrics",
-    title: "Today's Metrics",
-    description: "Track your daily health measurements here.",
-    target: { top: 310, left: width / 2 - 150 },
-    spotlightSize: 300,
-  },
-  {
-    id: "tasks",
-    title: "Today's Tasks",
-    description: "Complete your daily health tasks to stay on track.",
-    target: { top: 560, left: width / 2 - 150 },
-    spotlightSize: 200,
-  },
-  {
-    id: "goals",
-    title: "Weekly Goals",
-    description: "Monitor your progress towards weekly health goals.",
-    target: { top: 760, left: width / 2 - 150 },
-    spotlightSize: 200,
-  },
-];
+const { width } = Dimensions.get("window");
 
 // --- Helper function to render streak achievements ---
 function renderStreakAchievements(streak: number | null, isDarkMode: boolean) {
@@ -138,28 +66,15 @@ function renderStreakAchievements(streak: number | null, isDarkMode: boolean) {
               opacity: unlocked ? 1 : 0.5,
             }}
           >
-            <Flame
-              size={22}
-              color={
-                unlocked
-                  ? isDarkMode
-                    ? "#fbbf24"
-                    : "#f59e42"
-                  : isDarkMode
-                  ? "#64748b"
-                  : "#cbd5e1"
-              }
-              style={{ marginRight: 8 }}
-            />
+            <View style={{ marginRight: 8 }}>
+              <Flame
+                size={22}
+                color={unlocked ? (isDarkMode ? "#fbbf24" : "#f59e42") : isDarkMode ? "#64748b" : "#cbd5e1"}
+              />
+            </View>
             <Text
               style={{
-                color: unlocked
-                  ? isDarkMode
-                    ? "#fbbf24"
-                    : "#f59e42"
-                  : isDarkMode
-                  ? "#64748b"
-                  : "#64748b",
+                color: unlocked ? (isDarkMode ? "#fbbf24" : "#f59e42") : isDarkMode ? "#64748b" : "#64748b",
                 fontWeight: unlocked ? "bold" : "normal",
                 fontSize: 15,
               }}
@@ -168,13 +83,7 @@ function renderStreakAchievements(streak: number | null, isDarkMode: boolean) {
             </Text>
             <Text
               style={{
-                color: unlocked
-                  ? isDarkMode
-                    ? "#22c55e"
-                    : "#059669"
-                  : isDarkMode
-                  ? "#64748b"
-                  : "#64748b",
+                color: unlocked ? (isDarkMode ? "#22c55e" : "#059669") : isDarkMode ? "#64748b" : "#64748b",
                 fontSize: 13,
                 marginLeft: 8,
                 fontWeight: "bold",
@@ -190,15 +99,15 @@ function renderStreakAchievements(streak: number | null, isDarkMode: boolean) {
 }
 
 export default function MainDashboard() {
-  const API_BASE_URL =
-    Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
   const { user } = useAuth();
   const userEmail = user?.email || "";
   const userName = user?.name || "";
+  const { from } = useLocalSearchParams();
+
+  // Debug logging for walkthrough
+  console.log("🏠 MainDashboard loaded for user:", userEmail?.substring(0, 10) + "...");
   // --- Daily Completion for Streak Calendar ---
-  const [dailyCompletion, setDailyCompletion] = useState<
-    Record<string, number>
-  >({});
+  const [dailyCompletion, setDailyCompletion] = useState<Record<string, number>>({});
   const router = useRouter();
   const { isDarkMode } = useTheme();
   useEffect(() => {
@@ -218,9 +127,7 @@ export default function MainDashboard() {
   const [streak, setStreak] = useState<number | null>(null);
   const [streakLoading, setStreakLoading] = useState(false);
   const [streakError, setStreakError] = useState<string | null>(null);
-  const [streakTab, setStreakTab] = useState<"calendar" | "achievements">(
-    "calendar"
-  );
+  const [streakTab, setStreakTab] = useState<"calendar" | "achievements">("calendar");
   const fetchStreak = useCallback(async () => {
     if (!userEmail) return;
     setStreakLoading(true);
@@ -228,7 +135,7 @@ export default function MainDashboard() {
     try {
       const stats = await goalsApi.getGoalStats(userEmail, 12);
       setStreak(stats?.weekly_streak ?? 0);
-    } catch (e) {
+    } catch {
       setStreakError("Failed to load streak");
     } finally {
       setStreakLoading(false);
@@ -240,21 +147,38 @@ export default function MainDashboard() {
   };
   const closeStreakModal = () => setShowStreakModal(false);
   const { goals, loadGoals } = useGoals({ userEmail });
-  const {
-    completionStats,
-    getGoalCompletionPercentage,
-    markCompletion,
-    loadCompletionStats,
-    loading: completionLoading,
-  } = useActionCompletions(userEmail);
+  const { completionStats, getGoalCompletionPercentage, markCompletion, loadCompletionStats } =
+    useActionCompletions(userEmail);
+  // Walkthrough state management
+  const [walkthroughStep, setWalkthroughStep] = useState(0);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [animation] = useState(new Animated.Value(1));
   const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
   const [showAllTodayItems, setShowAllTodayItems] = useState(false);
-  const [recentInteractions, setRecentInteractions] = useState<
-    Map<string, number>
-  >(new Map());
+  const [recentInteractions, setRecentInteractions] = useState<Map<string, number>>(new Map());
+
+  // Walkthrough steps configuration
+  const walkthroughSteps = [
+    {
+      content:
+        "💬 Chat with EVRA - Get instant health guidance from your AI assistant. Ask questions about nutrition, exercise, medications, and more!",
+      placement: "bottom" as const,
+    },
+    {
+      content:
+        "📊 Health Score - Your overall health score is calculated based on your daily activities, goal completion, and health metrics. Higher scores mean better health habits!",
+      placement: "bottom" as const,
+    },
+    {
+      content:
+        "✅ Today's Action Items - Complete your daily health tasks to stay on track with your goals. Tap the checkboxes to mark items as done and build your streak!",
+      placement: "top" as const,
+    },
+    {
+      content:
+        "🎯 Weekly Goals - Monitor your progress towards weekly health goals and stay motivated. Track completion percentages and see how you're doing each week!",
+      placement: "top" as const,
+    },
+  ];
 
   // Refresh goals data when screen comes into focus
   useFocusEffect(
@@ -269,73 +193,172 @@ export default function MainDashboard() {
       }
     }, [userEmail, loadGoals, loadCompletionStats])
   );
-  const healthMetrics = [
-    {
-      icon: Heart,
-      label: "Heart Rate",
-      value: "72 bpm",
-      status: "normal",
-      color: "text-red-500",
-    },
-    {
-      icon: Activity,
-      label: "Steps",
-      value: "8,432",
-      status: "good",
-      color: "text-blue-500",
-    },
-    {
-      icon: Moon,
-      label: "Sleep",
-      value: "7.5 hrs",
-      status: "good",
-      color: "text-purple-500",
-    },
-    {
-      icon: Droplets,
-      label: "Hydration",
-      value: "6/8 glasses",
-      status: "needs attention",
-      color: "text-cyan-500",
-    },
-  ];
 
   // Removed local demo tasks; weekly goals are now sourced from API via useGoals
 
   // Determine the key for today's day name used in schedules
   const dayKey = useMemo(() => {
     const day = new Date().getDay(); // 0=Sun..6=Sat
-    return (
-      [
-        "sunday",
-        "monday",
-        "tuesday",
-        "wednesday",
-        "thursday",
-        "friday",
-        "saturday",
-      ][day] || "monday"
-    );
+    return ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][day] || "monday";
   }, []);
 
   // Per-user storage key for walkthrough completion
-  const walkthroughStorageKey = useMemo(
-    () => `dashboardWalkthroughSeen:${userEmail || "guest"}`,
-    [userEmail]
-  );
+  const walkthroughStorageKey = useMemo(() => `dashboardWalkthroughSeen:${userEmail || "guest"}`, [userEmail]);
 
-  // Only show walkthrough if not completed before for this user
+  // Check if walkthrough should be shown
   useEffect(() => {
     const checkWalkthrough = async () => {
       try {
+        if (!userEmail) {
+          console.log("❌ No user email, skipping walkthrough check");
+          return;
+        }
+
+        console.log("🔍 Checking walkthrough conditions for:", userEmail);
+
+        // Check if we should show walkthrough from AsyncStorage
+        const walkthroughTrigger = await AsyncStorage.getItem(`showWalkthrough:${userEmail}`);
+        console.log("📱 Walkthrough trigger from storage:", walkthroughTrigger);
+
+        // Only show walkthrough if coming from register flow
+        const shouldShowWalkthrough = walkthroughTrigger === "register";
+        console.log("🎯 Should show walkthrough (register only):", shouldShowWalkthrough);
+
+        if (!shouldShowWalkthrough) {
+          console.log("❌ Not showing walkthrough - not from register flow");
+          return;
+        }
+
+        // Clear the trigger so it only shows once
+        await AsyncStorage.removeItem(`showWalkthrough:${userEmail}`);
+
         const seen = await AsyncStorage.getItem(walkthroughStorageKey);
-        setShowWalkthrough(!seen);
-      } catch (e) {
-        setShowWalkthrough(false);
+        console.log("💾 Walkthrough seen before:", !!seen, "Storage key:", walkthroughStorageKey);
+
+        if (!seen) {
+          console.log("🚀 Starting walkthrough");
+          setShowWalkthrough(true);
+          setWalkthroughStep(0);
+        } else {
+          console.log("❌ Walkthrough already seen before");
+        }
+      } catch (error) {
+        console.log("❌ Error checking walkthrough status:", error);
       }
     };
+
     checkWalkthrough();
-  }, [walkthroughStorageKey]);
+  }, [walkthroughStorageKey, userEmail]);
+
+  // Handle walkthrough navigation
+  const handleNext = () => {
+    if (walkthroughStep < walkthroughSteps.length - 1) {
+      setWalkthroughStep(walkthroughStep + 1);
+    } else {
+      handleFinish();
+    }
+  };
+
+  const handlePrevious = () => {
+    if (walkthroughStep > 0) {
+      setWalkthroughStep(walkthroughStep - 1);
+    }
+  };
+
+  const handleFinish = async () => {
+    console.log("✅ Walkthrough completed");
+    setShowWalkthrough(false);
+    try {
+      await AsyncStorage.setItem(walkthroughStorageKey, "true");
+      console.log("💾 Walkthrough completion saved to storage");
+    } catch (error) {
+      console.log("❌ Error saving walkthrough completion:", error);
+    }
+  };
+
+  const handleSkip = () => {
+    console.log("⏭️ Walkthrough skipped");
+    handleFinish();
+  };
+
+  // Helper function to render tooltip content
+  const renderTooltipContent = (stepIndex: number) => {
+    const step = walkthroughSteps[stepIndex];
+    const isFirst = stepIndex === 0;
+    const isLast = stepIndex === walkthroughSteps.length - 1;
+
+    // Parse content to get title and description
+    const parts = step.content.split(" - ");
+    const title = parts[0] || "Welcome to EVRA";
+    const description = parts[1] || step.content;
+
+    return (
+      <View style={{ padding: 20, minWidth: 320, maxWidth: 360 }}>
+        <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 12, color: "#fff" }}>{title}</Text>
+        <Text style={{ fontSize: 15, color: "#e5e7eb", marginBottom: 20, lineHeight: 22 }}>{description}</Text>
+
+        {/* Progress bar */}
+        <View style={{ marginBottom: 20 }}>
+          <View
+            style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}
+          >
+            <Text style={{ color: "#9ca3af", fontSize: 12 }}>Progress</Text>
+            <Text style={{ color: "#9ca3af", fontSize: 12 }}>
+              {stepIndex + 1} of {walkthroughSteps.length}
+            </Text>
+          </View>
+          <View style={{ height: 4, backgroundColor: "#374151", borderRadius: 2 }}>
+            <View
+              style={{
+                height: 4,
+                backgroundColor: "#059669",
+                borderRadius: 2,
+                width: `${((stepIndex + 1) / walkthroughSteps.length) * 100}%`,
+              }}
+            />
+          </View>
+        </View>
+
+        {/* Buttons */}
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <TouchableOpacity
+            onPress={isFirst ? handleSkip : handlePrevious}
+            style={{
+              flex: 1,
+              padding: 12,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: "#6b7280",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#d1d5db", fontSize: 16, fontWeight: "600" }}>{isFirst ? "Skip" : "Previous"}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleNext}
+            style={{
+              flex: 1,
+              backgroundColor: "#059669",
+              padding: 12,
+              borderRadius: 8,
+              alignItems: "center",
+              shadowColor: "#059669",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>{isLast ? "Finish" : "Next"}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  // Note: We now use AsyncStorage for walkthrough triggers instead of URL parameters
+  // This avoids issues with tab navigation clearing parameters
 
   type TodayItem = {
     id: string;
@@ -365,12 +388,7 @@ export default function MainDashboard() {
 
     const normalizeTime = (t?: string): string => formatTimeHM(t);
 
-    const makeKey = (
-      title: string,
-      goalTitle: string | undefined,
-      start?: string,
-      end?: string
-    ) => {
+    const makeKey = (title: string, goalTitle: string | undefined, start?: string, end?: string) => {
       const normTitle = (title || "").trim().toLowerCase();
       const normGoal = (goalTitle || "").trim().toLowerCase();
       const normStart = normalizeTime(start);
@@ -422,57 +440,33 @@ export default function MainDashboard() {
     });
 
     // Sort by normalized time if available
-    items.sort((a, b) =>
-      formatTimeHM(a.start_time).localeCompare(formatTimeHM(b.start_time))
-    );
+    items.sort((a, b) => formatTimeHM(a.start_time).localeCompare(formatTimeHM(b.start_time)));
     return items;
   }, [goals, dayKey]);
 
   // Helper to check if an action item is completed for the current week
-  const isActionItemCompletedThisWeek = useCallback(
-    (actionItem: any): boolean => {
-      if (!actionItem?.weekly_completion) {
-        console.log(
-          `No weekly_completion data for action item: ${actionItem?.title}`
-        );
-        return false;
-      }
+  const isActionItemCompletedThisWeek = useCallback((actionItem: any): boolean => {
+    if (!actionItem?.weekly_completion) {
+      return false;
+    }
 
-      // Get the start of the current week (Monday)
-      const today = new Date();
-      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Get Monday
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() + mondayOffset);
-      weekStart.setHours(0, 0, 0, 0);
+    // Get the start of the current week (Monday)
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Get Monday
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() + mondayOffset);
+    weekStart.setHours(0, 0, 0, 0);
 
-      console.log(
-        `Checking weekly completion for ${
-          actionItem.title
-        }, current week start: ${weekStart.toDateString()}`
-      );
-      console.log(`Weekly completion data:`, actionItem.weekly_completion);
+    // Check if there's a completion entry for this week
+    const isComplete = actionItem.weekly_completion.some((completion: any) => {
+      const completionWeekStart = new Date(completion.week_start);
+      const matches = completionWeekStart.toDateString() === weekStart.toDateString();
+      return matches && completion.is_complete;
+    });
 
-      // Check if there's a completion entry for this week
-      const isComplete = actionItem.weekly_completion.some(
-        (completion: any) => {
-          const completionWeekStart = new Date(completion.week_start);
-          const matches =
-            completionWeekStart.toDateString() === weekStart.toDateString();
-          console.log(
-            `  Week ${completionWeekStart.toDateString()}: complete=${
-              completion.is_complete
-            }, matches=${matches}`
-          );
-          return matches && completion.is_complete;
-        }
-      );
-
-      console.log(`Final result for ${actionItem.title}: ${isComplete}`);
-      return isComplete;
-    },
-    []
-  );
+    return isComplete;
+  }, []);
 
   // Sync completed items from backend completion stats (with delay to allow backend processing)
   useEffect(() => {
@@ -499,12 +493,9 @@ export default function MainDashboard() {
         let isCompletedByWeeklyStatus = false;
         const goal = (goals as any[]).find((g: any) => g.id === goalId);
         if (goal?.action_plan?.action_items) {
-          const actionItem = goal.action_plan.action_items.find(
-            (ai: any) => ai.title === item.title
-          );
+          const actionItem = goal.action_plan.action_items.find((ai: any) => ai.title === item.title);
           if (actionItem) {
-            isCompletedByWeeklyStatus =
-              isActionItemCompletedThisWeek(actionItem);
+            isCompletedByWeeklyStatus = isActionItemCompletedThisWeek(actionItem);
           }
         }
 
@@ -524,25 +515,28 @@ export default function MainDashboard() {
         }
 
         // Use either weekly completion status or daily stats
-        if (isCompletedByWeeklyStatus || isCompletedByDailyStats) {
+        const shouldBeCompleted = isCompletedByWeeklyStatus || isCompletedByDailyStats;
+        const isCurrentlyCompleted = completedItems.has(item.id);
+
+        // Only update if the state actually changed
+        if (shouldBeCompleted && !isCurrentlyCompleted) {
           newCompletedItems.add(item.id);
-        } else {
-          // If not completed by either method, remove from completed state
+        } else if (!shouldBeCompleted && isCurrentlyCompleted) {
           newCompletedItems.delete(item.id);
         }
       });
 
-      setCompletedItems(newCompletedItems);
+      // Only update state if there were actual changes
+      if (
+        newCompletedItems.size !== completedItems.size ||
+        [...newCompletedItems].some((id) => !completedItems.has(id))
+      ) {
+        setCompletedItems(newCompletedItems);
+      }
     }, 100); // 100ms delay
 
     return () => clearTimeout(timeoutId);
-  }, [
-    completionStats,
-    todaysItems,
-    recentInteractions,
-    goals,
-    isActionItemCompletedThisWeek,
-  ]);
+  }, [completionStats, todaysItems, recentInteractions, goals, isActionItemCompletedThisWeek, completedItems]);
 
   // Clean up old interactions
   useEffect(() => {
@@ -622,172 +616,19 @@ export default function MainDashboard() {
     });
   };
 
-  const animateSpotlight = (toValue: number) => {
-    Animated.timing(animation, {
-      toValue,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handleNext = () => {
-    if (currentStep < walkthrough.length - 1) {
-      animateSpotlight(0);
-      setTimeout(() => {
-        setCurrentStep(currentStep + 1);
-        animateSpotlight(1);
-      }, 300);
-    } else {
-      setShowWalkthrough(false);
-      // Persist completion so walkthrough shows only once per user
-      AsyncStorage.setItem(walkthroughStorageKey, "true").catch(() => {});
-    }
-  };
-
-  const handleSkip = () => {
-    setShowWalkthrough(false);
-    AsyncStorage.setItem(walkthroughStorageKey, "true").catch(() => {});
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      animateSpotlight(0);
-      setTimeout(() => {
-        setCurrentStep(currentStep - 1);
-        animateSpotlight(1);
-      }, 300);
-    }
-  };
-
-  const maskOpacity = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.7],
-  });
-
-  const spotlightScale = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  });
-
   return (
     <SafeAreaView className="flex-1">
+      {/* @ts-ignore - expo-linear-gradient children prop typing issue */}
       <LinearGradient
         colors={isDarkMode ? ["#0f172a", "#1e293b"] : ["#f0f9f6", "#e6f4f1"]}
-        className="flex-1"
+        style={{ flex: 1 }}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        {showWalkthrough && (
-          <View
-            style={{
-              position: "absolute",
-              width: "100%",
-              height: "100%",
-              zIndex: 1000,
-            }}
-          >
-            <Animated.View
-              style={{
-                position: "absolute",
-                width: "100%",
-                height: "100%",
-                backgroundColor: "black",
-                opacity: maskOpacity,
-              }}
-            />
-
-            <Animated.View
-              style={{
-                position: "absolute",
-                ...walkthrough[currentStep].target,
-                width: walkthrough[currentStep].spotlightSize,
-                height: walkthrough[currentStep].spotlightSize,
-                borderRadius: walkthrough[currentStep].spotlightSize / 2,
-                backgroundColor: "transparent",
-                borderWidth: 2,
-                borderColor: "#059669",
-                transform: [{ scale: spotlightScale }],
-                shadowColor: "#059669",
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.5,
-                shadowRadius: 10,
-                elevation: 5,
-              }}
-            />
-
-            <View
-              style={{
-                position: "absolute",
-                padding: 20,
-                width: "100%",
-                bottom: 100,
-                alignItems: "center",
-              }}
-            >
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 24,
-                  fontWeight: "bold",
-                  textAlign: "center",
-                  marginBottom: 8,
-                  textShadowColor: "rgba(0, 0, 0, 0.75)",
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 2,
-                }}
-              >
-                {walkthrough[currentStep].title}
-              </Text>
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 16,
-                  textAlign: "center",
-                  maxWidth: 300,
-                  marginBottom: 24,
-                  textShadowColor: "rgba(0, 0, 0, 0.75)",
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 2,
-                }}
-              >
-                {walkthrough[currentStep].description}
-              </Text>
-
-              <View style={{ flexDirection: "row", gap: 16 }}>
-                <TouchableOpacity
-                  onPress={handleSkip}
-                  style={{
-                    paddingVertical: 12,
-                    paddingHorizontal: 24,
-                    borderRadius: 8,
-                    backgroundColor: "#475569",
-                  }}
-                >
-                  <Text style={{ color: "#fff", fontSize: 16 }}>Skip Tour</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleNext}
-                  style={{
-                    paddingVertical: 12,
-                    paddingHorizontal: 24,
-                    borderRadius: 8,
-                    backgroundColor: "#059669",
-                  }}
-                >
-                  <Text style={{ color: "#fff", fontSize: 16 }}>
-                    {currentStep === walkthrough.length - 1 ? "Finish" : "Next"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
         {/* Fixed Header */}
         <View
           className={`shadow-sm px-4 py-4 z-10 ${
-            isDarkMode
-              ? "bg-gray-900 border-b border-gray-800"
-              : "bg-white border-b border-gray-100"
+            isDarkMode ? "bg-gray-900 border-b border-gray-800" : "bg-white border-b border-gray-100"
           }`}
         >
           <View className="flex-row items-center justify-between">
@@ -800,44 +641,23 @@ export default function MainDashboard() {
                 <Heart size={20} color="#fff" />
               </View>
               <View>
-                <Text
-                  className={`font-semibold ${
-                    isDarkMode ? "text-gray-100" : "text-gray-800"
-                  }`}
-                >
+                <Text className={`font-semibold ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}>
                   {`Good morning, ${userName || "User"}!`}
                 </Text>
-                <Text
-                  className={`text-sm ${
-                    isDarkMode ? "text-gray-400" : "text-gray-600"
-                  }`}
-                >
+                <Text className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
                   Ready for a healthy day?
                 </Text>
               </View>
             </View>
             <View className="flex-row items-center">
-              <Pressable
-                onPress={openStreakModal}
-                style={{ marginRight: 12 }}
-                accessibilityLabel="Show Streak"
-              >
+              <Pressable onPress={openStreakModal} style={{ marginRight: 12 }} accessibilityLabel="Show Streak">
                 <Flame size={22} color={isDarkMode ? "#fbbf24" : "#f59e42"} />
               </Pressable>
-              <Bell
-                size={20}
-                color={isDarkMode ? "#9ca3af" : "#64748b"}
-                className="mr-2"
-              />
+              <Bell size={20} color={isDarkMode ? "#9ca3af" : "#64748b"} className="mr-2" />
               <Settings size={20} color={isDarkMode ? "#9ca3af" : "#64748b"} />
             </View>
             {/* Streak Modal */}
-            <Modal
-              visible={showStreakModal}
-              animationType="slide"
-              transparent
-              onRequestClose={closeStreakModal}
-            >
+            <Modal visible={showStreakModal} animationType="slide" transparent onRequestClose={closeStreakModal}>
               <View
                 style={{
                   flex: 1,
@@ -875,11 +695,7 @@ export default function MainDashboard() {
                         paddingVertical: 8,
                         borderBottomWidth: 2,
                         borderBottomColor:
-                          streakTab === "calendar"
-                            ? isDarkMode
-                              ? "#fbbf24"
-                              : "#f59e42"
-                            : "transparent",
+                          streakTab === "calendar" ? (isDarkMode ? "#fbbf24" : "#f59e42") : "transparent",
                       }}
                       onPress={() => setStreakTab("calendar")}
                     >
@@ -907,11 +723,7 @@ export default function MainDashboard() {
                         paddingVertical: 8,
                         borderBottomWidth: 2,
                         borderBottomColor:
-                          streakTab === "achievements"
-                            ? isDarkMode
-                              ? "#fbbf24"
-                              : "#f59e42"
-                            : "transparent",
+                          streakTab === "achievements" ? (isDarkMode ? "#fbbf24" : "#f59e42") : "transparent",
                       }}
                       onPress={() => setStreakTab("achievements")}
                     >
@@ -937,10 +749,7 @@ export default function MainDashboard() {
                   {/* Tab Content */}
                   {streakTab === "calendar" ? (
                     <>
-                      <Flame
-                        size={40}
-                        color={isDarkMode ? "#fbbf24" : "#f59e42"}
-                      />
+                      <Flame size={40} color={isDarkMode ? "#fbbf24" : "#f59e42"} />
                       <Text
                         style={{
                           fontSize: 22,
@@ -949,11 +758,7 @@ export default function MainDashboard() {
                           color: isDarkMode ? "#fbbf24" : "#f59e42",
                         }}
                       >
-                        {streakLoading
-                          ? "Loading..."
-                          : streakError
-                          ? streakError
-                          : `🔥 ${streak ?? 0} week streak!`}
+                        {streakLoading ? "Loading..." : streakError ? streakError : `🔥 ${streak ?? 0} week streak!`}
                       </Text>
                       <Text
                         style={{
@@ -983,10 +788,7 @@ export default function MainDashboard() {
                         >
                           Weekly Streak Calendar
                         </Text>
-                        <StreakCalendar
-                          isDarkMode={isDarkMode}
-                          dailyCompletion={dailyCompletion}
-                        />
+                        <StreakCalendar isDarkMode={isDarkMode} dailyCompletion={dailyCompletion} />
                       </View>
                     </>
                   ) : (
@@ -1053,251 +855,318 @@ export default function MainDashboard() {
         </View>
 
         {/* Scrollable Content */}
-        <ScrollView contentContainerClassName="pb-8" className="flex-1">
-          <View className="px-4 space-y-6 mt-4">
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
             {/* Health Score and Quick Actions Row */}
-            <View className="flex-row justify-between mb-6">
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginBottom: 24,
+                minHeight: width * 0.4, // Ensure consistent height
+              }}
+            >
               {/* Quick Actions - Left Side */}
-              <View className="w-1/2 pr-2">
-                <TouchableOpacity
-                  onPress={() => router.push("./chat")}
-                  className="mb-3"
+              <View style={{ width: "48%", paddingRight: 8 }}>
+                <Tooltip
+                  isVisible={showWalkthrough && walkthroughStep === 0}
+                  content={renderTooltipContent(0)}
+                  placement="bottom"
+                  onClose={handleSkip}
+                  backgroundColor="rgba(0,0,0,0.9)"
+                  showChildInTooltip={true}
+                  allowChildInteraction={false}
+                  closeOnChildInteraction={false}
+                  closeOnContentInteraction={false}
+                  childContentSpacing={12}
+                  displayInsets={{ top: 50, bottom: 50, left: 20, right: 20 }}
+                  useReactNativeModal={true}
+                  childrenWrapperStyle={{
+                    backgroundColor: "transparent",
+                  }}
+                  contentStyle={{
+                    backgroundColor: "#1f2937",
+                    borderRadius: 16,
+                    borderWidth: 2,
+                    borderColor: "#059669",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.5,
+                    shadowRadius: 16,
+                    elevation: 16,
+                  }}
                 >
-                  <Card className="border-0">
-                    <View
-                      className={`items-center p-4 rounded-xl ${
-                        isDarkMode ? "bg-gray-800" : "bg-white"
-                      }`}
-                    >
-                      <MessageCircle
-                        size={32}
-                        color={isDarkMode ? "#34d399" : "#114131"}
-                        className="mb-2"
-                      />
-                      <Text
-                        className={`text-sm font-medium ${
-                          isDarkMode ? "text-gray-100" : "text-gray-800"
-                        }`}
-                      >
-                        Chat with EVRA
-                      </Text>
-                    </View>
-                  </Card>
-                </TouchableOpacity>
-                <Card className="border-0">
-                  <View
-                    className={`items-center p-4 rounded-xl ${
-                      isDarkMode ? "bg-gray-800" : "bg-white"
-                    }`}
+                  <TouchableOpacity
+                    onPress={() => router.push("./chat")}
+                    style={{
+                      marginBottom: 12,
+                      backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                      borderRadius: 16,
+                      padding: 16,
+                      alignItems: "center",
+                      minHeight: width * 0.18,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: isDarkMode ? 0.3 : 0.1,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }}
+                    activeOpacity={0.7}
                   >
-                    <Calendar
-                      size={32}
-                      color={isDarkMode ? "#34d399" : "#114131"}
-                      className="mb-2"
-                    />
+                    <View style={{ marginBottom: 8 }}>
+                      <MessageCircle size={28} color={isDarkMode ? "#34d399" : "#114131"} />
+                    </View>
                     <Text
-                      className={`text-sm font-medium ${
-                        isDarkMode ? "text-gray-100" : "text-gray-800"
-                      }`}
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "600",
+                        color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                        textAlign: "center",
+                      }}
                     >
-                      Book Appointment
+                      Chat with EVRA
                     </Text>
+                  </TouchableOpacity>
+                </Tooltip>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                    borderRadius: 16,
+                    padding: 16,
+                    alignItems: "center",
+                    minHeight: width * 0.18,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDarkMode ? 0.3 : 0.1,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ marginBottom: 8 }}>
+                    <Calendar size={28} color={isDarkMode ? "#34d399" : "#114131"} />
                   </View>
-                </Card>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "600",
+                      color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                      textAlign: "center",
+                    }}
+                  >
+                    Book Appointment
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* Health Score - Right Side */}
-              <View className="w-1/2 pl-2 items-center justify-center">
-                <LinearGradient
-                  colors={["#fed7aa", "#fde68a"]}
-                  style={{
-                    width: 160,
-                    height: 160,
-                    borderRadius: 80,
-                    alignItems: "center",
-                    justifyContent: "center",
+              <View className="items-center justify-center">
+                <Tooltip
+                  isVisible={showWalkthrough && walkthroughStep === 1}
+                  content={renderTooltipContent(1)}
+                  placement="bottom"
+                  onClose={handleSkip}
+                  backgroundColor="rgba(0,0,0,0.9)"
+                  showChildInTooltip={true}
+                  allowChildInteraction={false}
+                  closeOnChildInteraction={false}
+                  closeOnContentInteraction={false}
+                  childContentSpacing={16}
+                  displayInsets={{ top: 50, bottom: 50, left: 20, right: 20 }}
+                  useReactNativeModal={true}
+                  childrenWrapperStyle={{
+                    backgroundColor: "transparent",
+                  }}
+                  contentStyle={{
+                    backgroundColor: "#1f2937",
+                    borderRadius: 16,
+                    borderWidth: 2,
+                    borderColor: "#059669",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.5,
+                    shadowRadius: 16,
+                    elevation: 16,
                   }}
                 >
-                  <LinearGradient
-                    colors={["#f97316", "#f59e0b"]}
+                  <View
                     style={{
-                      width: 128,
-                      height: 128,
-                      borderRadius: 64,
+                      width: width * 0.35, // Responsive width
+                      height: width * 0.35, // Responsive height
+                      borderRadius: width * 0.175,
                       alignItems: "center",
                       justifyContent: "center",
+                      backgroundColor: "#fed7aa",
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 4,
+                      elevation: 3,
                     }}
                   >
-                    <Text className="text-white text-sm font-medium">
-                      Health Score
-                    </Text>
-                    <Text className="text-white text-4xl font-bold">84</Text>
-                  </LinearGradient>
-                </LinearGradient>
+                    <View
+                      style={{
+                        width: width * 0.28,
+                        height: width * 0.28,
+                        borderRadius: width * 0.14,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#f97316",
+                      }}
+                    >
+                      <Text style={{ color: "white", fontSize: 12, fontWeight: "500" }}>Health Score</Text>
+                      <Text style={{ color: "white", fontSize: 28, fontWeight: "bold" }}>84</Text>
+                    </View>
+                  </View>
+                </Tooltip>
               </View>
             </View>
 
-            {/* Health Metrics */}
-            <Card className="border-0">
-              <View
-                className={`p-4 rounded-xl ${
-                  isDarkMode ? "bg-gray-800" : "bg-white"
-                }`}
-              >
-                <View className="flex-row items-center mb-3">
-                  <TrendingUp
-                    size={20}
-                    color={isDarkMode ? "#34d399" : "#114131"}
-                    className="mr-2"
-                  />
-                  <Text
-                    className={`text-lg font-semibold ${
-                      isDarkMode ? "text-gray-100" : "text-gray-800"
-                    }`}
-                  >
-                    Today's Metrics
-                  </Text>
-                </View>
-                {healthMetrics.map((metric, index) => (
-                  <View
-                    key={index}
-                    className="flex-row items-center justify-between mb-2"
-                  >
-                    <View className="flex-row items-center">
-                      <metric.icon
-                        size={20}
-                        color={
-                          isDarkMode
-                            ? metric.color
-                                .replace("text-", "")
-                                .replace("-500", "-400")
-                            : metric.color
-                                .replace("text-", "")
-                                .replace("-500", "")
-                        }
-                        className="mr-2"
-                      />
-                      <Text
-                        className={`text-sm font-medium ${
-                          isDarkMode ? "text-gray-300" : "text-gray-700"
-                        }`}
-                      >
-                        {metric.label}
-                      </Text>
-                    </View>
-                    <View className="items-end">
-                      <Text
-                        className={`text-sm font-semibold ${
-                          isDarkMode ? "text-gray-100" : "text-gray-800"
-                        }`}
-                      >
-                        {metric.value}
-                      </Text>
-                      <Text
-                        className={`text-xs ${
-                          metric.status === "normal" || metric.status === "good"
-                            ? isDarkMode
-                              ? "text-green-400"
-                              : "text-green-700"
-                            : isDarkMode
-                            ? "text-amber-400"
-                            : "text-amber-600"
-                        }`}
-                      >
-                        {metric.status}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </Card>
-
             {/* Today's Action Items (collapsible) */}
-            <Card className="border-0">
+            <Tooltip
+              isVisible={showWalkthrough && walkthroughStep === 2}
+              content={renderTooltipContent(2)}
+              placement="top"
+              onClose={handleSkip}
+              backgroundColor="rgba(0,0,0,0.9)"
+              showChildInTooltip={true}
+              allowChildInteraction={false}
+              closeOnChildInteraction={false}
+              closeOnContentInteraction={false}
+              childContentSpacing={12}
+              displayInsets={{ top: 50, bottom: 50, left: 20, right: 20 }}
+              useReactNativeModal={true}
+              childrenWrapperStyle={{
+                backgroundColor: "transparent",
+              }}
+              contentStyle={{
+                backgroundColor: "#1f2937",
+                borderRadius: 16,
+                borderWidth: 2,
+                borderColor: "#059669",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.5,
+                shadowRadius: 16,
+                elevation: 16,
+              }}
+            >
               <View
-                className={`p-4 rounded-xl ${
-                  isDarkMode ? "bg-gray-800" : "bg-white"
-                }`}
+                style={{
+                  backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                  width: "100%",
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 16,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isDarkMode ? 0.3 : 0.1,
+                  shadowRadius: 4,
+                  elevation: 3,
+                }}
               >
-                <View className="flex-row items-center mb-3">
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
                   <Text
-                    className={`text-lg font-semibold ${
-                      isDarkMode ? "text-gray-100" : "text-gray-800"
-                    }`}
+                    style={{
+                      fontSize: 18,
+                      fontWeight: "600",
+                      color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                    }}
                   >
-                    Today's Action Items
+                    Today&apos;s Action Items
                   </Text>
                 </View>
                 {todaysItems.length === 0 ? (
                   <Text
-                    className={`text-sm ${
-                      isDarkMode ? "text-gray-400" : "text-gray-600"
-                    }`}
+                    style={{
+                      fontSize: 14,
+                      color: isDarkMode ? "#9ca3af" : "#6b7280",
+                    }}
                   >
                     No scheduled items for today.
                   </Text>
                 ) : (
-                  (showAllTodayItems
-                    ? todaysItems
-                    : todaysItems.slice(0, 3)
-                  ).map((it) => (
+                  (showAllTodayItems ? todaysItems : todaysItems.slice(0, 3)).map((it) => (
                     <View
                       key={it.id}
-                      className="flex-row items-center justify-between mb-3"
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 16,
+                        paddingVertical: 4,
+                      }}
                     >
-                      <View className="flex-row items-center flex-1">
+                      <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
                         <TouchableOpacity
                           onPress={() => toggleItemCompleted(it.id)}
-                          className={`w-5 h-5 rounded border mr-3 items-center justify-center ${
-                            isDarkMode ? "border-gray-600" : "border-gray-300"
-                          }`}
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 4,
+                            borderWidth: 2,
+                            borderColor: isDarkMode ? "#4b5563" : "#d1d5db",
+                            marginRight: 12,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: completedItems.has(it.id)
+                              ? isDarkMode
+                                ? "#10b981"
+                                : "#059669"
+                              : "transparent",
+                          }}
+                          activeOpacity={0.7}
                         >
                           {completedItems.has(it.id) && (
-                            <View
-                              className={`w-3 h-3 rounded ${
-                                isDarkMode ? "bg-emerald-500" : "bg-emerald-600"
-                              }`}
-                            />
+                            <Text style={{ color: "white", fontSize: 16, fontWeight: "bold" }}>✓</Text>
                           )}
                         </TouchableOpacity>
-                        <View className="flex-1">
+                        <View style={{ flex: 1 }}>
                           <Text
-                            className={`text-sm ${
-                              completedItems.has(it.id)
+                            style={{
+                              fontSize: 14,
+                              fontWeight: "500",
+                              color: completedItems.has(it.id)
                                 ? isDarkMode
-                                  ? "text-gray-500 line-through"
-                                  : "text-gray-500 line-through"
+                                  ? "#6b7280"
+                                  : "#6b7280"
                                 : isDarkMode
-                                ? "text-gray-100"
-                                : "text-gray-800"
-                            }`}
+                                ? "#f3f4f6"
+                                : "#1f2937",
+                              textDecorationLine: completedItems.has(it.id) ? "line-through" : "none",
+                            }}
                           >
                             {it.title}
                           </Text>
                           {it.goalTitle && (
                             <Text
-                              className={`text-xs ${
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                              }`}
+                              style={{
+                                fontSize: 12,
+                                color: isDarkMode ? "#9ca3af" : "#6b7280",
+                                marginTop: 2,
+                              }}
                             >
                               {it.goalTitle}
                             </Text>
                           )}
                         </View>
                       </View>
-                      <View className="items-end ml-3">
+                      <View style={{ alignItems: "flex-end", marginLeft: 12 }}>
                         <Text
-                          className={`text-xs font-medium ${
-                            isDarkMode ? "text-gray-400" : "text-gray-600"
-                          }`}
+                          style={{
+                            fontSize: 12,
+                            fontWeight: "500",
+                            color: isDarkMode ? "#9ca3af" : "#6b7280",
+                          }}
                         >
                           {it.start_time && it.end_time
-                            ? `${formatTimeHM(it.start_time)} - ${formatTimeHM(
-                                it.end_time
-                              )}`
-                            : formatTimeHM(it.start_time) ||
-                              formatTimeHM(it.end_time) ||
-                              ""}
+                            ? `${formatTimeHM(it.start_time)} - ${formatTimeHM(it.end_time)}`
+                            : formatTimeHM(it.start_time) || formatTimeHM(it.end_time) || ""}
                         </Text>
                       </View>
                     </View>
@@ -1307,90 +1176,148 @@ export default function MainDashboard() {
                 {todaysItems.length > 3 && (
                   <TouchableOpacity
                     onPress={() => setShowAllTodayItems((v) => !v)}
-                    className="mt-1 self-start px-3 py-1 rounded-full"
                     style={{
+                      marginTop: 8,
+                      alignSelf: "flex-start",
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 20,
                       backgroundColor: isDarkMode ? "#064e3b" : "#e6f4f1",
                     }}
+                    activeOpacity={0.7}
                   >
                     <Text
-                      className="text-xs font-medium"
-                      style={{ color: isDarkMode ? "#34d399" : "#114131" }}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "600",
+                        color: isDarkMode ? "#34d399" : "#114131",
+                      }}
                     >
-                      {showAllTodayItems
-                        ? "Show less"
-                        : `Show all (${todaysItems.length})`}
+                      {showAllTodayItems ? "Show less" : `Show all (${todaysItems.length})`}
                     </Text>
                   </TouchableOpacity>
                 )}
               </View>
-            </Card>
+            </Tooltip>
 
             {/* Removed Today's Tasks card */}
 
             {/* Weekly Goals Summary (from goals endpoint) */}
-            <Card className="border-0">
+            <Tooltip
+              key={`weekly-goals-tooltip-${showWalkthrough && walkthroughStep === 3}`}
+              isVisible={showWalkthrough && walkthroughStep === 3}
+              content={renderTooltipContent(3)}
+              placement="top"
+              onClose={handleSkip}
+              backgroundColor="rgba(0,0,0,0.95)"
+              showChildInTooltip={true}
+              allowChildInteraction={false}
+              closeOnChildInteraction={false}
+              closeOnContentInteraction={false}
+              childContentSpacing={16}
+              displayInsets={{ top: 50, bottom: 50, left: 20, right: 20 }}
+              useReactNativeModal={true}
+              childrenWrapperStyle={{
+                backgroundColor: "transparent",
+                opacity: 1,
+                flex: 1,
+              }}
+              contentStyle={{
+                backgroundColor: "#1f2937",
+                borderRadius: 16,
+                borderWidth: 2,
+                borderColor: "#059669",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.5,
+                shadowRadius: 16,
+                elevation: 16,
+                maxWidth: 360,
+              }}
+            >
               <View
-                className={`p-4 rounded-xl ${
-                  isDarkMode ? "bg-gray-800" : "bg-white"
-                }`}
+                style={{
+                  backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 16,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isDarkMode ? 0.3 : 0.1,
+                  shadowRadius: 4,
+                  elevation: 3,
+                }}
               >
-                <View className="flex-row items-center justify-between mb-3">
-                  <View className="flex-row items-center">
-                    <Target
-                      size={20}
-                      color={isDarkMode ? "#34d399" : "#114131"}
-                      className="mr-2"
-                    />
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 16,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <View style={{ marginRight: 8 }}>
+                      <Target size={20} color={isDarkMode ? "#34d399" : "#114131"} />
+                    </View>
                     <Text
-                      className={`text-lg font-semibold ${
-                        isDarkMode ? "text-gray-100" : "text-gray-800"
-                      }`}
+                      style={{
+                        fontSize: 18,
+                        fontWeight: "600",
+                        color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                      }}
                     >
                       Weekly Goals
                     </Text>
                   </View>
-                  <TouchableOpacity
-                    className="px-3 py-1 rounded-full"
+                  <View
                     style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 4,
+                      borderRadius: 20,
                       backgroundColor: isDarkMode ? "#064e3b" : "#e6f4f1",
                     }}
                   >
                     <Text
-                      className="text-xs font-medium"
                       style={{
+                        fontSize: 12,
+                        fontWeight: "600",
                         color: isDarkMode ? "#34d399" : "#114131",
                       }}
                     >
-                      {`${
-                        (goals || []).filter((g: any) => g.completed).length
-                      }/${(goals || []).length}`}
+                      {`${(goals || []).filter((g: any) => g.completed).length}/${(goals || []).length}`}
                     </Text>
-                  </TouchableOpacity>
+                  </View>
                 </View>
                 {(goals || []).length === 0 ? (
                   <Text
-                    className={`text-sm ${
-                      isDarkMode ? "text-gray-400" : "text-gray-600"
-                    }`}
+                    style={{
+                      fontSize: 14,
+                      color: isDarkMode ? "#9ca3af" : "#6b7280",
+                    }}
                   >
                     No goals yet.
                   </Text>
                 ) : (
-                  <View className="space-y-3">
+                  <View>
                     {(goals as any[]).slice(0, 5).map((g: any) => {
-                      const completionPercentage = getGoalCompletionPercentage(
-                        g.id
-                      );
+                      const completionPercentage = getGoalCompletionPercentage(g.id);
                       return (
                         <View
                           key={g.id}
-                          className="flex-row items-center justify-between"
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: 16,
+                            paddingVertical: 4,
+                          }}
                         >
-                          <View className="flex-row items-center flex-1">
+                          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
                             {/* Circular Progress Ring */}
-                            <View className="mr-3">
+                            <View style={{ marginRight: 12 }}>
                               <CircularProgressRing
-                                size={40}
+                                size={44}
                                 strokeWidth={3}
                                 progress={completionPercentage}
                                 color={
@@ -1400,35 +1327,38 @@ export default function MainDashboard() {
                                     ? "#f59e0b" // Yellow for medium completion
                                     : "#ef4444" // Red for low completion
                                 }
-                                backgroundColor={
-                                  isDarkMode ? "#374151" : "#e5e7eb"
-                                }
+                                backgroundColor={isDarkMode ? "#374151" : "#e5e7eb"}
                                 showPercentage={false}
                                 textColor={isDarkMode ? "#d1d5db" : "#374151"}
                               />
                             </View>
-                            <View className="flex-1">
+                            <View style={{ flex: 1 }}>
                               <Text
-                                className={`text-sm font-medium ${
-                                  isDarkMode ? "text-gray-200" : "text-gray-800"
-                                }`}
+                                style={{
+                                  fontSize: 14,
+                                  fontWeight: "500",
+                                  color: isDarkMode ? "#e5e7eb" : "#1f2937",
+                                  marginBottom: 2,
+                                }}
                               >
                                 {g.title}
                               </Text>
                               <Text
-                                className={`text-xs ${
-                                  isDarkMode ? "text-gray-400" : "text-gray-600"
-                                }`}
+                                style={{
+                                  fontSize: 12,
+                                  color: isDarkMode ? "#9ca3af" : "#6b7280",
+                                }}
                               >
-                                {completionPercentage.toFixed(0)}% completed
-                                this week
+                                {completionPercentage.toFixed(0)}% completed this week
                               </Text>
                             </View>
                           </View>
-                          <View className="items-end">
+                          <View style={{ alignItems: "flex-end" }}>
                             <View
-                              className="w-3 h-3 rounded-full"
                               style={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: 6,
                                 backgroundColor: g.completed
                                   ? isDarkMode
                                     ? "#34d399"
@@ -1439,9 +1369,11 @@ export default function MainDashboard() {
                               }}
                             />
                             <Text
-                              className={`text-xs mt-1 ${
-                                isDarkMode ? "text-gray-400" : "text-gray-500"
-                              }`}
+                              style={{
+                                fontSize: 11,
+                                marginTop: 4,
+                                color: isDarkMode ? "#9ca3af" : "#6b7280",
+                              }}
                             >
                               {g.completed ? "Done" : "Active"}
                             </Text>
@@ -1452,15 +1384,20 @@ export default function MainDashboard() {
                   </View>
                 )}
                 <TouchableOpacity
-                  className="mt-3 p-2 rounded-lg"
                   style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 12,
                     backgroundColor: isDarkMode ? "#064e3b" : "#e6f4f1",
                   }}
                   onPress={() => router.push("./goals")}
+                  activeOpacity={0.7}
                 >
                   <Text
-                    className="text-center text-sm font-medium"
                     style={{
+                      textAlign: "center",
+                      fontSize: 14,
+                      fontWeight: "600",
                       color: isDarkMode ? "#34d399" : "#114131",
                     }}
                   >
@@ -1468,32 +1405,44 @@ export default function MainDashboard() {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </Card>
+            </Tooltip>
 
             {/* Recent Insights */}
-            <Card className="border-0">
-              <View
-                className={`p-4 rounded-lg ${
-                  isDarkMode ? "bg-emerald-900/70" : "bg-emerald-100"
-                }`}
+            <View
+              style={{
+                padding: 16,
+                borderRadius: 12,
+                backgroundColor: isDarkMode
+                  ? "rgba(6, 78, 59, 0.7)" // emerald-900 with opacity
+                  : "#dcfce7", // emerald-100
+                marginBottom: 16,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: isDarkMode ? 0.2 : 0.05,
+                shadowRadius: 2,
+                elevation: 2,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "500",
+                  marginBottom: 4,
+                  color: isDarkMode ? "#d1fae5" : "#14532d",
+                }}
               >
-                <Text
-                  className={`text-sm font-medium mb-1 ${
-                    isDarkMode ? "text-emerald-100" : "text-emerald-900"
-                  }`}
-                >
-                  Great progress on your sleep schedule! 🌙
-                </Text>
-                <Text
-                  className={`text-xs ${
-                    isDarkMode ? "text-emerald-200" : "text-emerald-800"
-                  }`}
-                >
-                  You've maintained 7+ hours of sleep for 5 consecutive days.
-                  Keep it up!
-                </Text>
-              </View>
-            </Card>
+                Great progress on your sleep schedule! 🌙
+              </Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: isDarkMode ? "#a7f3d0" : "#166534",
+                  lineHeight: 16,
+                }}
+              >
+                You&apos;ve maintained 7+ hours of sleep for 5 consecutive days. Keep it up!
+              </Text>
+            </View>
           </View>
         </ScrollView>
       </LinearGradient>
@@ -1517,10 +1466,7 @@ type StreakCalendarProps = {
  * Expects real completion data via AsyncStorage or props if available.
  */
 
-export function StreakCalendar({
-  isDarkMode,
-  dailyCompletion,
-}: StreakCalendarProps) {
+export function StreakCalendar({ isDarkMode, dailyCompletion }: StreakCalendarProps) {
   // Map dailyCompletion (YYYY-MM-DD) to day number for current month
   const today = new Date();
   const year = today.getFullYear();
@@ -1623,10 +1569,7 @@ export function StreakCalendar({
           {week.map((cell, colIdx) => {
             const count = cell.day ? completedPerDay[cell.day] ?? 0 : 0;
             const isToday =
-              cell.day &&
-              today.getDate() === cell.day &&
-              today.getMonth() === month &&
-              today.getFullYear() === year;
+              cell.day && today.getDate() === cell.day && today.getMonth() === month && today.getFullYear() === year;
             return (
               <View
                 key={colIdx}
@@ -1647,16 +1590,8 @@ export function StreakCalendar({
                       justifyContent: "center",
                       backgroundColor: getDayColor(count),
                       borderWidth: isToday ? 2.5 : 1.5,
-                      borderColor: isToday
-                        ? isDarkMode
-                          ? "#38bdf8"
-                          : "#0ea5e9"
-                        : getBorderColor(count),
-                      shadowColor: isToday
-                        ? isDarkMode
-                          ? "#38bdf8"
-                          : "#0ea5e9"
-                        : undefined,
+                      borderColor: isToday ? (isDarkMode ? "#38bdf8" : "#0ea5e9") : getBorderColor(count),
+                      shadowColor: isToday ? (isDarkMode ? "#38bdf8" : "#0ea5e9") : undefined,
                       shadowOpacity: isToday ? 0.5 : 0,
                       shadowRadius: isToday ? 6 : 0,
                       elevation: isToday ? 4 : 0,

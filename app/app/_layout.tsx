@@ -1,9 +1,9 @@
 import { Stack } from "expo-router";
+import { Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { View, Text } from "react-native";
-import { useFonts } from "../hooks/useFonts";
-import { ThemeProvider } from "../context/ThemeContext";
 import { AuthProvider } from "../context/AuthContext";
+import { ThemeProvider } from "../context/ThemeContext";
+import { useFonts } from "../hooks/useFonts";
 import "./global.css";
 
 export default function RootLayout() {
@@ -18,7 +18,7 @@ export default function RootLayout() {
               flex: 1,
               justifyContent: "center",
               alignItems: "center",
-              backgroundColor: "#f0fdf4",
+              // backgroundColor: "#f0fdf4",
             }}
           >
             <Text style={{ color: "#059669", fontSize: 18 }}>Loading...</Text>
