@@ -9,8 +9,7 @@ db = get_db()
 @auth_router.post("/register")
 def register(user: UserRegister):
     users = db["users"]
-    if users.find_one({"email": user.email}):
-        raise HTTPException(status_code=400, detail="Email already registered")
+    existing_user = users.find_one({"email": user.email})
     otp = generate_otp()
     user_dict = {
         "name": user.name,
@@ -18,9 +17,21 @@ def register(user: UserRegister):
         "otp": otp,
         "verified": False
     }
-    users.insert_one(user_dict)
-    send_email(user.email, "Your OTP for Registration", f"Your OTP is: {otp}")
-    return {"message": "OTP sent to email. Please verify to complete registration."}
+    send_otp = False
+    if existing_user:
+        if not existing_user.get("verified", False):
+            users.update_one({"email": user.email}, {"$set": user_dict})
+            send_otp = True
+        else:
+            # Avoid email enumeration by returning a generic response
+            send_otp = False
+    else:
+        users.insert_one(user_dict)
+        send_otp = True
+
+    if send_otp:
+        send_email(user.email, "Your OTP for Registration", f"Your OTP is: {otp}")
+    return {"message": "If an account exists for this email, an OTP has been sent. Please verify to complete registration."}
 
 @auth_router.post("/login")
 def login(user: UserLogin):

@@ -6,7 +6,7 @@ export default {
     slug: "app",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
+    icon: "./assets/images/evra.png",
     scheme: "app",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
