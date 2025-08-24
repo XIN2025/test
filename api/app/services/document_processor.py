@@ -252,7 +252,7 @@ class DocumentProcessor:
         
         return entities
 
-def _store_in_graph(self, entities: List[Dict], relationships: List[Dict], user_email: str) -> tuple[list[str], list[str]]:
+    def _store_in_graph(self, entities: List[Dict], relationships: List[Dict], user_email: str) -> Tuple[List[str], List[str]]:
         """Store entities and relationships in the graph database and return created node/relationship IDs"""
         created_nodes = []
         created_relationships = []

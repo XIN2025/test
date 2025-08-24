@@ -67,14 +67,8 @@ async def upload_document(
         logger.info(f"Read {len(content)} bytes from file {file.filename}")
         
         # Create initial Mongo record immediately
-document_manager = get_document_manager()
-loop = asyncio.get_event_loop()
-await loop.run_in_executor(
-    None,
-    lambda: document_manager.create_document_record(
-        upload_id, file.filename, len(content), file_extension, email
-    ),
-)
+        document_manager = get_document_manager()
+        document_manager.create_document_record(upload_id, file.filename, len(content), file_extension, email)
         
         # Start processing in a separate task to avoid blocking
         asyncio.create_task(
@@ -224,7 +218,7 @@ async def delete_uploaded_file(upload_id: str):
     return {"success": True, "message": "File and associated graph data deleted"}
 
 @upload_router.get("/documents")
-def get_documents(email: str = Query(..., description="User email")):
+async def get_documents(email: str = Query(..., description="User email")):
     """Get all documents for a user"""
     try:
         document_manager = get_document_manager()
@@ -239,7 +233,7 @@ def get_documents(email: str = Query(..., description="User email")):
         raise HTTPException(status_code=500, detail=f"Failed to get documents: {str(e)}")
 
 @upload_router.get("/documents/{upload_id}")
-def get_document(upload_id: str):
+async def get_document(upload_id: str):
     """Get a specific document by upload ID"""
     try:
         document_manager = get_document_manager()
@@ -257,7 +251,7 @@ def get_document(upload_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to get document: {str(e)}")
 
 @upload_router.get("/sync-status")
-def get_sync_status():
+async def get_sync_status():
     """Get synchronization status between MongoDB and Graph DB"""
     try:
         document_manager = get_document_manager()
@@ -271,7 +265,7 @@ def get_sync_status():
         raise HTTPException(status_code=500, detail=f"Failed to get sync status: {str(e)}")
 
 @upload_router.post("/sync")
-def manual_sync():
+async def manual_sync():
     """Manually trigger MongoDB-Graph DB synchronization"""
     try:
         document_manager = get_document_manager()

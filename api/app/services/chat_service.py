@@ -9,6 +9,7 @@ import logging
 from ..config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 from .graph_db import get_graph_db
 from .vector_store import get_vector_store
+from .prompts import ChatPrompts
 
 logger = logging.getLogger(__name__)
 
@@ -67,16 +68,7 @@ class ChatService:
         if isinstance(state, dict):
             state = ChatState(**state)
         
-        classification_prompt = f"""
-        Classify the following query to determine if it needs information retrieval or just conversational response.
-        
-        Query: {state.query}
-        
-        If the query is asking for specific information, facts, or knowledge that might be in a knowledge base, respond with "rag".
-        If the query is just casual conversation, greetings, or general chat, respond with "chat".
-        
-        Respond with only "rag" or "chat".
-        """
+        classification_prompt = ChatPrompts.get_query_classification_prompt(state.query)
         
         print(f"🤖 [QUERY CLASSIFIER] Step 1: Sending classification prompt to LLM...")
         print(f"🤖 [QUERY CLASSIFIER] Step 1: Prompt: {classification_prompt}")
@@ -208,45 +200,63 @@ class ChatService:
         print(f"💬 [RESPONSE GENERATION] Step 1: Context available: {len(state.context) if state.context else 0}")
         
         if state.should_use_rag and state.context:
-            # Generate response with context
-            print(f"💬 [RESPONSE GENERATION] Step 2: Using RAG with context...")
-            response_prompt = f"""
-            You are a helpful AI assistant. Answer the user's question based on the provided context.
+            # Generate response with context using two-step process
+            print(f"💬 [RESPONSE GENERATION] Step 2: Using RAG with context (two-step process)...")
             
-            Context:
-            {chr(10).join(state.context)}
+            # Step 2a: Generate initial RAG response
+            print(f"💬 [RESPONSE GENERATION] Step 2a: Generating initial RAG response...")
+            initial_response_prompt = ChatPrompts.get_rag_response_prompt(state.context, state.query)
             
-            User Question: {state.query}
-            
-            Provide a helpful and accurate response based on the context. If the context doesn't contain enough information to answer the question, say so politely.
-            """
+            try:
+                print(f"💬 [RESPONSE GENERATION] Step 2a: Calling LLM for initial response...")
+                initial_response = self.llm.invoke([HumanMessage(content=initial_response_prompt)])
+                initial_response_text = initial_response.content.strip()
+                print(f"💬 [RESPONSE GENERATION] Step 2a: ✅ Initial response received: {initial_response_text[:100]}...")
+                
+                # Step 2b: Enhance with reasoning
+                print(f"💬 [RESPONSE GENERATION] Step 2b: Enhancing response with reasoning...")
+                reasoning_prompt = ChatPrompts.get_rag_reasoning_prompt(initial_response_text, state.query, state.context)
+                
+                print(f"💬 [RESPONSE GENERATION] Step 2b: Calling LLM for enhanced response...")
+                enhanced_response = self.llm.invoke([HumanMessage(content=reasoning_prompt)])
+                state.response = enhanced_response.content.strip()
+                print(f"💬 [RESPONSE GENERATION] Step 2b: ✅ Enhanced response received: {state.response[:100]}...")
+                
+                logger.info(f"Generated enhanced RAG response for query '{state.query}'")
+                
+            except Exception as e:
+                print(f"❌ [RESPONSE GENERATION] ❌ Error in RAG response generation: {e}")
+                print(f"❌ [RESPONSE GENERATION] ❌ Error type: {type(e).__name__}")
+                import traceback
+                print(f"❌ [RESPONSE GENERATION] ❌ Full traceback:")
+                print(traceback.format_exc())
+                
+                logger.error(f"Error in RAG response generation: {e}")
+                state.response = "I apologize, but I'm having trouble processing your request right now. Please try again later."
+                
         else:
             # Generate conversational response
             print(f"💬 [RESPONSE GENERATION] Step 2: Using conversational response...")
-            response_prompt = f"""
-            You are a friendly AI assistant. The user said: {state.query}
+            response_prompt = ChatPrompts.get_conversational_response_prompt(state.query)
             
-            Provide a natural, conversational response. Be helpful and engaging.
-            """
-        
-        print(f"💬 [RESPONSE GENERATION] Step 3: Sending prompt to LLM...")
-        print(f"💬 [RESPONSE GENERATION] Step 3: Prompt: {response_prompt[:200]}...")
-        
-        try:
-            print(f"💬 [RESPONSE GENERATION] Step 4: Calling LLM...")
-            response = self.llm.invoke([HumanMessage(content=response_prompt)])
-            state.response = response.content.strip()
-            print(f"💬 [RESPONSE GENERATION] Step 4: ✅ LLM response received: {state.response[:100]}...")
-            logger.info(f"Generated response for query '{state.query}'")
-        except Exception as e:
-            print(f"❌ [RESPONSE GENERATION] ❌ Error generating response: {e}")
-            print(f"❌ [RESPONSE GENERATION] ❌ Error type: {type(e).__name__}")
-            import traceback
-            print(f"❌ [RESPONSE GENERATION] ❌ Full traceback:")
-            print(traceback.format_exc())
+            print(f"💬 [RESPONSE GENERATION] Step 3: Sending prompt to LLM...")
+            print(f"💬 [RESPONSE GENERATION] Step 3: Prompt: {response_prompt[:200]}...")
             
-            logger.error(f"Error generating response: {e}")
-            state.response = "I apologize, but I'm having trouble processing your request right now. Please try again later."
+            try:
+                print(f"💬 [RESPONSE GENERATION] Step 4: Calling LLM...")
+                response = self.llm.invoke([HumanMessage(content=response_prompt)])
+                state.response = response.content.strip()
+                print(f"💬 [RESPONSE GENERATION] Step 4: ✅ LLM response received: {state.response[:100]}...")
+                logger.info(f"Generated conversational response for query '{state.query}'")
+            except Exception as e:
+                print(f"❌ [RESPONSE GENERATION] ❌ Error generating response: {e}")
+                print(f"❌ [RESPONSE GENERATION] ❌ Error type: {type(e).__name__}")
+                import traceback
+                print(f"❌ [RESPONSE GENERATION] ❌ Full traceback:")
+                print(traceback.format_exc())
+                
+                logger.error(f"Error generating response: {e}")
+                state.response = "I apologize, but I'm having trouble processing your request right now. Please try again later."
         
         print(f"💬 [RESPONSE GENERATION] ✅ Final response: {state.response[:100]}...")
         return asdict(state)
@@ -256,20 +266,7 @@ class ChatService:
         if isinstance(state, dict):
             state = ChatState(**state)
         
-        follow_up_prompt = f"""
-        Based on the user's question and your response, generate 3-4 relevant follow-up questions that the user might want to ask next.
-        
-        User Question: {state.query}
-        Your Response: {state.response}
-        
-        Generate follow-up questions that are:
-        1. Relevant to the topic
-        2. Natural conversation flow
-        3. Helpful for the user
-        4. Different from each other
-        
-        Return only the questions, one per line, without numbering or formatting.
-        """
+        follow_up_prompt = ChatPrompts.get_follow_up_questions_prompt(state.query, state.response)
         
         try:
             response = self.llm.invoke([HumanMessage(content=follow_up_prompt)])

@@ -115,16 +115,16 @@ class DocumentManager:
             graph_nodes = document.get("graph_nodes", [])
             graph_relationships = document.get("graph_relationships", [])
             
-            # Delete from graph database
+            # Delete from graph database (scoped by user_email to avoid cross-tenant deletions)
+            user_email = document.get("user_email")
             for node_id in graph_nodes:
                 try:
                     # Delete all relationships connected to this node first
-                    self._delete_node_relationships(node_id)
+                    self._delete_node_relationships(node_id, user_email)
                     # Then delete the node itself
-                    self._delete_node_completely(node_id)
+                    self._delete_node_completely(node_id, user_email)
                 except Exception as e:
                     logger.error(f"Error deleting graph node {node_id}: {e}")
-            
             # Delete from MongoDB
             result = self.files_collection.delete_one({"upload_id": upload_id})
             
@@ -247,31 +247,40 @@ class DocumentManager:
             logger.error(f"Error getting sync status: {e}")
             return {"error": str(e)}
     
-    def _delete_node_relationships(self, node_name: str):
-        """Delete all relationships connected to a specific node"""
-        try:
-            # Delete all incoming and outgoing relationships
-            cypher_query = """
-            MATCH (n {name: $node_name})-[r]-()
-            DELETE r
-            """
-            self.graph_db.driver.execute_query(cypher_query, node_name=node_name)
-            logger.info(f"Deleted all relationships for node: {node_name}")
-        except Exception as e:
-            logger.error(f"Error deleting relationships for node {node_name}: {e}")
-    
-    def _delete_node_completely(self, node_name: str):
-        """Delete a node completely from the graph database"""
-        try:
-            # Delete the node itself (relationships should already be deleted)
-            cypher_query = """
-            MATCH (n {name: $node_name})
-            DELETE n
-            """
-            self.graph_db.driver.execute_query(cypher_query, node_name=node_name)
-            logger.info(f"Deleted node completely: {node_name}")
-        except Exception as e:
-            logger.error(f"Error deleting node {node_name}: {e}")
+def _delete_node_relationships(self, node_name: str, user_email: Optional[str] = None):
+    """Delete all relationships connected to a specific node. If user_email is provided, scope deletion to that user."""
+    try:
+        cypher_query = """
+        MATCH (n {name: $node_name})
+        WHERE $user_email IS NULL OR n.user_email = $user_email
+        MATCH (n)-[r]-()
+        DELETE r
+        """
+        self.graph_db.driver.execute_query(
+            cypher_query,
+            node_name=node_name,
+            user_email=user_email,
+        )
+        logger.info(f"Deleted all relationships for node: {node_name} (user scope: {user_email is not None})")
+    except Exception as e:
+        logger.error(f"Error deleting relationships for node {node_name}: {e}")
+
+def _delete_node_completely(self, node_name: str, user_email: Optional[str] = None):
+    """Delete a node completely from the graph database. If user_email is provided, scope deletion to that user."""
+    try:
+        cypher_query = """
+        MATCH (n {name: $node_name})
+        WHERE $user_email IS NULL OR n.user_email = $user_email
+        DELETE n
+        """
+        self.graph_db.driver.execute_query(
+            cypher_query,
+            node_name=node_name,
+            user_email=user_email,
+        )
+        logger.info(f"Deleted node completely: {node_name} (user scope: {user_email is not None})")
+    except Exception as e:
+        logger.error(f"Error deleting node {node_name}: {e}")
 
 # Global instance
 document_manager = None
