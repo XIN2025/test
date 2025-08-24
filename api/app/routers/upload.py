@@ -8,6 +8,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from ..services.document_processor import DocumentProcessor
 from ..services.progress_tracker import ProgressTracker
+from ..services.document_manager import get_document_manager
 from ..config import MAX_FILE_SIZE
 from ..services.db import get_db
 from ..services.graph_db import get_graph_db
@@ -66,7 +67,14 @@ async def upload_document(
         logger.info(f"Read {len(content)} bytes from file {file.filename}")
         
         # Create initial Mongo record immediately
-        await create_initial_file_record(upload_id, file.filename, len(content), file_extension, email)
+document_manager = get_document_manager()
+loop = asyncio.get_event_loop()
+await loop.run_in_executor(
+    None,
+    lambda: document_manager.create_document_record(
+        upload_id, file.filename, len(content), file_extension, email
+    ),
+)
         
         # Start processing in a separate task to avoid blocking
         asyncio.create_task(
@@ -215,31 +223,69 @@ async def delete_uploaded_file(upload_id: str):
 
     return {"success": True, "message": "File and associated graph data deleted"}
 
-async def create_initial_file_record(upload_id: str, filename: str, size: int, extension: str, email: str):
-    """Create initial file record in MongoDB asynchronously"""
+@upload_router.get("/documents")
+def get_documents(email: str = Query(..., description="User email")):
+    """Get all documents for a user"""
     try:
-        db = get_db()
-        files_col = db.get_collection("uploaded_files")
-        # Consider using an async MongoDB client (e.g., Motor) for true async safety
-        # Or ensure that the DB client is thread-safe before using in run_in_executor
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            executor,
-            lambda: files_col.insert_one({
-                "upload_id": upload_id,
-                "filename": filename,
-                "size": size,
-                "extension": extension,
-                "status": "processing",
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow(),
-                "entities": [],
-                "relationships": [],
-                "user_email": email
-            })
-        )
+        document_manager = get_document_manager()
+        documents = document_manager.get_all_documents(email)
+        return {
+            "success": True,
+            "documents": documents,
+            "count": len(documents)
+        }
     except Exception as e:
-        logger.error(f"Error creating initial file record: {e}")
+        logger.error(f"Error getting documents: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get documents: {str(e)}")
+
+@upload_router.get("/documents/{upload_id}")
+def get_document(upload_id: str):
+    """Get a specific document by upload ID"""
+    try:
+        document_manager = get_document_manager()
+        document = document_manager.get_document_by_upload_id(upload_id)
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        return {
+            "success": True,
+            "document": document
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting document {upload_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get document: {str(e)}")
+
+@upload_router.get("/sync-status")
+def get_sync_status():
+    """Get synchronization status between MongoDB and Graph DB"""
+    try:
+        document_manager = get_document_manager()
+        status = document_manager.get_sync_status()
+        return {
+            "success": True,
+            "sync_status": status
+        }
+    except Exception as e:
+        logger.error(f"Error getting sync status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get sync status: {str(e)}")
+
+@upload_router.post("/sync")
+def manual_sync():
+    """Manually trigger MongoDB-Graph DB synchronization"""
+    try:
+        document_manager = get_document_manager()
+        sync_result = document_manager.sync_graph_with_mongodb()
+        return {
+            "success": True,
+            "message": "Manual sync completed",
+            "sync_result": sync_result
+        }
+    except Exception as e:
+        logger.error(f"Error during manual sync: {e}")
+        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+
+
 
 async def run_document_processing_async(upload_id: str, filename: str, content: bytes, file_extension: str, user_email: str):
     """Run document processing in thread pool to avoid blocking the event loop"""
@@ -288,18 +334,13 @@ def process_document_sync(upload_id: str, filename: str, content: bytes, file_ex
 
         entities = result.get('entities', [])
         relationships = result.get('relationships', [])
+        created_nodes = result.get('created_nodes', [])
+        created_relationships = result.get('created_relationships', [])
 
-        # Update MongoDB record
-        db = get_db()
-        col = db.get_collection("uploaded_files")
-        col.update_one(
-            {"upload_id": upload_id},
-            {"$set": {
-                "status": "completed",
-                "updated_at": datetime.utcnow(),
-                "entities": entities,
-                "relationships": relationships,
-            }}
+        # Update MongoDB record using document manager
+        document_manager = get_document_manager()
+        document_manager.update_document_processing_result(
+            upload_id, entities, relationships, created_nodes, created_relationships
         )
 
         # Final progress update

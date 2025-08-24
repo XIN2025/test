@@ -64,7 +64,7 @@ class DocumentProcessor:
                 time.sleep(0.5)
             
             # Store in graph database with user email
-            self._store_in_graph(entities, relationships, user_email)
+            created_nodes, created_relationships = self._store_in_graph(entities, relationships, user_email)
             
             # Update vector store
             self._update_vector_store(entities)
@@ -80,7 +80,9 @@ class DocumentProcessor:
                 "entities_count": len(entities),
                 "relationships_count": len(relationships),
                 "entities": entities,
-                "relationships": relationships
+                "relationships": relationships,
+                "created_nodes": created_nodes,
+                "created_relationships": created_relationships
             }
         except Exception as e:
             logger.error(f"Error processing text file {filename}: {e}")
@@ -250,8 +252,11 @@ class DocumentProcessor:
         
         return entities
 
-    def _store_in_graph(self, entities: List[Dict], relationships: List[Dict], user_email: str):
-        """Store entities and relationships in the graph database"""
+def _store_in_graph(self, entities: List[Dict], relationships: List[Dict], user_email: str) -> tuple[list[str], list[str]]:
+        """Store entities and relationships in the graph database and return created node/relationship IDs"""
+        created_nodes = []
+        created_relationships = []
+        
         # Store entities
         for entity in entities:
             try:
@@ -264,6 +269,7 @@ class DocumentProcessor:
                     name=entity.get('name'),
                     properties=properties
                 )
+                created_nodes.append(entity.get('name'))
             except Exception as e:
                 logger.error(f"Error storing entity {entity.get('name')}: {e}")
         
@@ -280,8 +286,13 @@ class DocumentProcessor:
                     to_entity=rel.get('to'),
                     properties=properties
                 )
+                # Create a unique identifier for the relationship
+                rel_id = f"{rel.get('from')}_{rel.get('type', 'RELATED_TO')}_{rel.get('to')}"
+                created_relationships.append(rel_id)
             except Exception as e:
                 logger.error(f"Error storing relationship {rel.get('from')} -> {rel.get('to')}: {e}")
+        
+        return created_nodes, created_relationships
 
     def _update_vector_store(self, entities: List[Dict]):
         """Update the vector store with new entities"""
