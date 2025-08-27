@@ -31,17 +31,8 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <ActivityIndicator
-          size="large"
-          color={isDarkMode ? "#34d399" : "#059669"}
-        />
-        <Text
-          className={`mt-4 text-lg ${
-            isDarkMode ? "text-gray-100" : "text-gray-800"
-          }`}
-        >
-          Loading...
-        </Text>
+        <ActivityIndicator size="large" color={isDarkMode ? "#34d399" : "#059669"} />
+        <Text className={`mt-4 text-lg ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}>Loading...</Text>
       </LinearGradient>
     );
   }

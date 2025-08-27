@@ -954,7 +954,7 @@ export default function GoalsScreen() {
 
   const { isDarkMode } = useTheme();
 
-  // Skeleton loading component
+  // Enhanced skeleton loading component with shimmer effect
   const SkeletonGoalCard = () => (
     <View
       style={{
@@ -1032,158 +1032,139 @@ export default function GoalsScreen() {
     </View>
   );
 
-  // Show skeleton loading while initial load
-  if (loading && goals.length === 0) {
-    return (
-      <SafeAreaView style={{ flex: 1 }}>
-        <LinearGradient
-          colors={isDarkMode ? ["#111827", "#1f2937"] : ["#f0f9f6", "#e6f4f1"]}
-          style={{ flex: 1 }}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+  // Enhanced loading screen component
+  const LoadingScreen = () => (
+    <SafeAreaView>
+      {/* Fixed Header */}
+      <View>
+        <View
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: isDarkMode ? 0.3 : 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+            borderBottomWidth: 1,
+            borderBottomColor: isDarkMode ? "#374151" : "#e5e7eb",
+            backgroundColor: isDarkMode ? "#111827" : "#ffffff",
+            paddingHorizontal: 16,
+            paddingVertical: 16,
+          }}
         >
-          {/* Header */}
-          <View
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isDarkMode ? 0.3 : 0.1,
-              shadowRadius: 4,
-              elevation: 3,
-              borderBottomWidth: 1,
-              borderBottomColor: isDarkMode ? "#374151" : "#e5e7eb",
-              backgroundColor: isDarkMode ? "#111827" : "#ffffff",
-              paddingHorizontal: 16,
-              paddingVertical: 16,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-                <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginRight: 12,
-                    backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
-                  }}
-                >
-                  <Target size={22} color="#fff" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 18,
-                      fontWeight: "600",
-                      color: isDarkMode ? "#f3f4f6" : "#1f2937",
-                      marginBottom: 2,
-                    }}
-                  >
-                    Weekly Goals
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: isDarkMode ? "#9ca3af" : "#6b7280",
-                    }}
-                  >
-                    {formatDate(weekStart)} - {formatDate(weekEnd)}
-                  </Text>
-                </View>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 12,
+                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                }}
+              >
+                <Target size={22} color="#fff" />
               </View>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <TouchableOpacity
-                  onPress={openPreferences}
+              <View style={{ flex: 1 }}>
+                <Text
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
-                    marginRight: 8,
+                    fontSize: 18,
+                    fontWeight: "600",
+                    color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                    marginBottom: 2,
                   }}
-                  activeOpacity={0.7}
                 >
-                  <Star size={18} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setShowUploadModal(true)}
+                  Weekly Goals
+                </Text>
+                <Text
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
-                    marginRight: 8,
+                    fontSize: 13,
+                    color: isDarkMode ? "#9ca3af" : "#6b7280",
                   }}
-                  activeOpacity={0.7}
                 >
-                  <BookOpen size={18} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setShowAddGoal(true)}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Plus size={18} color="#fff" />
-                </TouchableOpacity>
+                  {formatDate(weekStart)} - {formatDate(weekEnd)}
+                </Text>
               </View>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TouchableOpacity
+                onPress={openPreferences}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  marginRight: 8,
+                }}
+                activeOpacity={0.7}
+              >
+                <Star size={18} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowUploadModal(true)}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  marginRight: 8,
+                }}
+                activeOpacity={0.7}
+              >
+                <BookOpen size={18} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowAddGoal(true)}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                }}
+                activeOpacity={0.7}
+              >
+                <Plus size={18} color="#fff" />
+              </TouchableOpacity>
             </View>
           </View>
+        </View>
 
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 32, paddingHorizontal: 16, paddingTop: 16 }}
-          >
-            {/* Loading indicator */}
-            <View
-              style={{
-                backgroundColor: isDarkMode ? "#1e40af" : "#dbeafe",
-                borderRadius: 12,
-                padding: 16,
-                marginBottom: 16,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <ActivityIndicator size="small" color={isDarkMode ? "#60a5fa" : "#1d4ed8"} />
-              <Text
-                style={{ color: isDarkMode ? "#93c5fd" : "#1e40af", marginLeft: 12, fontSize: 14, fontWeight: "500" }}
-              >
-                Loading your goals...
-              </Text>
-            </View>
+        {/* Scrollable Content */}
+        <ScrollView
+          style={{ height: "100%", backgroundColor: isDarkMode ? "#111827" : "#F0FDF4" }}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 16 }}>
+            {/* Skeleton cards only - no loading card to prevent height issues */}
+            <SkeletonGoalCard />
+            <SkeletonGoalCard />
+            <SkeletonGoalCard />
+            <SkeletonGoalCard />
+            <SkeletonGoalCard />
+          </View>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
+  );
 
-            {/* Skeleton cards */}
-            <SkeletonGoalCard />
-            <SkeletonGoalCard />
-            <SkeletonGoalCard />
-          </ScrollView>
-        </LinearGradient>
-      </SafeAreaView>
-    );
+  // Show enhanced loading screen while initial load
+  if (loading && goals.length === 0) {
+    return <LoadingScreen />;
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      {/* @ts-ignore - expo-linear-gradient children prop typing issue */}
-      <LinearGradient
-        colors={isDarkMode ? ["#111827", "#1f2937"] : ["#f0f9f6", "#e6f4f1"]}
-        style={{ flex: 1 }}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+    <SafeAreaView>
+      {/* Fixed Header */}
+      <View>
         {/* Header */}
         <View
           style={{
@@ -1306,6 +1287,7 @@ export default function GoalsScreen() {
               flex: 1,
               backgroundColor: "rgba(0,0,0,0.4)",
               justifyContent: "center",
+              paddingHorizontal: 16,
               alignItems: "center",
             }}
           >
@@ -1450,7 +1432,7 @@ export default function GoalsScreen() {
                 </ScrollView>
               </View>
 
-              <View className="flex-row justify-end space-x-3">
+              <View className="flex-row justify-end space-x-3 gap-2">
                 <TouchableOpacity
                   onPress={() => setShowUploadModal(false)}
                   className={`px-4 py-2 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-200"}`}
@@ -1700,6 +1682,7 @@ export default function GoalsScreen() {
           <View
             style={{
               flex: 1,
+              paddingHorizontal: 16,
               backgroundColor: "rgba(0,0,0,0.4)",
               justifyContent: "center",
               alignItems: "center",
@@ -1852,12 +1835,16 @@ export default function GoalsScreen() {
             </View>
           </View>
         </Modal>
+      </View>
 
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 32 }}
-          showsVerticalScrollIndicator={false}
-        >
+      {/* Scrollable Content */}
+      <ScrollView
+        style={{ height: "100%", backgroundColor: isDarkMode ? "#111827" : "#F0FDF4" }}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={{ paddingTop: 16, gap: 16 }}>
           <GeneratingBanner />
 
           {/* Show loading indicator while refreshing (when goals exist) */}
@@ -2077,7 +2064,7 @@ export default function GoalsScreen() {
                           {goal.title}
                         </Text>
                         {/* Circular Progress Ring */}
-                        <View style={{ marginLeft: 12 }}>
+                        <View style={{ marginLeft: 10 }}>
                           <CircularProgressRing
                             size={54}
                             strokeWidth={4}
@@ -2109,7 +2096,7 @@ export default function GoalsScreen() {
                           alignItems: "center",
                           justifyContent: "center",
                           opacity: generatingPlan ? 0.5 : 1,
-                          marginBottom: 12,
+                          marginBottom: 8,
                         }}
                         activeOpacity={0.7}
                       >
@@ -2125,16 +2112,6 @@ export default function GoalsScreen() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        marginBottom: 8,
-                        color: isDarkMode ? "#d1d5db" : "#6b7280",
-                        lineHeight: 20,
-                      }}
-                    >
-                      {goal.description}
-                    </Text>
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
                       <Text
                         style={{
@@ -2218,393 +2195,493 @@ export default function GoalsScreen() {
                 }}
               />
             )}
+          </View>
+        </View>
+      </ScrollView>
 
-            {/* Quick Actions */}
-            <View
-              style={{
-                backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
-                borderRadius: 16,
-                padding: 16,
-                marginBottom: 16,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: isDarkMode ? 0.3 : 0.1,
-                shadowRadius: 4,
-                elevation: 3,
+      {/* Add Goal Modal */}
+      {showAddGoal && (
+        <Modal
+          visible={showAddGoal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            setShowAddGoal(false);
+            setShowSuggestions(false);
+          }}
+        >
+          <KeyboardAvoidingView
+            className="flex-1"
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+          >
+            <TouchableWithoutFeedback
+              onPress={() => {
+                Keyboard.dismiss();
+                setShowAddGoal(false);
+                setShowSuggestions(false);
               }}
             >
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "600",
-                  marginBottom: 16,
-                  color: isDarkMode ? "#f3f4f6" : "#1f2937",
-                }}
-              >
-                Quick Actions
-              </Text>
-              <View>
-                <TouchableOpacity
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 14,
-                    borderRadius: 12,
-                    backgroundColor: isDarkMode ? "#374151" : "#f9fafb",
-                    marginBottom: 8,
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ marginRight: 12 }}>
-                    <Calendar size={22} color={isDarkMode ? "#34d399" : "#059669"} />
-                  </View>
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontSize: 15,
-                      fontWeight: "500",
-                      color: isDarkMode ? "#f3f4f6" : "#1f2937",
-                    }}
-                  >
-                    View Monthly Overview
-                  </Text>
-                  <ArrowRight size={18} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 14,
-                    borderRadius: 12,
-                    backgroundColor: isDarkMode ? "#374151" : "#f9fafb",
-                    marginBottom: 8,
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ marginRight: 12 }}>
-                    <TrendingUp size={22} color={isDarkMode ? "#34d399" : "#059669"} />
-                  </View>
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontSize: 15,
-                      fontWeight: "500",
-                      color: isDarkMode ? "#f3f4f6" : "#1f2937",
-                    }}
-                  >
-                    Progress Analytics
-                  </Text>
-                  <ArrowRight size={18} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 14,
-                    borderRadius: 12,
-                    backgroundColor: isDarkMode ? "#374151" : "#f9fafb",
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ marginRight: 12 }}>
-                    <Star size={22} color={isDarkMode ? "#34d399" : "#059669"} />
-                  </View>
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontSize: 15,
-                      fontWeight: "500",
-                      color: isDarkMode ? "#f3f4f6" : "#1f2937",
-                    }}
-                  >
-                    Achievement Badges
-                  </Text>
-                  <ArrowRight size={18} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
+              <View className="flex-1 bg-black bg-opacity-30 justify-center items-center">
+                <TouchableWithoutFeedback onPress={(e: any) => e.stopPropagation()}>
+                  <View className={`rounded-lg m-4 w-full max-w-md ${isDarkMode ? "bg-gray-800" : "bg-white"}`}>
+                    <ScrollView
+                      contentContainerStyle={{ flexGrow: 1 }}
+                      keyboardShouldPersistTaps="handled"
+                      showsVerticalScrollIndicator={false}
+                    >
+                      <View className="p-6">
+                        <Text
+                          className={`text-xl font-semibold mb-4 ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}
+                        >
+                          Add New Goal
+                        </Text>
 
-        {/* Add Goal Modal */}
-        {showAddGoal && (
-          <Modal
-            visible={showAddGoal}
-            transparent
-            animationType="fade"
-            onRequestClose={() => {
-              setShowAddGoal(false);
-              setShowSuggestions(false);
-            }}
-          >
-            <KeyboardAvoidingView
-              className="flex-1"
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
-              keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-            >
-              <TouchableWithoutFeedback
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setShowAddGoal(false);
-                  setShowSuggestions(false);
-                }}
-              >
-                <View className="flex-1 bg-black bg-opacity-30 justify-center items-center">
-                  <TouchableWithoutFeedback onPress={(e: any) => e.stopPropagation()}>
-                    <View className={`rounded-lg m-4 w-full max-w-md ${isDarkMode ? "bg-gray-800" : "bg-white"}`}>
-                      <ScrollView
-                        contentContainerStyle={{ flexGrow: 1 }}
-                        keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={false}
-                      >
-                        <View className="p-6">
-                          <Text
-                            className={`text-xl font-semibold mb-4 ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}
-                          >
-                            Add New Goal
+                        <TextInput
+                          placeholder="Goal title"
+                          value={formData.title}
+                          onChangeText={(text: string) => setFormData({ ...formData, title: text })}
+                          className={`rounded-lg px-3 py-2 mb-3 border ${
+                            isDarkMode
+                              ? "bg-gray-700 border-gray-600 text-gray-100"
+                              : "bg-white border-gray-300 text-gray-800"
+                          }`}
+                          placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
+                          returnKeyType="next"
+                          onSubmitEditing={() => {
+                            // Focus will automatically move to next input
+                          }}
+                        />
+
+                        <TextInput
+                          placeholder="Description (optional)"
+                          value={formData.description}
+                          onChangeText={(text: string) => setFormData({ ...formData, description: text })}
+                          className={`rounded-lg px-3 py-2 mb-3 border ${
+                            isDarkMode
+                              ? "bg-gray-700 border-gray-600 text-gray-100"
+                              : "bg-white border-gray-300 text-gray-800"
+                          }`}
+                          placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
+                          multiline
+                          numberOfLines={3}
+                          textAlignVertical="top"
+                          returnKeyType="done"
+                          onSubmitEditing={Keyboard.dismiss}
+                        />
+
+                        {/* Show Suggestions Button */}
+                        <TouchableOpacity
+                          onPress={() => setShowSuggestions(!showSuggestions)}
+                          className={`mb-3 p-2 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}
+                        >
+                          <Text className={`text-sm text-center ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
+                            {showSuggestions ? "Hide Suggestions" : "Show Suggestions"}
                           </Text>
+                        </TouchableOpacity>
 
-                          <TextInput
-                            placeholder="Goal title"
-                            value={formData.title}
-                            onChangeText={(text: string) => setFormData({ ...formData, title: text })}
-                            className={`rounded-lg px-3 py-2 mb-3 border ${
-                              isDarkMode
-                                ? "bg-gray-700 border-gray-600 text-gray-100"
-                                : "bg-white border-gray-300 text-gray-800"
-                            }`}
-                            placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
-                            returnKeyType="next"
-                            onSubmitEditing={() => {
-                              // Focus will automatically move to next input
-                            }}
-                          />
-
-                          <TextInput
-                            placeholder="Description (optional)"
-                            value={formData.description}
-                            onChangeText={(text: string) => setFormData({ ...formData, description: text })}
-                            className={`rounded-lg px-3 py-2 mb-3 border ${
-                              isDarkMode
-                                ? "bg-gray-700 border-gray-600 text-gray-100"
-                                : "bg-white border-gray-300 text-gray-800"
-                            }`}
-                            placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
-                            multiline
-                            numberOfLines={3}
-                            textAlignVertical="top"
-                            returnKeyType="done"
-                            onSubmitEditing={Keyboard.dismiss}
-                          />
-
-                          {/* Show Suggestions Button */}
-                          <TouchableOpacity
-                            onPress={() => setShowSuggestions(!showSuggestions)}
-                            className={`mb-3 p-2 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}
-                          >
-                            <Text className={`text-sm text-center ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
-                              {showSuggestions ? "Hide Suggestions" : "Show Suggestions"}
+                        {/* Goal Suggestions */}
+                        {showSuggestions && (
+                          <View className="mb-4">
+                            <Text
+                              className={`text-sm font-medium mb-2 ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}
+                            >
+                              SUGGESTIONS
                             </Text>
-                          </TouchableOpacity>
-
-                          {/* Goal Suggestions */}
-                          {showSuggestions && (
-                            <View className="mb-4">
-                              <Text
-                                className={`text-sm font-medium mb-2 ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}
-                              >
-                                SUGGESTIONS
-                              </Text>
-                              <View className="space-y-2">
-                                {[
-                                  "Sleep 8 hours a day",
-                                  "Follow recommended diet",
-                                  "Exercise 4 times a week for 75 min each",
-                                  "Meditate for 20 min daily",
-                                  "Connect with social group twice a week after work",
-                                ].map((suggestion, index) => (
-                                  <TouchableOpacity
-                                    key={index}
-                                    onPress={() => {
-                                      setFormData({ ...formData, title: suggestion });
-                                    }}
-                                    className={`border rounded-lg p-3 ${
-                                      isDarkMode ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-200"
-                                    }`}
-                                  >
-                                    <Text className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
-                                      {suggestion}
-                                    </Text>
-                                  </TouchableOpacity>
-                                ))}
-                              </View>
-                            </View>
-                          )}
-
-                          <View className="flex-row justify-between mb-3">
-                            <Text className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
-                              Priority:
-                            </Text>
-                            <View className="flex-row">
-                              {(["low", "medium", "high"] as const).map((priority) => (
+                            <View className="space-y-2">
+                              {[
+                                "Sleep 8 hours a day",
+                                "Follow recommended diet",
+                                "Exercise 4 times a week for 75 min each",
+                                "Meditate for 20 min daily",
+                                "Connect with social group twice a week after work",
+                              ].map((suggestion, index) => (
                                 <TouchableOpacity
-                                  key={priority}
-                                  onPress={() => setFormData({ ...formData, priority })}
-                                  className={`px-3 py-1 rounded mr-1 ${
-                                    formData.priority === priority
-                                      ? isDarkMode
-                                        ? "bg-emerald-700"
-                                        : "bg-emerald-900"
-                                      : isDarkMode
-                                      ? "bg-gray-700"
-                                      : "bg-gray-200"
+                                  key={index}
+                                  onPress={() => {
+                                    setFormData({ ...formData, title: suggestion });
+                                  }}
+                                  className={`border rounded-lg p-3 ${
+                                    isDarkMode ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-200"
                                   }`}
                                 >
-                                  <Text
-                                    className={`text-xs ${
-                                      formData.priority === priority
-                                        ? "text-white"
-                                        : isDarkMode
-                                        ? "text-gray-200"
-                                        : "text-gray-700"
-                                    }`}
-                                  >
-                                    {priority.toUpperCase()}
+                                  <Text className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
+                                    {suggestion}
                                   </Text>
                                 </TouchableOpacity>
                               ))}
                             </View>
                           </View>
+                        )}
 
-                          <View className="flex-row justify-between mb-3">
-                            <Text className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
-                              Category:
-                            </Text>
-                            <View className="flex-row">
-                              {(["health", "fitness", "nutrition", "mental", "personal"] as const).map((category) => (
-                                <TouchableOpacity
-                                  key={category}
-                                  onPress={() => setFormData({ ...formData, category })}
-                                  className={`px-2 py-1 rounded mr-1 ${
-                                    formData.category === category
-                                      ? isDarkMode
-                                        ? "bg-emerald-700"
-                                        : "bg-emerald-900"
-                                      : isDarkMode
-                                      ? "bg-gray-700"
-                                      : "bg-gray-200"
-                                  }`}
-                                >
-                                  <Text
-                                    className={`text-xs ${
-                                      formData.category === category
-                                        ? "text-white"
-                                        : isDarkMode
-                                        ? "text-gray-200"
-                                        : "text-gray-700"
-                                    }`}
-                                  >
-                                    {category}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                            </View>
-                          </View>
-
+                        <View className="flex-row justify-between mb-3">
+                          <Text className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
+                            Priority:
+                          </Text>
                           <View className="flex-row">
-                            <TouchableOpacity
-                              onPress={() => {
-                                setShowAddGoal(false);
-                                setShowSuggestions(false);
-                              }}
-                              className={`flex-1 px-4 py-2 rounded-lg mr-2 ${
-                                isDarkMode ? "bg-gray-700" : "bg-gray-300"
-                              }`}
-                            >
-                              <Text className={`text-center ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
-                                Cancel
-                              </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              onPress={handleAddGoal}
-                              className="flex-1 px-4 py-2 rounded-lg ml-2"
-                              style={{
-                                backgroundColor: isDarkMode ? "#059669" : "#114131",
-                              }}
-                            >
-                              <Text className="text-center text-white">Add Goal</Text>
-                            </TouchableOpacity>
+                            {(["low", "medium", "high"] as const).map((priority) => (
+                              <TouchableOpacity
+                                key={priority}
+                                onPress={() => setFormData({ ...formData, priority })}
+                                className={`px-3 py-1 rounded mr-1 ${
+                                  formData.priority === priority
+                                    ? isDarkMode
+                                      ? "bg-emerald-700"
+                                      : "bg-emerald-900"
+                                    : isDarkMode
+                                    ? "bg-gray-700"
+                                    : "bg-gray-200"
+                                }`}
+                              >
+                                <Text
+                                  className={`text-xs ${
+                                    formData.priority === priority
+                                      ? "text-white"
+                                      : isDarkMode
+                                      ? "text-gray-200"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  {priority.toUpperCase()}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
                           </View>
                         </View>
-                      </ScrollView>
-                    </View>
-                  </TouchableWithoutFeedback>
-                </View>
-              </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
-          </Modal>
-        )}
 
-        {/* Weekly Reflection Modal */}
-        {showReflection && (
-          <WeeklyReflection
-            weekStart={weekStart}
-            weekEnd={weekEnd}
-            completedGoals={completedGoals}
-            totalGoals={totalGoals}
-            onSave={handleSaveReflection}
-            onClose={() => setShowReflection(false)}
-            isDarkMode={isDarkMode}
-          />
-        )}
+                        <View className="flex-row justify-between mb-3">
+                          <Text className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
+                            Category:
+                          </Text>
+                          <View className="flex-row">
+                            {(["health", "fitness", "nutrition", "mental", "personal"] as const).map((category) => (
+                              <TouchableOpacity
+                                key={category}
+                                onPress={() => setFormData({ ...formData, category })}
+                                className={`px-2 py-1 rounded mr-1 ${
+                                  formData.category === category
+                                    ? isDarkMode
+                                      ? "bg-emerald-700"
+                                      : "bg-emerald-900"
+                                    : isDarkMode
+                                    ? "bg-gray-700"
+                                    : "bg-gray-200"
+                                }`}
+                              >
+                                <Text
+                                  className={`text-xs ${
+                                    formData.category === category
+                                      ? "text-white"
+                                      : isDarkMode
+                                      ? "text-gray-200"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  {category}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </View>
 
-        {/* Action Item Schedule Modal */}
-        {selectedActionItem && (
-          <View className="absolute inset-0 bg-black bg-opacity-50 justify-center items-center">
-            <View className="bg-white rounded-lg p-6 m-4 w-full max-w-sm">
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-xl font-semibold text-gray-800">{selectedActionItem?.title}</Text>
-                <TouchableOpacity onPress={() => setSelectedActionItem(null)} className="p-2">
-                  <X size={20} color="#6b7280" />
-                </TouchableOpacity>
+                        <View className="flex-row">
+                          <TouchableOpacity
+                            onPress={() => {
+                              setShowAddGoal(false);
+                              setShowSuggestions(false);
+                            }}
+                            className={`flex-1 px-4 py-2 rounded-lg mr-2 ${isDarkMode ? "bg-gray-700" : "bg-gray-300"}`}
+                          >
+                            <Text className={`text-center ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
+                              Cancel
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={handleAddGoal}
+                            className="flex-1 px-4 py-2 rounded-lg ml-2"
+                            style={{
+                              backgroundColor: isDarkMode ? "#059669" : "#114131",
+                            }}
+                          >
+                            <Text className="text-center text-white">Add Goal</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </ScrollView>
+                  </View>
+                </TouchableWithoutFeedback>
               </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
+        </Modal>
+      )}
 
-              <Text className="text-gray-600 mb-4">{selectedActionItem?.description}</Text>
+      {/* Weekly Reflection Modal */}
+      {showReflection && (
+        <WeeklyReflection
+          weekStart={weekStart}
+          weekEnd={weekEnd}
+          completedGoals={completedGoals}
+          totalGoals={totalGoals}
+          onSave={handleSaveReflection}
+          onClose={() => setShowReflection(false)}
+          isDarkMode={isDarkMode}
+        />
+      )}
 
-              <Text className="font-semibold text-gray-800 mb-2">Weekly Schedule</Text>
-              <ScrollView className="max-h-80">
+      {/* Action Item Schedule Modal */}
+      {selectedActionItem && (
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+              borderRadius: 16,
+              padding: 0,
+              margin: 16,
+              width: "90%",
+              maxWidth: 420,
+              maxHeight: "85%",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: isDarkMode ? 0.4 : 0.2,
+              shadowRadius: 8,
+              elevation: 8,
+              overflow: "hidden",
+            }}
+          >
+            {/* Fixed Header - Non-scrollable */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                paddingHorizontal: 24,
+                paddingTop: 24,
+                paddingBottom: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: isDarkMode ? "#374151" : "#e5e7eb",
+              }}
+            >
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    fontWeight: "600",
+                    color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                    lineHeight: 24,
+                  }}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {selectedActionItem?.title}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSelectedActionItem(null)}
+                style={{
+                  padding: 8,
+                  borderRadius: 8,
+                  backgroundColor: isDarkMode ? "#374151" : "#f3f4f6",
+                }}
+                activeOpacity={0.7}
+              >
+                <X size={20} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Scrollable Content Area */}
+            <ScrollView
+              style={{ maxHeight: 400 }}
+              contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Description Section - Collapsible for long content */}
+              {selectedActionItem?.description && (
+                <View style={{ marginBottom: 20 }}>
+                  <Text
+                    style={{
+                      fontWeight: "500",
+                      color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                      marginBottom: 8,
+                      fontSize: 16,
+                    }}
+                  >
+                    Description
+                  </Text>
+                  <Text
+                    style={{
+                      color: isDarkMode ? "#d1d5db" : "#6b7280",
+                      fontSize: 14,
+                      lineHeight: 20,
+                    }}
+                    numberOfLines={4}
+                    ellipsizeMode="tail"
+                  >
+                    {selectedActionItem?.description}
+                  </Text>
+                </View>
+              )}
+
+              {/* Weekly Schedule Section - Main focus */}
+              <View style={{ marginBottom: 16 }}>
+                <Text
+                  style={{
+                    fontWeight: "600",
+                    color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                    marginBottom: 16,
+                    fontSize: 18,
+                  }}
+                >
+                  Weekly Schedule
+                </Text>
+
                 {Object.entries(selectedActionItem?.weekly_schedule || {}).map(([day, schedule]: [string, any]) =>
                   schedule && schedule.time_slots && schedule.time_slots.length > 0 ? (
-                    <View key={day} className="mb-3">
-                      <Text className="font-medium text-gray-700 mb-1">
-                        {day.charAt(0).toUpperCase() + day.slice(1)}
-                      </Text>
+                    <View key={day} style={{ marginBottom: 16 }}>
+                      <View
+                        style={{
+                          backgroundColor: isDarkMode ? "#065f46" : "#d1fae5",
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontWeight: "600",
+                            color: isDarkMode ? "#34d399" : "#059669",
+                            fontSize: 15,
+                            textAlign: "center",
+                          }}
+                        >
+                          {day.charAt(0).toUpperCase() + day.slice(1)}
+                        </Text>
+                      </View>
+
                       {schedule.time_slots.map((slot: any, index: number) => (
-                        <View key={index} className="ml-4 mb-1 bg-gray-50 p-2 rounded">
-                          <Text className="text-sm text-gray-600">
-                            {slot.start_time} - {slot.end_time}
-                          </Text>
-                          <Text className="text-xs text-gray-500">Duration: {slot.duration}</Text>
+                        <View
+                          key={index}
+                          style={{
+                            backgroundColor: isDarkMode ? "#374151" : "#f9fafb",
+                            padding: 16,
+                            borderRadius: 12,
+                            marginBottom: 8,
+                            borderLeftWidth: 4,
+                            borderLeftColor: isDarkMode ? "#34d399" : "#10b981",
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: 4,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 16,
+                                color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                                fontWeight: "600",
+                              }}
+                            >
+                              {slot.start_time} - {slot.end_time}
+                            </Text>
+                            <View
+                              style={{
+                                backgroundColor: isDarkMode ? "#065f46" : "#ecfdf5",
+                                paddingHorizontal: 8,
+                                paddingVertical: 2,
+                                borderRadius: 12,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  color: isDarkMode ? "#34d399" : "#059669",
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {slot.duration}
+                              </Text>
+                            </View>
+                          </View>
+
                           {slot.health_notes && slot.health_notes.length > 0 && (
-                            <Text className="text-xs text-gray-500 mt-1 italic">Note: {slot.health_notes[0]}</Text>
+                            <View
+                              style={{
+                                backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                                padding: 8,
+                                borderRadius: 6,
+                                marginTop: 8,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  color: isDarkMode ? "#9ca3af" : "#6b7280",
+                                  fontStyle: "italic",
+                                  lineHeight: 16,
+                                }}
+                              >
+                                💡 {slot.health_notes[0]}
+                              </Text>
+                            </View>
                           )}
                         </View>
                       ))}
                     </View>
                   ) : null
                 )}
-              </ScrollView>
+              </View>
+            </ScrollView>
 
+            {/* Fixed Footer - Non-scrollable */}
+            <View
+              style={{
+                paddingHorizontal: 24,
+                paddingVertical: 16,
+                borderTopWidth: 1,
+                borderTopColor: isDarkMode ? "#374151" : "#e5e7eb",
+                backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
+              }}
+            >
               <TouchableOpacity
                 onPress={() => setSelectedActionItem(null)}
-                className="mt-4 bg-emerald-600 px-4 py-2 rounded-lg"
+                style={{
+                  backgroundColor: "#10b981",
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  alignItems: "center",
+                }}
+                activeOpacity={0.8}
               >
-                <Text className="text-center text-white">Close</Text>
+                <Text
+                  style={{
+                    color: "#ffffff",
+                    fontWeight: "600",
+                    fontSize: 16,
+                  }}
+                >
+                  Close
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
-        )}
-      </LinearGradient>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

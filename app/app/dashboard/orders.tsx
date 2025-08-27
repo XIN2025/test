@@ -208,15 +208,9 @@ export default function OrdersPage() {
   const { isDarkMode } = useTheme();
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      {/* @ts-ignore - expo-linear-gradient children prop typing issue */}
-      <LinearGradient
-        colors={isDarkMode ? ["#111827", "#1f2937"] : ["#f0f9f6", "#e6f4f1"]}
-        style={{ flex: 1 }}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        {/* Fixed Header */}
+    <SafeAreaView>
+      {/* Fixed Header */}
+      <View>
         <View
           style={{
             shadowColor: "#000",
@@ -228,100 +222,115 @@ export default function OrdersPage() {
             borderBottomColor: isDarkMode ? "#374151" : "#e5e7eb",
             backgroundColor: isDarkMode ? "#111827" : "#ffffff",
             paddingHorizontal: 16,
-            paddingVertical: 16,
+            paddingTop: 16,
+            paddingBottom: 12,
             zIndex: 10,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: 12,
-                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
-                }}
-              >
-                {activeTab === "orders" ? <ShoppingBag size={22} color="#fff" /> : <Pill size={22} color="#fff" />}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: "600",
-                    color: isDarkMode ? "#f3f4f6" : "#1f2937",
-                    marginBottom: 2,
-                  }}
-                >
-                  {activeTab === "orders" ? "Orders" : "Supplements"}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    color: isDarkMode ? "#9ca3af" : "#6b7280",
-                  }}
-                >
-                  {activeTab === "orders" ? "Track your purchases" : "Your health essentials"}
-                </Text>
-              </View>
+          {/* Title Section */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 12,
+                backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+              }}
+            >
+              {activeTab === "orders" ? <ShoppingBag size={22} color="#fff" /> : <Pill size={22} color="#fff" />}
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <TouchableOpacity
-                onPress={() => setActiveTab("orders")}
+            <View style={{ flex: 1 }}>
+              <Text
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                  backgroundColor: activeTab === "orders" ? "#10b981" : "transparent",
-                  minWidth: 80,
+                  fontSize: 18,
+                  fontWeight: "600",
+                  color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                  marginBottom: 2,
                 }}
-                activeOpacity={0.7}
               >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "500",
-                    textAlign: "center",
-                    color: activeTab === "orders" ? "#ffffff" : isDarkMode ? "#9ca3af" : "#6b7280",
-                  }}
-                >
-                  Orders
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setActiveTab("supplements")}
+                {activeTab === "orders" ? "Orders" : "Supplements"}
+              </Text>
+              <Text
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                  backgroundColor: activeTab === "supplements" ? "#10b981" : "transparent",
-                  minWidth: 100,
+                  fontSize: 13,
+                  color: isDarkMode ? "#9ca3af" : "#6b7280",
                 }}
-                activeOpacity={0.7}
               >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "500",
-                    textAlign: "center",
-                    color: activeTab === "supplements" ? "#ffffff" : isDarkMode ? "#9ca3af" : "#6b7280",
-                  }}
-                >
-                  Supplements
-                </Text>
-              </TouchableOpacity>
+                {activeTab === "orders" ? "Track your purchases" : "Your health essentials"}
+              </Text>
             </View>
+          </View>
+
+          {/* Tab Navigation - Full Width */}
+          <View style={{ flexDirection: "row", gap: 4 }}>
+            <TouchableOpacity
+              onPress={() => setActiveTab("orders")}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: 12,
+                borderRadius: 12,
+                backgroundColor: activeTab === "orders" ? "#10b981" : isDarkMode ? "#374151" : "#f3f4f6",
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{ marginRight: 6 }}>
+                <ShoppingBag
+                  size={16}
+                  color={activeTab === "orders" ? "#ffffff" : isDarkMode ? "#9ca3af" : "#6b7280"}
+                />
+              </View>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "600",
+                  color: activeTab === "orders" ? "#ffffff" : isDarkMode ? "#d1d5db" : "#374151",
+                }}
+              >
+                Orders
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setActiveTab("supplements")}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: 12,
+                borderRadius: 12,
+                backgroundColor: activeTab === "supplements" ? "#10b981" : isDarkMode ? "#374151" : "#f3f4f6",
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{ marginRight: 6 }}>
+                <Pill size={16} color={activeTab === "supplements" ? "#ffffff" : isDarkMode ? "#9ca3af" : "#6b7280"} />
+              </View>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "600",
+                  color: activeTab === "supplements" ? "#ffffff" : isDarkMode ? "#d1d5db" : "#374151",
+                }}
+              >
+                Supplements
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Scrollable Content */}
         <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          style={{ height: "100%", backgroundColor: isDarkMode ? "#111827" : "#F0FDF4" }}
+          contentContainerStyle={{ paddingBottom: 200 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 16 }}>
             {activeTab === "orders" ? (
@@ -345,11 +354,12 @@ export default function OrdersPage() {
                       }}
                       activeOpacity={0.7}
                     >
-                      <filter.icon
-                        size={18}
-                        color={selectedStatus === filter.id ? "#fff" : isDarkMode ? "#9ca3af" : "#64748b"}
-                        style={{ marginRight: 6 }}
-                      />
+                      <View style={{ marginRight: 6 }}>
+                        <filter.icon
+                          size={18}
+                          color={selectedStatus === filter.id ? "#fff" : isDarkMode ? "#9ca3af" : "#64748b"}
+                        />
+                      </View>
                       <Text
                         style={{
                           fontSize: 14,
@@ -385,11 +395,12 @@ export default function OrdersPage() {
                       }}
                       activeOpacity={0.7}
                     >
-                      <category.icon
-                        size={18}
-                        color={selectedCategory === category.id ? "#fff" : isDarkMode ? "#9ca3af" : "#64748b"}
-                        style={{ marginRight: 6 }}
-                      />
+                      <View style={{ marginRight: 6 }}>
+                        <category.icon
+                          size={18}
+                          color={selectedCategory === category.id ? "#fff" : isDarkMode ? "#9ca3af" : "#64748b"}
+                        />
+                      </View>
                       <Text
                         style={{
                           fontSize: 14,
@@ -429,7 +440,9 @@ export default function OrdersPage() {
                     }}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
-                      <Star size={22} color="#fbbf24" style={{ marginRight: 8 }} />
+                      <View style={{ marginRight: 8 }}>
+                        <Star size={22} color="#fbbf24" />
+                      </View>
                       <Text
                         style={{
                           fontSize: 18,
@@ -594,11 +607,9 @@ export default function OrdersPage() {
                               ${order.total.toFixed(2)}
                             </Text>
                             <View style={{ flexDirection: "row", alignItems: "center" }}>
-                              <StatusIcon
-                                size={16}
-                                color={isDarkMode ? "#60a5fa" : "#9ca3af"}
-                                style={{ marginRight: 4 }}
-                              />
+                              <View style={{ marginRight: 4 }}>
+                                <StatusIcon size={16} color={isDarkMode ? "#60a5fa" : "#9ca3af"} />
+                              </View>
                               <Text
                                 style={{
                                   fontSize: 13,
@@ -716,7 +727,9 @@ export default function OrdersPage() {
                       elevation: 3,
                     }}
                   >
-                    <ShoppingBag size={48} color={isDarkMode ? "#374151" : "#d1d5db"} style={{ marginBottom: 16 }} />
+                    <View style={{ marginBottom: 16 }}>
+                      <ShoppingBag size={48} color={isDarkMode ? "#374151" : "#d1d5db"} />
+                    </View>
                     <Text
                       style={{
                         fontSize: 18,
@@ -914,7 +927,7 @@ export default function OrdersPage() {
             )}
           </View>
         </ScrollView>
-      </LinearGradient>
+      </View>
     </SafeAreaView>
   );
 }

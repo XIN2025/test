@@ -16,6 +16,7 @@ export default {
       },
     },
     android: {
+      package: "com.evra.app",
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#ffffff",

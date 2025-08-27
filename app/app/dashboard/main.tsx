@@ -4,7 +4,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { useActionCompletions } from "@/hooks/useActionCompletions";
 import { useGoals } from "@/hooks/useGoals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
+
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Bell, Calendar, Flame, Heart, MessageCircle, Settings, Target } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -102,7 +102,6 @@ export default function MainDashboard() {
   const { user } = useAuth();
   const userEmail = user?.email || "";
   const userName = user?.name || "";
-  const { from } = useLocalSearchParams();
 
   // Debug logging for walkthrough
   console.log("🏠 MainDashboard loaded for user:", userEmail?.substring(0, 10) + "...");
@@ -617,19 +616,11 @@ export default function MainDashboard() {
   };
 
   return (
-    <SafeAreaView className="flex-1">
-      {/* @ts-ignore - expo-linear-gradient children prop typing issue */}
-      <LinearGradient
-        colors={isDarkMode ? ["#0f172a", "#1e293b"] : ["#f0f9f6", "#e6f4f1"]}
-        style={{ flex: 1 }}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+    <SafeAreaView>
+      <View>
         {/* Fixed Header */}
         <View
-          className={`shadow-sm px-4 py-4 z-10 ${
-            isDarkMode ? "bg-gray-900 border-b border-gray-800" : "bg-white border-b border-gray-100"
-          }`}
+          className={`shadow-sm px-4 py-4 z-10 ${isDarkMode ? "bg-gray-900 border-b border-gray-800" : "bg-white"}`}
         >
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
@@ -649,12 +640,16 @@ export default function MainDashboard() {
                 </Text>
               </View>
             </View>
-            <View className="flex-row items-center">
-              <Pressable onPress={openStreakModal} style={{ marginRight: 12 }} accessibilityLabel="Show Streak">
+            <View className="flex-row items-center space-x-3">
+              <Pressable onPress={openStreakModal} accessibilityLabel="Show Streak">
                 <Flame size={22} color={isDarkMode ? "#fbbf24" : "#f59e42"} />
               </Pressable>
-              <Bell size={20} color={isDarkMode ? "#9ca3af" : "#64748b"} className="mr-2" />
-              <Settings size={20} color={isDarkMode ? "#9ca3af" : "#64748b"} />
+              <Pressable accessibilityLabel="Notifications">
+                <Bell size={20} color={isDarkMode ? "#9ca3af" : "#64748b"} />
+              </Pressable>
+              <Pressable accessibilityLabel="Settings">
+                <Settings size={20} color={isDarkMode ? "#9ca3af" : "#64748b"} />
+              </Pressable>
             </View>
             {/* Streak Modal */}
             <Modal visible={showStreakModal} animationType="slide" transparent onRequestClose={closeStreakModal}>
@@ -856,9 +851,10 @@ export default function MainDashboard() {
 
         {/* Scrollable Content */}
         <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          style={{ height: "100%", backgroundColor: isDarkMode ? "#111827" : "#F0FDF4" }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
             {/* Health Score and Quick Actions Row */}
@@ -1406,46 +1402,9 @@ export default function MainDashboard() {
                 </TouchableOpacity>
               </View>
             </Tooltip>
-
-            {/* Recent Insights */}
-            <View
-              style={{
-                padding: 16,
-                borderRadius: 12,
-                backgroundColor: isDarkMode
-                  ? "rgba(6, 78, 59, 0.7)" // emerald-900 with opacity
-                  : "#dcfce7", // emerald-100
-                marginBottom: 16,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: isDarkMode ? 0.2 : 0.05,
-                shadowRadius: 2,
-                elevation: 2,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "500",
-                  marginBottom: 4,
-                  color: isDarkMode ? "#d1fae5" : "#14532d",
-                }}
-              >
-                Great progress on your sleep schedule! 🌙
-              </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: isDarkMode ? "#a7f3d0" : "#166534",
-                  lineHeight: 16,
-                }}
-              >
-                You&apos;ve maintained 7+ hours of sleep for 5 consecutive days. Keep it up!
-              </Text>
-            </View>
           </View>
         </ScrollView>
-      </LinearGradient>
+      </View>
     </SafeAreaView>
   );
 }

@@ -2,7 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import Constants from "expo-constants";
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
+
 import { useRouter } from "expo-router";
 import {
   Activity,
@@ -369,14 +369,9 @@ export default function ProfileDashboard() {
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView>
       {/* @ts-ignore - expo-linear-gradient children prop typing issue */}
-      <LinearGradient
-        colors={isDarkMode ? ["#111827", "#1f2937"] : ["#f0f9f6", "#e6f4f1"]}
-        style={{ flex: 1 }}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
+      <View>
         {/* Fixed Header */}
         <View
           style={{
@@ -446,9 +441,10 @@ export default function ProfileDashboard() {
 
         {/* Scrollable Content */}
         <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          style={{ height: "100%", backgroundColor: isDarkMode ? "#111827" : "#F0FDF4" }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
             {/* Profile Card */}
@@ -1208,7 +1204,7 @@ export default function ProfileDashboard() {
             </View>
           </View>
         </ScrollView>
-      </LinearGradient>
+      </View>
     </SafeAreaView>
   );
 }
