@@ -98,6 +98,51 @@ python test_graph_rag.py
 - `GET /chat/graph-stats` - Get graph statistics
 - `GET /chat/graph-data` - Get all graph data
 
+## 🗄️ Database Management
+
+### Neo4j Database Utilities
+
+The system includes utility scripts for managing the Neo4j graph database:
+
+#### `truncate_neo4j.py` - Database Clearing Utility
+
+A utility script to safely clear all data from the Neo4j database during development and testing.
+
+**Usage:**
+
+```bash
+cd api
+python truncate_neo4j.py
+```
+
+**Features:**
+
+- **Environment-based configuration**: Uses `.env` file for database credentials
+- **Safe database clearing**: Implements `DETACH DELETE` to remove all nodes and relationships
+- **Standalone execution**: Can be run independently as a script
+- **Clear feedback**: Provides confirmation message upon successful execution
+
+**Environment Variables Required:**
+
+```env
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=your_password
+```
+
+**⚠️ Safety Considerations:**
+
+- **Development Only**: This script should only be used in development/testing environments
+- **Data Loss**: Executing this script will permanently delete ALL data in the database
+- **Backup**: Always backup important data before running this utility
+
+**Use Cases:**
+
+- Clear test data between development sessions
+- Reset database state before running test suites
+- Remove corrupted or unwanted data during troubleshooting
+- Prepare clean database for demonstrations
+
 ## 📱 Mobile App Features
 
 - **Document Upload**: Upload PDF and text files directly from the app
