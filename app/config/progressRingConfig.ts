@@ -2,21 +2,21 @@
 export const progressRingConfig = {
   // Color thresholds for completion percentages
   colors: {
-    high: "#10b981", // Green - 80%+ completion
-    medium: "#f59e0b", // Yellow - 50-79% completion
-    low: "#ef4444", // Red - 0-49% completion
+    high: '#10b981', // Green - 80%+ completion
+    medium: '#f59e0b', // Yellow - 50-79% completion
+    low: '#ef4444', // Red - 0-49% completion
   },
 
   // Theme-specific background colors
   backgrounds: {
-    light: "#e5e7eb", // Light gray for light theme
-    dark: "#374151", // Dark gray for dark theme
+    light: '#e5e7eb', // Light gray for light theme
+    dark: '#374151', // Dark gray for dark theme
   },
 
   // Text colors for percentage display
   textColors: {
-    light: "#374151", // Dark text for light theme
-    dark: "#d1d5db", // Light text for dark theme
+    light: '#374151', // Dark text for light theme
+    dark: '#d1d5db', // Light text for dark theme
   },
 
   // Default sizes for different use cases
@@ -38,7 +38,7 @@ export const progressRingConfig = {
   // Animation settings (for future enhancement)
   animation: {
     duration: 300, // milliseconds
-    easing: "easeInOut",
+    easing: 'easeInOut',
   },
 };
 
@@ -51,16 +51,12 @@ export const getProgressColor = (percentage: number): string => {
 
 // Helper function to get background color based on theme
 export const getProgressBackground = (isDarkMode: boolean): string => {
-  return isDarkMode
-    ? progressRingConfig.backgrounds.dark
-    : progressRingConfig.backgrounds.light;
+  return isDarkMode ? progressRingConfig.backgrounds.dark : progressRingConfig.backgrounds.light;
 };
 
 // Helper function to get text color based on theme
 export const getProgressTextColor = (isDarkMode: boolean): string => {
-  return isDarkMode
-    ? progressRingConfig.textColors.dark
-    : progressRingConfig.textColors.light;
+  return isDarkMode ? progressRingConfig.textColors.dark : progressRingConfig.textColors.light;
 };
 
 // Default props for consistent styling

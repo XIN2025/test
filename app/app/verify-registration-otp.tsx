@@ -1,7 +1,7 @@
-import { useAuth } from "@/context/AuthContext";
-import Constants from "expo-constants";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useAuth } from '@/context/AuthContext';
+import Constants from 'expo-constants';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -14,12 +14,12 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-} from "react-native";
-import EvraLogo from "../components/EvraLogo";
+} from 'react-native';
+import EvraLogo from '../components/EvraLogo';
 
 export default function VerifyRegistrationOtpScreen() {
   const { email } = useLocalSearchParams();
-  const [otp, setOtp] = useState("");
+  const [otp, setOtp] = useState('');
   const [errors, setErrors] = useState<{ otp?: string }>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,7 +29,7 @@ export default function VerifyRegistrationOtpScreen() {
   // Redirect if already authenticated
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/dashboard/main");
+      router.replace('/dashboard/main');
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -43,11 +43,11 @@ export default function VerifyRegistrationOtpScreen() {
     try {
       setApiError(null);
       setErrors({});
-      const normalizedEmail = Array.isArray(email) ? email[0] : String(email || "");
-      const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
+      const normalizedEmail = Array.isArray(email) ? email[0] : String(email || '');
+      const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || 'http://localhost:8000';
       const response = await fetch(`${API_BASE_URL}/verify-registration-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: normalizedEmail, otp }),
       });
       let data: any = null;
@@ -58,16 +58,16 @@ export default function VerifyRegistrationOtpScreen() {
       }
       if (!response.ok) {
         const backendMsg = data?.detail || data?.message;
-        const msg = backendMsg || "Verification failed";
+        const msg = backendMsg || 'Verification failed';
         if (response.status === 400 && /invalid\s+otp/i.test(String(backendMsg))) {
           setErrors({ otp: backendMsg });
         }
         setApiError(msg);
         return;
       }
-      Alert.alert("Success", "Registration verified! Please set your preferences.");
+      Alert.alert('Success', 'Registration verified! Please set your preferences.');
       router.push({
-        pathname: "./initial-preferences",
+        pathname: './initial-preferences',
         params: { email: normalizedEmail },
       });
     } catch (err) {
@@ -79,47 +79,47 @@ export default function VerifyRegistrationOtpScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-green-50">
+    <SafeAreaView className='flex-1 bg-green-50'>
       <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        className='flex-1'
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            className="flex-1"
+            className='flex-1'
             contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps='handled'
             showsVerticalScrollIndicator={false}
           >
-            <View className="flex-1 justify-center items-center bg-green-50 px-4 py-8">
+            <View className='flex-1 items-center justify-center bg-green-50 px-4 py-8'>
               {/* Logo */}
-              <View className="items-center mb-8">
+              <View className='mb-8 items-center'>
                 <EvraLogo size={64} />
-                <Text className="text-3xl" style={{ color: "#114131", fontFamily: "SourceSansPro" }}>
+                <Text className='text-3xl' style={{ color: '#114131', fontFamily: 'SourceSansPro' }}>
                   Evra
                 </Text>
-                <Text className="mt-1" style={{ color: "#114131", fontFamily: "Evra" }}>
+                <Text className='mt-1' style={{ color: '#114131', fontFamily: 'Evra' }}>
                   Your Agent for Better Health
                 </Text>
               </View>
               {/* Card */}
-              <View className="bg-white w-full max-w-md rounded-xl shadow-lg p-8 items-center">
-                <Text className="text-2xl font-bold mb-2 text-center">Verify Registration OTP</Text>
-                <Text className="text-gray-500 mb-6 text-center">Enter the OTP sent to your email</Text>
+              <View className='w-full max-w-md items-center rounded-xl bg-white p-8 shadow-lg'>
+                <Text className='mb-2 text-center text-2xl font-bold'>Verify Registration OTP</Text>
+                <Text className='mb-6 text-center text-gray-500'>Enter the OTP sent to your email</Text>
                 {apiError ? (
-                  <View className="w-full rounded-md border border-red-400 bg-red-100 p-3 mb-4">
-                    <Text className="text-red-800 text-sm">{apiError}</Text>
+                  <View className='mb-4 w-full rounded-md border border-red-400 bg-red-100 p-3'>
+                    <Text className='text-sm text-red-800'>{apiError}</Text>
                   </View>
                 ) : null}
                 {/* OTP Input */}
-                <View className="w-full mb-4">
-                  <Text className="mb-1 text-gray-700">OTP</Text>
+                <View className='mb-4 w-full'>
+                  <Text className='mb-1 text-gray-700'>OTP</Text>
                   <TextInput
-                    className={`border rounded-md px-4 py-3 w-full text-base bg-gray-50 focus:border-green-500 ${
-                      errors.otp ? "border-red-500" : "border-gray-300"
+                    className={`w-full rounded-md border bg-gray-50 px-4 py-3 text-base focus:border-green-500 ${
+                      errors.otp ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Enter OTP"
+                    placeholder='Enter OTP'
                     value={otp}
                     onChangeText={(value) => {
                       setOtp(value);
@@ -128,25 +128,25 @@ export default function VerifyRegistrationOtpScreen() {
                       }
                       if (apiError) setApiError(null);
                     }}
-                    keyboardType="numeric"
+                    keyboardType='numeric'
                     editable={!loading}
-                    returnKeyType="done"
+                    returnKeyType='done'
                     onSubmitEditing={Keyboard.dismiss}
                     maxLength={6}
                   />
-                  {errors.otp ? <Text className="text-red-500 text-sm mt-1">{errors.otp}</Text> : null}
+                  {errors.otp ? <Text className='mt-1 text-sm text-red-500'>{errors.otp}</Text> : null}
                 </View>
                 {/* Verify Button */}
                 <TouchableOpacity
-                  className="rounded-md w-full py-3 mt-2 mb-2 items-center disabled:opacity-50"
-                  style={{ backgroundColor: "#059669" }}
+                  className='mb-2 mt-2 w-full items-center rounded-md py-3 disabled:opacity-50'
+                  style={{ backgroundColor: '#059669' }}
                   onPress={handleVerify}
                   disabled={loading || !otp}
                 >
-                  <Text className="text-white text-lg font-semibold">{loading ? "Verifying..." : "Verify"}</Text>
+                  <Text className='text-lg font-semibold text-white'>{loading ? 'Verifying...' : 'Verify'}</Text>
                 </TouchableOpacity>
                 {/* Tap to dismiss keyboard hint */}
-                <Text className="text-xs text-gray-400 mt-2 text-center">Tap anywhere to dismiss keyboard</Text>
+                <Text className='mt-2 text-center text-xs text-gray-400'>Tap anywhere to dismiss keyboard</Text>
               </View>
             </View>
           </ScrollView>

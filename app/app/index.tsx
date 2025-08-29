@@ -1,8 +1,8 @@
-import { useRouter } from "expo-router";
-import React, { useEffect, useRef } from "react";
-import { Animated, Text, View } from "react-native";
-import EvraLogo from "../components/EvraLogo";
-import "./global.css";
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Text, View } from 'react-native';
+import EvraLogo from '../components/EvraLogo';
+import './global.css';
 
 export default function Index() {
   const router = useRouter();
@@ -38,24 +38,24 @@ export default function Index() {
     // Start the animation
     animationSequence.start(() => {
       // Navigate to login after animation completes
-      router.replace("./login");
+      router.replace('./login');
     });
   }, [fadeAnim, scaleAnim, router]);
 
   return (
-    <View className="flex-1 justify-center items-center bg-green-50">
+    <View className='flex-1 items-center justify-center bg-green-50'>
       <Animated.View
         style={{
           opacity: fadeAnim,
           transform: [{ scale: scaleAnim }],
-          alignItems: "center",
+          alignItems: 'center',
         }}
       >
         <EvraLogo size={80} />
-        <Text className="text-4xl mb-2" style={{ color: "#114131", fontFamily: "SourceSansPro" }}>
+        <Text className='mb-2 text-4xl' style={{ color: '#114131', fontFamily: 'SourceSansPro' }}>
           Evra
         </Text>
-        <Text className="text-lg" style={{ color: "#114131", fontFamily: "Evra" }}>
+        <Text className='text-lg' style={{ color: '#114131', fontFamily: 'Evra' }}>
           Your Agent for Better Health
         </Text>
       </Animated.View>

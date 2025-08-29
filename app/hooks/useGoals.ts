@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { goalsApi } from "../services/goalsApi";
-import { Goal, GoalCreate, GoalStats, GoalUpdate, WeeklyReflection } from "../types/goals";
+import { useCallback, useEffect, useState } from 'react';
+import { goalsApi } from '../services/goalsApi';
+import { Goal, GoalCreate, GoalStats, GoalUpdate, WeeklyReflection } from '../types/goals';
 
 interface UseGoalsOptions {
   userEmail: string;
@@ -22,10 +22,10 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
 
       try {
         const goalsData = await goalsApi.getUserGoals(userEmail, weekStart);
-        console.log("goalsData", goalsData);
+        console.log('goalsData', goalsData);
         setGoals(goalsData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load goals");
+        setError(err instanceof Error ? err.message : 'Failed to load goals');
       } finally {
         setLoading(false);
       }
@@ -39,11 +39,11 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
 
       try {
         const statsData = await goalsApi.getGoalStats(userEmail, weeks);
-        if (statsData && "goal_progress" in statsData) {
+        if (statsData && 'goal_progress' in statsData) {
           setStats(statsData);
         }
       } catch (err) {
-        console.error("Failed to load stats:", err);
+        console.error('Failed to load stats:', err);
         // Don't set stats if there's an error
         setStats(null);
       }
@@ -52,8 +52,8 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
   );
 
   const createGoal = useCallback(
-    async (goalData: Omit<GoalCreate, "user_email">) => {
-      if (!userEmail) throw new Error("User email is required");
+    async (goalData: Omit<GoalCreate, 'user_email'>) => {
+      if (!userEmail) throw new Error('User email is required');
 
       setLoading(true);
       setError(null);
@@ -66,7 +66,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
         setGoals((prev) => [newGoal, ...prev]);
         return newGoal;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to create goal";
+        const errorMessage = err instanceof Error ? err.message : 'Failed to create goal';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -86,7 +86,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
         setGoals((prev) => prev.map((goal) => (goal.id === goalId ? updatedGoal : goal)));
         return updatedGoal;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to update goal";
+        const errorMessage = err instanceof Error ? err.message : 'Failed to update goal';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -105,7 +105,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
         await goalsApi.deleteGoal(goalId, userEmail);
         setGoals((prev) => prev.filter((goal) => goal.id !== goalId));
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to delete goal";
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete goal';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -129,7 +129,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
         setGoals((prev) => prev.map((goal) => (goal.id === goalId ? updatedGoal : goal)));
         return updatedGoal;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to update goal progress";
+        const errorMessage = err instanceof Error ? err.message : 'Failed to update goal progress';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -149,7 +149,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
         setGoals((prev) => prev.map((goal) => (goal.id === goalId ? updatedGoal : goal)));
         return updatedGoal;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to add note";
+        const errorMessage = err instanceof Error ? err.message : 'Failed to add note';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -160,8 +160,8 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
   );
 
   const saveWeeklyReflection = useCallback(
-    async (reflectionData: Omit<WeeklyReflection, "user_email">) => {
-      if (!userEmail) throw new Error("User email is required");
+    async (reflectionData: Omit<WeeklyReflection, 'user_email'>) => {
+      if (!userEmail) throw new Error('User email is required');
 
       setLoading(true);
       setError(null);
@@ -173,7 +173,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
         });
         return result;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to save reflection";
+        const errorMessage = err instanceof Error ? err.message : 'Failed to save reflection';
         setError(errorMessage);
         throw new Error(errorMessage);
       } finally {
@@ -190,7 +190,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
       try {
         return await goalsApi.getWeeklyReflection(userEmail, weekStart);
       } catch (err) {
-        console.error("Failed to get weekly reflection:", err);
+        console.error('Failed to get weekly reflection:', err);
         return null;
       }
     },
@@ -204,7 +204,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
       try {
         return await goalsApi.getWeeklyProgress(userEmail, weekStart);
       } catch (err) {
-        console.error("Failed to get weekly progress:", err);
+        console.error('Failed to get weekly progress:', err);
         return null;
       }
     },
@@ -217,7 +217,7 @@ export const useGoals = ({ userEmail, autoLoad = true }: UseGoalsOptions) => {
     try {
       return await goalsApi.getCurrentWeekGoals(userEmail);
     } catch (err) {
-      console.error("Failed to get current week goals:", err);
+      console.error('Failed to get current week goals:', err);
       return null;
     }
   }, [userEmail]);

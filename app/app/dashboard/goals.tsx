@@ -1,34 +1,30 @@
-import { CircularProgressRing } from "@/components/CircularProgressRing";
-import GoalProgressTracker from "@/components/GoalProgressTracker";
-import HabitGoalIntegration from "@/components/HabitGoalIntegration";
-import Card from "@/components/ui/card";
-import WeeklyGoalsSummary from "@/components/WeeklyGoalsSummary";
-import WeeklyReflection from "@/components/WeeklyReflection";
-import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/context/ThemeContext";
-import { useActionCompletions } from "@/hooks/useActionCompletions";
-import { useGoals } from "@/hooks/useGoals";
-import { goalsApi } from "@/services/goalsApi";
-import { ActionPlan, Goal, GoalCategory, GoalPriority } from "@/types/goals";
-import { PillarTimePreferences, PillarType, TimePreference } from "@/types/preferences";
-import * as DocumentPicker from "expo-document-picker";
-import { LinearGradient } from "expo-linear-gradient";
+import { CircularProgressRing } from '@/components/CircularProgressRing';
+import GoalProgressTracker from '@/components/GoalProgressTracker';
+import HabitGoalIntegration from '@/components/HabitGoalIntegration';
+import Card from '@/components/ui/card';
+import WeeklyGoalsSummary from '@/components/WeeklyGoalsSummary';
+import WeeklyReflection from '@/components/WeeklyReflection';
+import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useActionCompletions } from '@/hooks/useActionCompletions';
+import { useGoals } from '@/hooks/useGoals';
+import { goalsApi } from '@/services/goalsApi';
+import { ActionPlan, Goal, GoalCategory, GoalPriority } from '@/types/goals';
+import { PillarTimePreferences, PillarType, TimePreference } from '@/types/preferences';
+import * as DocumentPicker from 'expo-document-picker';
 import {
   AlertCircle,
-  ArrowRight,
   BarChart3,
   BookOpen,
-  Calendar,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
   Plus,
   Star,
   Target,
-  TrendingUp,
   X,
-} from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+} from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -42,8 +38,8 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface GeneratePlanResponse {
   success: boolean;
@@ -116,14 +112,14 @@ const DeleteFileButton: React.FC<DeleteFileButtonProps> = ({ onDelete }) => {
     <TouchableOpacity
       onPress={handleDelete}
       disabled={isLoading}
-      className={`px-2 py-1 rounded ${
-        isLoading ? (isDarkMode ? "bg-gray-700" : "bg-gray-100") : isDarkMode ? "bg-red-900/50" : "bg-red-100"
+      className={`rounded px-2 py-1 ${
+        isLoading ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-100') : isDarkMode ? 'bg-red-900/50' : 'bg-red-100'
       }`}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color={isDarkMode ? "#f87171" : "#dc2626"} />
+        <ActivityIndicator size='small' color={isDarkMode ? '#f87171' : '#dc2626'} />
       ) : (
-        <Text className={`text-[10px] font-semibold ${isDarkMode ? "text-red-400" : "text-red-600"}`}>Delete</Text>
+        <Text className={`text-[10px] font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>Delete</Text>
       )}
     </TouchableOpacity>
   );
@@ -138,8 +134,8 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item, onPress }) => {
   const { isDarkMode } = useTheme();
   const scheduledDays = Object.entries(item.weekly_schedule || {})
     .filter(
-      ([key, value]) =>
-        ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].includes(key) &&
+      ([key, value]: [string, any]) =>
+        ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].includes(key) &&
         value &&
         value.time_slots &&
         value.time_slots.length > 0
@@ -147,17 +143,17 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item, onPress }) => {
     .map(([day]) => day);
 
   return (
-    <TouchableOpacity className="mt-3" onPress={onPress}>
-      <View className={`shadow rounded-lg p-4 ${isDarkMode ? "bg-gray-800 border border-gray-700" : "bg-white"}`}>
-        <Text className={`text-base font-medium mb-1 ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}>
+    <TouchableOpacity className='mt-3' onPress={onPress}>
+      <View className={`rounded-lg p-4 shadow ${isDarkMode ? 'border border-gray-700 bg-gray-800' : 'bg-white'}`}>
+        <Text className={`mb-1 text-base font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
           {item.title}
         </Text>
-        <Text className={`text-sm mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>{item.description}</Text>
+        <Text className={`mb-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{item.description}</Text>
         {scheduledDays.length > 0 && (
-          <View className="flex-row flex-wrap mt-1">
+          <View className='mt-1 flex-row flex-wrap'>
             {scheduledDays.map((day) => (
-              <View key={day} className={`rounded px-2 py-1 mr-1 mb-1 ${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}>
-                <Text className={`text-xs ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+              <View key={day} className={`mb-1 mr-1 rounded px-2 py-1 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                <Text className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                   {day.charAt(0).toUpperCase() + day.slice(1, 3)}
                 </Text>
               </View>
@@ -266,8 +262,8 @@ interface ExtendedGoal extends Goal {
 
 export default function GoalsScreen() {
   const { user } = useAuth();
-  const userEmail = user?.email || "";
-  const userName = user?.name || "";
+  const userEmail = user?.email || '';
+  const userName = user?.name || '';
 
   // Action completions hook for tracking completion percentages
   const {
@@ -278,7 +274,7 @@ export default function GoalsScreen() {
   } = useActionCompletions(userEmail);
 
   useEffect(() => {
-    console.log("Current user context:", {
+    console.log('Current user context:', {
       userEmail,
       userName,
     });
@@ -303,7 +299,7 @@ export default function GoalsScreen() {
     filename: string;
     percentage: number;
     message: string;
-    status: "processing" | "completed" | "failed";
+    status: 'processing' | 'completed' | 'failed';
     entitiesCount: number;
     relationshipsCount: number;
   } | null>(null);
@@ -337,10 +333,10 @@ export default function GoalsScreen() {
 
   // Form state for adding/editing goals
   const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    priority: "medium" as GoalPriority,
-    category: "health" as GoalCategory,
+    title: '',
+    description: '',
+    priority: 'medium' as GoalPriority,
+    category: 'health' as GoalCategory,
     dueDate: new Date(),
   });
 
@@ -353,36 +349,36 @@ export default function GoalsScreen() {
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "high":
-        return "text-red-500";
-      case "medium":
-        return "text-yellow-500";
-      case "low":
-        return "text-green-500";
+      case 'high':
+        return 'text-red-500';
+      case 'medium':
+        return 'text-yellow-500';
+      case 'low':
+        return 'text-green-500';
       default:
-        return "text-gray-500";
+        return 'text-gray-500';
     }
   };
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "health":
-        return "❤️";
-      case "fitness":
-        return "💪";
-      case "nutrition":
-        return "🥗";
-      case "mental":
-        return "🧠";
-      case "personal":
-        return "⭐";
+      case 'health':
+        return '❤️';
+      case 'fitness':
+        return '💪';
+      case 'nutrition':
+        return '🥗';
+      case 'mental':
+        return '🧠';
+      case 'personal':
+        return '⭐';
       default:
-        return "🎯";
+        return '🎯';
     }
   };
 
@@ -393,7 +389,7 @@ export default function GoalsScreen() {
 
   const handleAddGoal = async () => {
     if (!formData.title.trim()) {
-      Alert.alert("Error", "Please enter a goal title");
+      Alert.alert('Error', 'Please enter a goal title');
       return;
     }
 
@@ -409,14 +405,14 @@ export default function GoalsScreen() {
       setShowAddGoal(false);
       setShowSuggestions(false);
       setFormData({
-        title: "",
-        description: "",
-        priority: "medium",
-        category: "health",
+        title: '',
+        description: '',
+        priority: 'medium',
+        category: 'health',
         dueDate: new Date(),
       });
     } catch (error) {
-      Alert.alert("Error", error instanceof Error ? error.message : "Failed to create goal");
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to create goal');
     }
   };
 
@@ -424,7 +420,7 @@ export default function GoalsScreen() {
     try {
       await updateGoalProgress(goalId, newValue);
     } catch (error) {
-      Alert.alert("Error", error instanceof Error ? error.message : "Failed to update progress");
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update progress');
     }
   };
 
@@ -435,7 +431,7 @@ export default function GoalsScreen() {
 
       await updateGoal(goalId, { completed: !goal.completed });
     } catch (error) {
-      Alert.alert("Error", error instanceof Error ? error.message : "Failed to update goal");
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update goal');
     }
   };
 
@@ -445,7 +441,7 @@ export default function GoalsScreen() {
     try {
       await addGoalNote(goalId, note);
     } catch (error) {
-      Alert.alert("Error", error instanceof Error ? error.message : "Failed to add note");
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to add note');
     }
   };
 
@@ -453,10 +449,10 @@ export default function GoalsScreen() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: [
-          "application/pdf",
-          "text/plain",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          "application/msword",
+          'application/pdf',
+          'text/plain',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/msword',
         ],
         copyToCacheDirectory: true,
       });
@@ -467,8 +463,8 @@ export default function GoalsScreen() {
       }
       return null;
     } catch (error) {
-      console.error("Error picking document:", error);
-      Alert.alert("Error", "Failed to pick document. Please try again.");
+      console.error('Error picking document:', error);
+      Alert.alert('Error', 'Failed to pick document. Please try again.');
       return null;
     }
   };
@@ -489,7 +485,7 @@ export default function GoalsScreen() {
     }[]
   >([]);
   const uploadMonitorActiveRef = useRef(false);
-  const uploadIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const uploadIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const dedupeFiles = (files: typeof uploadedFiles) => {
     const map = new Map<string, any>();
@@ -501,8 +497,8 @@ export default function GoalsScreen() {
   const uploadFileToServer = async (file: DocumentPicker.DocumentPickerAsset) => {
     try {
       if (!userEmail) {
-        console.error("User email missing. Context:", { userEmail, user });
-        throw new Error("User email is required for document upload");
+        console.error('User email missing. Context:', { userEmail, user });
+        throw new Error('User email is required for document upload');
       }
 
       // For all uploads, pass the file info and userEmail
@@ -510,12 +506,12 @@ export default function GoalsScreen() {
         file.file || {
           uri: file.uri,
           name: file.name,
-          type: file.mimeType || "application/octet-stream",
+          type: file.mimeType || 'application/octet-stream',
         },
         userEmail
       );
     } catch (error) {
-      console.error("Upload error details:", error);
+      console.error('Upload error details:', error);
       throw error;
     }
   };
@@ -538,7 +534,7 @@ export default function GoalsScreen() {
         }));
         setUploadedFiles(dedupeFiles(mapped));
       } catch (err) {
-        console.warn("Failed to load uploaded files", err);
+        console.warn('Failed to load uploaded files', err);
       }
     };
     fetchFiles();
@@ -558,7 +554,7 @@ export default function GoalsScreen() {
     try {
       return await goalsApi.monitorUploadProgress(uploadId);
     } catch (error) {
-      console.error("Progress monitoring error:", error);
+      console.error('Progress monitoring error:', error);
       throw error;
     }
   };
@@ -571,23 +567,23 @@ export default function GoalsScreen() {
 
       // Check if file is already being uploaded
       if (uploadingFileId === file.name) {
-        Alert.alert("Upload in Progress", "This file is already being uploaded. Please wait for it to complete.");
+        Alert.alert('Upload in Progress', 'This file is already being uploaded. Please wait for it to complete.');
         return;
       }
 
       // Check if file is already uploaded
       if (uploadedFiles.some((f) => f.name === file.name)) {
-        Alert.alert("File Already Uploaded", "This file has already been uploaded.");
+        Alert.alert('File Already Uploaded', 'This file has already been uploaded.');
         return;
       }
 
       // Test if backend is reachable
       const isBackendReachable = await goalsApi.testBackendConnection();
       if (!isBackendReachable) {
-        console.error("Backend not reachable");
+        console.error('Backend not reachable');
         Alert.alert(
-          "Connection Error",
-          "Cannot connect to the backend server. Please make sure the API server is running."
+          'Connection Error',
+          'Cannot connect to the backend server. Please make sure the API server is running.'
         );
         return;
       }
@@ -595,24 +591,24 @@ export default function GoalsScreen() {
       // Step 2: Start upload process
       setIsUploading(true);
       setUploadingFileId(file.name);
-      setUploadingUploadId("temp-id");
+      setUploadingUploadId('temp-id');
       setUploadProgress({
-        uploadId: "temp-id",
+        uploadId: 'temp-id',
         filename: file.name,
         percentage: 5,
-        message: "Preparing file for upload...",
-        status: "processing",
+        message: 'Preparing file for upload...',
+        status: 'processing',
         entitiesCount: 0,
         relationshipsCount: 0,
       });
 
       // Step 3: Simulate file preparation
       await new Promise((resolve) => setTimeout(resolve, 500));
-      setUploadProgress((prev) => (prev ? { ...prev, message: "Reading file content...", percentage: 10 } : null));
+      setUploadProgress((prev) => (prev ? { ...prev, message: 'Reading file content...', percentage: 10 } : null));
 
       // Step 4: Upload file to server
       await new Promise((resolve) => setTimeout(resolve, 300));
-      setUploadProgress((prev) => (prev ? { ...prev, message: "Uploading file to server...", percentage: 15 } : null));
+      setUploadProgress((prev) => (prev ? { ...prev, message: 'Uploading file to server...', percentage: 15 } : null));
 
       const { upload_id } = await uploadFileToServer(file);
 
@@ -622,7 +618,7 @@ export default function GoalsScreen() {
           ? {
               ...prev,
               uploadId: upload_id,
-              message: "File uploaded successfully, starting analysis...",
+              message: 'File uploaded successfully, starting analysis...',
               percentage: 25,
             }
           : null
@@ -630,7 +626,7 @@ export default function GoalsScreen() {
 
       // Step 5: Monitor progress with enhanced messaging
       if (uploadMonitorActiveRef.current) {
-        console.log("Upload monitor already active, skipping new interval");
+        console.log('Upload monitor already active, skipping new interval');
         return;
       }
       uploadMonitorActiveRef.current = true;
@@ -641,15 +637,15 @@ export default function GoalsScreen() {
           // Enhanced progress messages based on percentage
           let enhancedMessage = progress.message;
           if (progress.percentage <= 30) {
-            enhancedMessage = "Extracting text from document...";
+            enhancedMessage = 'Extracting text from document...';
           } else if (progress.percentage <= 50) {
-            enhancedMessage = "Analyzing document structure...";
+            enhancedMessage = 'Analyzing document structure...';
           } else if (progress.percentage <= 70) {
-            enhancedMessage = "Identifying medical entities...";
+            enhancedMessage = 'Identifying medical entities...';
           } else if (progress.percentage <= 90) {
-            enhancedMessage = "Extracting relationships and connections...";
+            enhancedMessage = 'Extracting relationships and connections...';
           } else if (progress.percentage < 100) {
-            enhancedMessage = "Finalizing analysis...";
+            enhancedMessage = 'Finalizing analysis...';
           }
 
           setUploadProgress((prev) =>
@@ -666,20 +662,20 @@ export default function GoalsScreen() {
           );
 
           // Stop monitoring if completed or failed
-          if (progress.status === "completed" || progress.status === "failed") {
+          if (progress.status === 'completed' || progress.status === 'failed') {
             clearInterval(progressInterval);
             setIsUploading(false);
             setUploadingFileId(null);
             setUploadingUploadId(null);
             uploadMonitorActiveRef.current = false;
 
-            if (progress.status === "completed") {
+            if (progress.status === 'completed') {
               // Show completion message briefly
               setUploadProgress((prev) =>
                 prev
                   ? {
                       ...prev,
-                      message: "Analysis complete! Document processed successfully.",
+                      message: 'Analysis complete! Document processed successfully.',
                       percentage: 100,
                     }
                   : null
@@ -688,7 +684,7 @@ export default function GoalsScreen() {
               // Refresh uploaded files list from backend
               try {
                 if (!userEmail) {
-                  console.warn("User email is undefined, skipping file refresh");
+                  console.warn('User email is undefined, skipping file refresh');
                   return;
                 }
                 const files = await goalsApi.getUploadedFiles(userEmail);
@@ -704,12 +700,12 @@ export default function GoalsScreen() {
                 }));
                 setUploadedFiles(dedupeFiles(mapped));
               } catch (err) {
-                console.warn("Failed to refresh uploaded files", err);
+                console.warn('Failed to refresh uploaded files', err);
               }
 
-              Alert.alert("Success", "Document uploaded and analyzed successfully!");
+              Alert.alert('Success', 'Document uploaded and analyzed successfully!');
             } else {
-              Alert.alert("Error", "Document processing failed. Please try again.");
+              Alert.alert('Error', 'Document processing failed. Please try again.');
             }
 
             // Clear progress after a delay
@@ -718,26 +714,26 @@ export default function GoalsScreen() {
             }, 3000);
           }
         } catch (error) {
-          console.error("Progress monitoring error:", error);
+          console.error('Progress monitoring error:', error);
           clearInterval(progressInterval);
           setIsUploading(false);
           setUploadingFileId(null);
           setUploadingUploadId(null);
           setUploadProgress(null);
           uploadMonitorActiveRef.current = false;
-          Alert.alert("Error", "Failed to monitor upload progress. Please try again.");
+          Alert.alert('Error', 'Failed to monitor upload progress. Please try again.');
         }
       }, 1000); // Check progress every second
     } catch (error) {
-      console.error("Upload error:", error);
+      console.error('Upload error:', error);
       setIsUploading(false);
       setUploadingFileId(null);
       setUploadingUploadId(null);
       setUploadProgress(null);
       Alert.alert(
-        "Error",
+        'Error',
         `Upload failed: ${
-          error instanceof Error ? error.message : "Unknown error"
+          error instanceof Error ? error.message : 'Unknown error'
         }. Please check if the backend server is running and try again.`
       );
     }
@@ -745,7 +741,7 @@ export default function GoalsScreen() {
 
   // Preferences state
   const emptyPref: TimePreference = {
-    preferred_time: "07:00",
+    preferred_time: '07:00',
     duration_minutes: 30,
     days_of_week: [1, 3, 5],
     reminder_before_minutes: 10,
@@ -753,26 +749,26 @@ export default function GoalsScreen() {
   const [preferencesLoading, setPreferencesLoading] = useState(false);
   const [timePreferences, setTimePreferences] = useState<Record<string, TimePreference>>({
     [PillarType.HEALTH]: { ...emptyPref },
-    [PillarType.FITNESS]: { ...emptyPref, preferred_time: "08:00" },
+    [PillarType.FITNESS]: { ...emptyPref, preferred_time: '08:00' },
     [PillarType.NUTRITION]: {
       ...emptyPref,
-      preferred_time: "12:00",
+      preferred_time: '12:00',
       days_of_week: [0, 1, 2, 3, 4, 5, 6],
     },
-    [PillarType.MENTAL]: { ...emptyPref, preferred_time: "18:00" },
-    [PillarType.PERSONAL]: { ...emptyPref, preferred_time: "20:00" },
+    [PillarType.MENTAL]: { ...emptyPref, preferred_time: '18:00' },
+    [PillarType.PERSONAL]: { ...emptyPref, preferred_time: '20:00' },
   });
 
   // Inline banner to inform user while plan is being generated
   const GeneratingBanner = () =>
     generatingPlan ? (
       <View
-        className={`mx-4 mt-3 mb-1 rounded-lg px-3 py-2 flex-row items-center border ${
-          isDarkMode ? "bg-emerald-950/50 border-emerald-900" : "bg-emerald-50 border-emerald-200"
+        className={`mx-4 mb-1 mt-3 flex-row items-center rounded-lg border px-3 py-2 ${
+          isDarkMode ? 'border-emerald-900 bg-emerald-950/50' : 'border-emerald-200 bg-emerald-50'
         }`}
       >
-        <ActivityIndicator size="small" color={isDarkMode ? "#34d399" : "#059669"} />
-        <Text className={`ml-2 text-sm ${isDarkMode ? "text-emerald-400" : "text-emerald-900"}`}>
+        <ActivityIndicator size='small' color={isDarkMode ? '#34d399' : '#059669'} />
+        <Text className={`ml-2 text-sm ${isDarkMode ? 'text-emerald-400' : 'text-emerald-900'}`}>
           Generating plan… You can come back later once it is ready, as creating a detailed plan may take a while.
         </Text>
       </View>
@@ -788,7 +784,7 @@ export default function GoalsScreen() {
         setTimePreferences((prev) => ({ ...prev, ...existing.preferences }));
       }
     } catch (e) {
-      console.warn("Failed to load preferences", e);
+      console.warn('Failed to load preferences', e);
     } finally {
       setPreferencesLoading(false);
     }
@@ -817,10 +813,10 @@ export default function GoalsScreen() {
         user_email: userEmail,
         preferences: timePreferences,
       });
-      Alert.alert("Success", "Preferences saved");
+      Alert.alert('Success', 'Preferences saved');
       setShowPreferencesModal(false);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to save preferences");
+      Alert.alert('Error', e.message || 'Failed to save preferences');
     } finally {
       setPreferencesLoading(false);
     }
@@ -834,31 +830,31 @@ export default function GoalsScreen() {
       user_email: userEmail,
       preferences: {
         [PillarType.HEALTH]: {
-          preferred_time: "07:00",
+          preferred_time: '07:00',
           duration_minutes: 45,
           days_of_week: [1, 3, 5], // Tue, Thu, Sat
           reminder_before_minutes: 15,
         },
         [PillarType.FITNESS]: {
-          preferred_time: "08:00",
+          preferred_time: '08:00',
           duration_minutes: 60,
           days_of_week: [0, 2, 4], // Mon, Wed, Fri
           reminder_before_minutes: 15,
         },
         [PillarType.NUTRITION]: {
-          preferred_time: "12:00",
+          preferred_time: '12:00',
           duration_minutes: 30,
           days_of_week: [0, 1, 2, 3, 4, 5, 6], // Every day
           reminder_before_minutes: 15,
         },
         [PillarType.MENTAL]: {
-          preferred_time: "18:00",
+          preferred_time: '18:00',
           duration_minutes: 30,
           days_of_week: [0, 2, 4, 6], // Mon, Wed, Fri, Sun
           reminder_before_minutes: 15,
         },
         [PillarType.PERSONAL]: {
-          preferred_time: "20:00",
+          preferred_time: '20:00',
           duration_minutes: 45,
           days_of_week: [1, 3, 5], // Tue, Thu, Sat
           reminder_before_minutes: 15,
@@ -875,16 +871,16 @@ export default function GoalsScreen() {
       // Generate the plan (returns { actionPlan, weeklySchedule })
       const { actionPlan, weeklySchedule } = await goalsApi.generatePlan(goalId, userEmail, [defaultPreferences]);
 
-      console.log("Plan generation response:", { actionPlan, weeklySchedule });
+      console.log('Plan generation response:', { actionPlan, weeklySchedule });
 
       // Defensive checks
       if (!actionPlan || !weeklySchedule) {
-        throw new Error("Plan generation returned incomplete data");
+        throw new Error('Plan generation returned incomplete data');
       }
 
       // Debug logs
-      console.log("Action plan:", actionPlan);
-      console.log("Weekly schedule:", weeklySchedule);
+      console.log('Action plan:', actionPlan);
+      console.log('Weekly schedule:', weeklySchedule);
 
       // Set the active plan for immediate UI feedback
       setActivePlan({
@@ -896,19 +892,19 @@ export default function GoalsScreen() {
       try {
         await loadGoals();
       } catch (reloadErr) {
-        console.warn("Goals reload after plan generation failed:", reloadErr);
+        console.warn('Goals reload after plan generation failed:', reloadErr);
       }
 
       // Success – we already set expectations above, so no extra modal needed
     } catch (error) {
-      console.error("Error generating plan:", error);
+      console.error('Error generating plan:', error);
       Alert.alert(
-        isDarkMode ? "Error" : "Error",
-        error instanceof Error ? error.message : "Failed to generate plan",
+        isDarkMode ? 'Error' : 'Error',
+        error instanceof Error ? error.message : 'Failed to generate plan',
         undefined,
         {
           cancelable: true,
-          userInterfaceStyle: isDarkMode ? "dark" : "light",
+          userInterfaceStyle: isDarkMode ? 'dark' : 'light',
         }
       );
     } finally {
@@ -916,9 +912,9 @@ export default function GoalsScreen() {
     }
   };
 
-  const handleWeekChange = (direction: "prev" | "next") => {
+  const handleWeekChange = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentWeek);
-    if (direction === "prev") {
+    if (direction === 'prev') {
       newDate.setDate(newDate.getDate() - 7);
     } else {
       newDate.setDate(newDate.getDate() + 7);
@@ -941,9 +937,9 @@ export default function GoalsScreen() {
         next_week_goals: nextWeekGoals,
       });
       setShowReflection(false);
-      Alert.alert("Success", "Weekly reflection saved successfully");
+      Alert.alert('Success', 'Weekly reflection saved successfully');
     } catch (error) {
-      Alert.alert("Error", error instanceof Error ? error.message : "Failed to save reflection");
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save reflection');
     }
   };
 
@@ -958,11 +954,11 @@ export default function GoalsScreen() {
   const SkeletonGoalCard = () => (
     <View
       style={{
-        backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+        backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
         borderRadius: 16,
         padding: 16,
         marginBottom: 16,
-        shadowColor: "#000",
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: isDarkMode ? 0.3 : 0.1,
         shadowRadius: 4,
@@ -970,14 +966,14 @@ export default function GoalsScreen() {
       }}
     >
       {/* Header skeleton */}
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <View
             style={{
               width: 20,
               height: 20,
               borderRadius: 10,
-              backgroundColor: isDarkMode ? "#374151" : "#e5e7eb",
+              backgroundColor: isDarkMode ? '#374151' : '#e5e7eb',
               marginRight: 8,
             }}
           />
@@ -986,7 +982,7 @@ export default function GoalsScreen() {
               width: 180,
               height: 18,
               borderRadius: 4,
-              backgroundColor: isDarkMode ? "#374151" : "#e5e7eb",
+              backgroundColor: isDarkMode ? '#374151' : '#e5e7eb',
             }}
           />
         </View>
@@ -995,7 +991,7 @@ export default function GoalsScreen() {
             width: 54,
             height: 54,
             borderRadius: 27,
-            backgroundColor: isDarkMode ? "#374151" : "#e5e7eb",
+            backgroundColor: isDarkMode ? '#374151' : '#e5e7eb',
           }}
         />
       </View>
@@ -1003,19 +999,19 @@ export default function GoalsScreen() {
       {/* Description skeleton */}
       <View
         style={{
-          width: "90%",
+          width: '90%',
           height: 14,
           borderRadius: 4,
-          backgroundColor: isDarkMode ? "#374151" : "#e5e7eb",
+          backgroundColor: isDarkMode ? '#374151' : '#e5e7eb',
           marginBottom: 8,
         }}
       />
       <View
         style={{
-          width: "70%",
+          width: '70%',
           height: 14,
           borderRadius: 4,
-          backgroundColor: isDarkMode ? "#374151" : "#e5e7eb",
+          backgroundColor: isDarkMode ? '#374151' : '#e5e7eb',
           marginBottom: 12,
         }}
       />
@@ -1026,7 +1022,7 @@ export default function GoalsScreen() {
           width: 100,
           height: 12,
           borderRadius: 4,
-          backgroundColor: isDarkMode ? "#374151" : "#e5e7eb",
+          backgroundColor: isDarkMode ? '#374151' : '#e5e7eb',
         }}
       />
     </View>
@@ -1039,39 +1035,39 @@ export default function GoalsScreen() {
       <View>
         <View
           style={{
-            shadowColor: "#000",
+            shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: isDarkMode ? 0.3 : 0.1,
             shadowRadius: 4,
             elevation: 3,
             borderBottomWidth: 1,
-            borderBottomColor: isDarkMode ? "#374151" : "#e5e7eb",
-            backgroundColor: isDarkMode ? "#111827" : "#ffffff",
+            borderBottomColor: isDarkMode ? '#374151' : '#e5e7eb',
+            backgroundColor: isDarkMode ? '#111827' : '#ffffff',
             paddingHorizontal: 16,
             paddingVertical: 16,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <View
                 style={{
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   marginRight: 12,
-                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  backgroundColor: isDarkMode ? '#1f6f51' : '#114131',
                 }}
               >
-                <Target size={22} color="#fff" />
+                <Target size={22} color='#fff' />
               </View>
               <View style={{ flex: 1 }}>
                 <Text
                   style={{
                     fontSize: 18,
-                    fontWeight: "600",
-                    color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                    fontWeight: '600',
+                    color: isDarkMode ? '#f3f4f6' : '#1f2937',
                     marginBottom: 2,
                   }}
                 >
@@ -1080,28 +1076,28 @@ export default function GoalsScreen() {
                 <Text
                   style={{
                     fontSize: 13,
-                    color: isDarkMode ? "#9ca3af" : "#6b7280",
+                    color: isDarkMode ? '#9ca3af' : '#6b7280',
                   }}
                 >
                   {formatDate(weekStart)} - {formatDate(weekEnd)}
                 </Text>
               </View>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TouchableOpacity
                 onPress={openPreferences}
                 style={{
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isDarkMode ? '#1f6f51' : '#114131',
                   marginRight: 8,
                 }}
                 activeOpacity={0.7}
               >
-                <Star size={18} color="#fff" />
+                <Star size={18} color='#fff' />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowUploadModal(true)}
@@ -1109,14 +1105,14 @@ export default function GoalsScreen() {
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isDarkMode ? '#1f6f51' : '#114131',
                   marginRight: 8,
                 }}
                 activeOpacity={0.7}
               >
-                <BookOpen size={18} color="#fff" />
+                <BookOpen size={18} color='#fff' />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowAddGoal(true)}
@@ -1124,13 +1120,13 @@ export default function GoalsScreen() {
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isDarkMode ? '#1f6f51' : '#114131',
                 }}
                 activeOpacity={0.7}
               >
-                <Plus size={18} color="#fff" />
+                <Plus size={18} color='#fff' />
               </TouchableOpacity>
             </View>
           </View>
@@ -1138,10 +1134,10 @@ export default function GoalsScreen() {
 
         {/* Scrollable Content */}
         <ScrollView
-          style={{ height: "100%", backgroundColor: isDarkMode ? "#111827" : "#F0FDF4" }}
+          style={{ height: '100%', backgroundColor: isDarkMode ? '#111827' : '#F0FDF4' }}
           contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps='handled'
         >
           <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 16 }}>
             {/* Skeleton cards only - no loading card to prevent height issues */}
@@ -1168,39 +1164,39 @@ export default function GoalsScreen() {
         {/* Header */}
         <View
           style={{
-            shadowColor: "#000",
+            shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: isDarkMode ? 0.3 : 0.1,
             shadowRadius: 4,
             elevation: 3,
             borderBottomWidth: 1,
-            borderBottomColor: isDarkMode ? "#374151" : "#e5e7eb",
-            backgroundColor: isDarkMode ? "#111827" : "#ffffff",
+            borderBottomColor: isDarkMode ? '#374151' : '#e5e7eb',
+            backgroundColor: isDarkMode ? '#111827' : '#ffffff',
             paddingHorizontal: 16,
             paddingVertical: 16,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <View
                 style={{
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   marginRight: 12,
-                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  backgroundColor: isDarkMode ? '#1f6f51' : '#114131',
                 }}
               >
-                <Target size={22} color="#fff" />
+                <Target size={22} color='#fff' />
               </View>
               <View style={{ flex: 1 }}>
                 <Text
                   style={{
                     fontSize: 18,
-                    fontWeight: "600",
-                    color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                    fontWeight: '600',
+                    color: isDarkMode ? '#f3f4f6' : '#1f2937',
                     marginBottom: 2,
                   }}
                 >
@@ -1209,28 +1205,28 @@ export default function GoalsScreen() {
                 <Text
                   style={{
                     fontSize: 13,
-                    color: isDarkMode ? "#9ca3af" : "#6b7280",
+                    color: isDarkMode ? '#9ca3af' : '#6b7280',
                   }}
                 >
                   {formatDate(weekStart)} - {formatDate(weekEnd)}
                 </Text>
               </View>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TouchableOpacity
                 onPress={openPreferences}
                 style={{
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isDarkMode ? '#1f6f51' : '#114131',
                   marginRight: 8,
                 }}
                 activeOpacity={0.7}
               >
-                <Star size={18} color="#fff" />
+                <Star size={18} color='#fff' />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowUploadModal(true)}
@@ -1238,14 +1234,14 @@ export default function GoalsScreen() {
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isDarkMode ? '#1f6f51' : '#114131',
                   marginRight: 8,
                 }}
                 activeOpacity={0.7}
               >
-                <BookOpen size={18} color="#fff" />
+                <BookOpen size={18} color='#fff' />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowAddGoal(true)}
@@ -1253,13 +1249,13 @@ export default function GoalsScreen() {
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: isDarkMode ? "#1f6f51" : "#114131",
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isDarkMode ? '#1f6f51' : '#114131',
                 }}
                 activeOpacity={0.7}
               >
-                <Plus size={18} color="#fff" />
+                <Plus size={18} color='#fff' />
               </TouchableOpacity>
             </View>
           </View>
@@ -1267,11 +1263,11 @@ export default function GoalsScreen() {
 
         {error && (
           <View
-            className={`mx-4 mt-4 p-3 rounded-lg border ${
-              isDarkMode ? "bg-red-950/50 border-red-900" : "bg-red-50 border-red-200"
+            className={`mx-4 mt-4 rounded-lg border p-3 ${
+              isDarkMode ? 'border-red-900 bg-red-950/50' : 'border-red-200 bg-red-50'
             }`}
           >
-            <Text className={`text-sm ${isDarkMode ? "text-red-400" : "text-red-700"}`}>{error}</Text>
+            <Text className={`text-sm ${isDarkMode ? 'text-red-400' : 'text-red-700'}`}>{error}</Text>
           </View>
         )}
 
@@ -1279,92 +1275,92 @@ export default function GoalsScreen() {
         <Modal
           visible={showUploadModal}
           transparent
-          animationType="fade"
+          animationType='fade'
           onRequestClose={() => setShowUploadModal(false)}
         >
           <View
             style={{
               flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "center",
+              backgroundColor: 'rgba(0,0,0,0.4)',
+              justifyContent: 'center',
               paddingHorizontal: 16,
-              alignItems: "center",
+              alignItems: 'center',
             }}
           >
             <View
-              className={`rounded-xl w-full max-w-md mx-4 p-5 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
+              className={`mx-4 w-full max-w-md rounded-xl p-5 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}
               style={{ elevation: 20 }}
             >
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className={`text-lg font-semibold ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}>
+              <View className='mb-4 flex-row items-center justify-between'>
+                <Text className={`text-lg font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                   Manage Documents
                 </Text>
-                <TouchableOpacity onPress={() => setShowUploadModal(false)} className="p-1">
-                  <X size={20} color={isDarkMode ? "#d1d5db" : "#6b7280"} />
+                <TouchableOpacity onPress={() => setShowUploadModal(false)} className='p-1'>
+                  <X size={20} color={isDarkMode ? '#d1d5db' : '#6b7280'} />
                 </TouchableOpacity>
               </View>
 
               {/* Note: Only PDF files can be uploaded */}
-              <View className="mb-3">
-                <Text className={`text-xs ${isDarkMode ? "text-yellow-300" : "text-yellow-700"}`}>
+              <View className='mb-3'>
+                <Text className={`text-xs ${isDarkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
                   Only PDF files can be uploaded.
                 </Text>
               </View>
 
               {uploadProgress && (
                 <View
-                  className={`mb-4 border rounded-lg p-3 ${
-                    isDarkMode ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-gray-100"
+                  className={`mb-4 rounded-lg border p-3 ${
+                    isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-100 bg-gray-50'
                   }`}
                 >
-                  <View className="flex-row items-center mb-2">
-                    {uploadProgress.status === "processing" ? (
+                  <View className='mb-2 flex-row items-center'>
+                    {uploadProgress.status === 'processing' ? (
                       <ActivityIndicator
-                        size="small"
-                        color={isDarkMode ? "#34d399" : "#059669"}
+                        size='small'
+                        color={isDarkMode ? '#34d399' : '#059669'}
                         style={{ marginRight: 8 }}
                       />
-                    ) : uploadProgress.status === "completed" ? (
-                      <CheckCircle size={18} color={isDarkMode ? "#34d399" : "#059669"} style={{ marginRight: 8 }} />
+                    ) : uploadProgress.status === 'completed' ? (
+                      <CheckCircle size={18} color={isDarkMode ? '#34d399' : '#059669'} style={{ marginRight: 8 }} />
                     ) : (
-                      <AlertCircle size={18} color={isDarkMode ? "#f87171" : "#ef4444"} style={{ marginRight: 8 }} />
+                      <AlertCircle size={18} color={isDarkMode ? '#f87171' : '#ef4444'} style={{ marginRight: 8 }} />
                     )}
-                    <Text className={`font-medium text-sm ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}>
-                      {uploadProgress.status === "processing"
-                        ? "Processing Document"
-                        : uploadProgress.status === "completed"
-                        ? "Upload Complete"
-                        : "Upload Failed"}
+                    <Text className={`text-sm font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                      {uploadProgress.status === 'processing'
+                        ? 'Processing Document'
+                        : uploadProgress.status === 'completed'
+                          ? 'Upload Complete'
+                          : 'Upload Failed'}
                     </Text>
                   </View>
-                  <Text className={`text-xs mb-2 ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                  <Text className={`mb-2 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                     {uploadProgress.filename}
                   </Text>
                   <View
-                    className={`h-2 rounded-full mb-2 overflow-hidden ${isDarkMode ? "bg-gray-700" : "bg-gray-200"}`}
+                    className={`mb-2 h-2 overflow-hidden rounded-full ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
                   >
                     <View
-                      className="h-2"
+                      className='h-2'
                       style={{
                         width: `${uploadProgress.percentage}%`,
                         backgroundColor:
-                          uploadProgress.status === "failed"
+                          uploadProgress.status === 'failed'
                             ? isDarkMode
-                              ? "#f87171"
-                              : "#ef4444"
+                              ? '#f87171'
+                              : '#ef4444'
                             : isDarkMode
-                            ? "#34d399"
-                            : "#059669",
+                              ? '#34d399'
+                              : '#059669',
                       }}
                     />
                   </View>
-                  <Text className={`text-xs ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                  <Text className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                     {uploadProgress.message}
                   </Text>
-                  {uploadProgress.status === "completed" && (
-                    <View className={`mt-2 rounded-md p-2 ${isDarkMode ? "bg-emerald-950/50" : "bg-green-50"}`}>
-                      <Text className={`text-xs ${isDarkMode ? "text-emerald-300" : "text-green-800"}`}>
-                        Extracted {uploadProgress.entitiesCount} entities & {uploadProgress.relationshipsCount}{" "}
+                  {uploadProgress.status === 'completed' && (
+                    <View className={`mt-2 rounded-md p-2 ${isDarkMode ? 'bg-emerald-950/50' : 'bg-green-50'}`}>
+                      <Text className={`text-xs ${isDarkMode ? 'text-emerald-300' : 'text-green-800'}`}>
+                        Extracted {uploadProgress.entitiesCount} entities & {uploadProgress.relationshipsCount}{' '}
                         relationships
                       </Text>
                     </View>
@@ -1372,13 +1368,13 @@ export default function GoalsScreen() {
                 </View>
               )}
 
-              <View className="mb-4 max-h-56">
-                <Text className={`text-sm font-medium mb-2 ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
+              <View className='mb-4 max-h-56'>
+                <Text className={`mb-2 text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                   Uploaded Files
                 </Text>
                 {uploadedFiles.length === 0 && !uploadProgress && (
-                  <View className={`p-4 rounded-lg items-center ${isDarkMode ? "bg-gray-800" : "bg-gray-50"}`}>
-                    <Text className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
+                  <View className={`items-center rounded-lg p-4 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                    <Text className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       No documents uploaded yet.
                     </Text>
                   </View>
@@ -1387,18 +1383,18 @@ export default function GoalsScreen() {
                   {uploadedFiles.map((file) => (
                     <View
                       key={file.name}
-                      className={`flex-row items-center justify-between rounded-lg px-3 py-2 mb-2 ${
-                        isDarkMode ? "bg-gray-800" : "bg-gray-50"
+                      className={`mb-2 flex-row items-center justify-between rounded-lg px-3 py-2 ${
+                        isDarkMode ? 'bg-gray-800' : 'bg-gray-50'
                       }`}
                     >
-                      <View className="flex-1 mr-2">
+                      <View className='mr-2 flex-1'>
                         <Text
-                          className={`text-xs font-medium ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}
+                          className={`text-xs font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}
                           numberOfLines={1}
                         >
                           {file.name}
                         </Text>
-                        <Text className={`text-[10px] ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        <Text className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           {(file.size / 1024).toFixed(1)} KB · {file.type}
                         </Text>
                       </View>
@@ -1422,7 +1418,7 @@ export default function GoalsScreen() {
                               }))
                             );
                           } catch (err) {
-                            Alert.alert("Error", "Failed to delete file");
+                            Alert.alert('Error', 'Failed to delete file');
                             throw err; // Re-throw to trigger error state in button
                           }
                         }}
@@ -1432,12 +1428,12 @@ export default function GoalsScreen() {
                 </ScrollView>
               </View>
 
-              <View className="flex-row justify-end space-x-3 gap-2">
+              <View className='flex-row justify-end gap-2 space-x-3'>
                 <TouchableOpacity
                   onPress={() => setShowUploadModal(false)}
-                  className={`px-4 py-2 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-200"}`}
+                  className={`rounded-lg px-4 py-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
                 >
-                  <Text className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>Close</Text>
+                  <Text className={`text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Close</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={async () => {
@@ -1448,14 +1444,14 @@ export default function GoalsScreen() {
 
                       // Check for PDF by mimeType or extension
                       const isPdf =
-                        (file.mimeType && file.mimeType.toLowerCase() === "application/pdf") ||
-                        (file.name && file.name.toLowerCase().endsWith(".pdf"));
+                        (file.mimeType && file.mimeType.toLowerCase() === 'application/pdf') ||
+                        (file.name && file.name.toLowerCase().endsWith('.pdf'));
 
                       if (!isPdf) {
-                        if (Platform.OS === "web") {
-                          window.alert("Only PDF files can be uploaded. Please select a PDF document.");
+                        if (Platform.OS === 'web') {
+                          window.alert('Only PDF files can be uploaded. Please select a PDF document.');
                         } else {
-                          Alert.alert("Invalid File", "Only PDF files can be uploaded. Please select a PDF document.");
+                          Alert.alert('Invalid File', 'Only PDF files can be uploaded. Please select a PDF document.');
                         }
                         return;
                       }
@@ -1463,25 +1459,25 @@ export default function GoalsScreen() {
                       // Check if file is already being uploaded
                       if (uploadingFileId === file.name) {
                         Alert.alert(
-                          "Upload in Progress",
-                          "This file is already being uploaded. Please wait for it to complete."
+                          'Upload in Progress',
+                          'This file is already being uploaded. Please wait for it to complete.'
                         );
                         return;
                       }
 
                       // Check if file is already uploaded
                       if (uploadedFiles.some((f) => f.name === file.name)) {
-                        Alert.alert("File Already Uploaded", "This file has already been uploaded.");
+                        Alert.alert('File Already Uploaded', 'This file has already been uploaded.');
                         return;
                       }
 
                       // Test if backend is reachable
                       const isBackendReachable = await goalsApi.testBackendConnection();
                       if (!isBackendReachable) {
-                        console.error("Backend not reachable");
+                        console.error('Backend not reachable');
                         Alert.alert(
-                          "Connection Error",
-                          "Cannot connect to the backend server. Please make sure the API server is running."
+                          'Connection Error',
+                          'Cannot connect to the backend server. Please make sure the API server is running.'
                         );
                         return;
                       }
@@ -1489,13 +1485,13 @@ export default function GoalsScreen() {
                       // Step 2: Start upload process
                       setIsUploading(true);
                       setUploadingFileId(file.name);
-                      setUploadingUploadId("temp-id");
+                      setUploadingUploadId('temp-id');
                       setUploadProgress({
-                        uploadId: "temp-id",
+                        uploadId: 'temp-id',
                         filename: file.name,
                         percentage: 5,
-                        message: "Preparing file for upload...",
-                        status: "processing",
+                        message: 'Preparing file for upload...',
+                        status: 'processing',
                         entitiesCount: 0,
                         relationshipsCount: 0,
                       });
@@ -1506,7 +1502,7 @@ export default function GoalsScreen() {
                         prev
                           ? {
                               ...prev,
-                              message: "Reading file content...",
+                              message: 'Reading file content...',
                               percentage: 10,
                             }
                           : null
@@ -1518,7 +1514,7 @@ export default function GoalsScreen() {
                         prev
                           ? {
                               ...prev,
-                              message: "Uploading file to server...",
+                              message: 'Uploading file to server...',
                               percentage: 15,
                             }
                           : null
@@ -1532,7 +1528,7 @@ export default function GoalsScreen() {
                           ? {
                               ...prev,
                               uploadId: upload_id,
-                              message: "File uploaded successfully, starting analysis...",
+                              message: 'File uploaded successfully, starting analysis...',
                               percentage: 25,
                             }
                           : null
@@ -1540,7 +1536,7 @@ export default function GoalsScreen() {
 
                       // Step 5: Monitor progress with enhanced messaging
                       if (uploadMonitorActiveRef.current) {
-                        console.log("Upload monitor already active, skipping new interval");
+                        console.log('Upload monitor already active, skipping new interval');
                         return;
                       }
                       uploadMonitorActiveRef.current = true;
@@ -1551,15 +1547,15 @@ export default function GoalsScreen() {
                           // Enhanced progress messages based on percentage
                           let enhancedMessage = progress.message;
                           if (progress.percentage <= 30) {
-                            enhancedMessage = "Extracting text from document...";
+                            enhancedMessage = 'Extracting text from document...';
                           } else if (progress.percentage <= 50) {
-                            enhancedMessage = "Analyzing document structure...";
+                            enhancedMessage = 'Analyzing document structure...';
                           } else if (progress.percentage <= 70) {
-                            enhancedMessage = "Identifying medical entities...";
+                            enhancedMessage = 'Identifying medical entities...';
                           } else if (progress.percentage <= 90) {
-                            enhancedMessage = "Extracting relationships and connections...";
+                            enhancedMessage = 'Extracting relationships and connections...';
                           } else if (progress.percentage < 100) {
-                            enhancedMessage = "Finalizing analysis...";
+                            enhancedMessage = 'Finalizing analysis...';
                           }
 
                           setUploadProgress((prev) =>
@@ -1576,20 +1572,20 @@ export default function GoalsScreen() {
                           );
 
                           // Stop monitoring if completed or failed
-                          if (progress.status === "completed" || progress.status === "failed") {
+                          if (progress.status === 'completed' || progress.status === 'failed') {
                             clearInterval(progressInterval);
                             setIsUploading(false);
                             setUploadingFileId(null);
                             setUploadingUploadId(null);
                             uploadMonitorActiveRef.current = false;
 
-                            if (progress.status === "completed") {
+                            if (progress.status === 'completed') {
                               // Show completion message briefly
                               setUploadProgress((prev) =>
                                 prev
                                   ? {
                                       ...prev,
-                                      message: "Analysis complete! Document processed successfully.",
+                                      message: 'Analysis complete! Document processed successfully.',
                                       percentage: 100,
                                     }
                                   : null
@@ -1598,7 +1594,7 @@ export default function GoalsScreen() {
                               // Refresh uploaded files list from backend
                               try {
                                 if (!userEmail) {
-                                  console.warn("User email is undefined, skipping file refresh");
+                                  console.warn('User email is undefined, skipping file refresh');
                                   return;
                                 }
                                 const files = await goalsApi.getUploadedFiles(userEmail);
@@ -1614,12 +1610,12 @@ export default function GoalsScreen() {
                                 }));
                                 setUploadedFiles(dedupeFiles(mapped));
                               } catch (err) {
-                                console.warn("Failed to refresh uploaded files", err);
+                                console.warn('Failed to refresh uploaded files', err);
                               }
 
-                              Alert.alert("Success", "Document uploaded and analyzed successfully!");
+                              Alert.alert('Success', 'Document uploaded and analyzed successfully!');
                             } else {
-                              Alert.alert("Error", "Document processing failed. Please try again.");
+                              Alert.alert('Error', 'Document processing failed. Please try again.');
                             }
 
                             // Clear progress after a delay
@@ -1628,43 +1624,43 @@ export default function GoalsScreen() {
                             }, 3000);
                           }
                         } catch (error) {
-                          console.error("Progress monitoring error:", error);
+                          console.error('Progress monitoring error:', error);
                           clearInterval(progressInterval);
                           setIsUploading(false);
                           setUploadingFileId(null);
                           setUploadingUploadId(null);
                           setUploadProgress(null);
                           uploadMonitorActiveRef.current = false;
-                          Alert.alert("Error", "Failed to monitor upload progress. Please try again.");
+                          Alert.alert('Error', 'Failed to monitor upload progress. Please try again.');
                         }
                       }, 1000); // Check progress every second
                     } catch (error) {
-                      console.error("Upload error:", error);
+                      console.error('Upload error:', error);
                       setIsUploading(false);
                       setUploadingFileId(null);
                       setUploadingUploadId(null);
                       setUploadProgress(null);
                       Alert.alert(
-                        "Error",
+                        'Error',
                         `Upload failed: ${
-                          error instanceof Error ? error.message : "Unknown error"
+                          error instanceof Error ? error.message : 'Unknown error'
                         }. Please check if the backend server is running and try again.`
                       );
                     }
                   }}
                   disabled={isUploading || generatingPlan}
-                  className={`px-4 py-2 rounded-lg ${
+                  className={`rounded-lg px-4 py-2 ${
                     isUploading
                       ? isDarkMode
-                        ? "bg-emerald-900"
-                        : "bg-emerald-300"
+                        ? 'bg-emerald-900'
+                        : 'bg-emerald-300'
                       : isDarkMode
-                      ? "bg-emerald-700"
-                      : "bg-emerald-600"
+                        ? 'bg-emerald-700'
+                        : 'bg-emerald-600'
                   }`}
                 >
-                  <Text className="text-sm font-medium text-white">
-                    {isUploading ? "Uploading..." : "Upload Document"}
+                  <Text className='text-sm font-medium text-white'>
+                    {isUploading ? 'Uploading...' : 'Upload Document'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1676,126 +1672,126 @@ export default function GoalsScreen() {
         <Modal
           visible={showPreferencesModal}
           transparent
-          animationType="fade"
+          animationType='fade'
           onRequestClose={() => setShowPreferencesModal(false)}
         >
           <View
             style={{
               flex: 1,
               paddingHorizontal: 16,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "center",
-              alignItems: "center",
+              backgroundColor: 'rgba(0,0,0,0.4)',
+              justifyContent: 'center',
+              alignItems: 'center',
             }}
           >
             <View
-              className={`rounded-xl w-full max-w-md mx-4 p-5 ${isDarkMode ? "bg-gray-900" : "bg-white"}`}
+              className={`mx-4 w-full max-w-md rounded-xl p-5 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}
               style={{ elevation: 20 }}
             >
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className={`text-lg font-semibold ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}>
+              <View className='mb-4 flex-row items-center justify-between'>
+                <Text className={`text-lg font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                   Weekly Preferences
                 </Text>
-                <TouchableOpacity onPress={() => setShowPreferencesModal(false)} className="p-1">
-                  <X size={20} color={isDarkMode ? "#d1d5db" : "#6b7280"} />
+                <TouchableOpacity onPress={() => setShowPreferencesModal(false)} className='p-1'>
+                  <X size={20} color={isDarkMode ? '#d1d5db' : '#6b7280'} />
                 </TouchableOpacity>
               </View>
 
               {preferencesLoading ? (
-                <View className="py-6 items-center">
-                  <ActivityIndicator color={isDarkMode ? "#34d399" : "#059669"} />
+                <View className='items-center py-6'>
+                  <ActivityIndicator color={isDarkMode ? '#34d399' : '#059669'} />
                 </View>
               ) : (
                 <ScrollView style={{ maxHeight: 420 }}>
                   {Object.values(PillarType).map((pillar) => (
                     <View
                       key={pillar}
-                      className={`mb-4 p-3 rounded-lg border ${
-                        isDarkMode ? "border-gray-700 bg-gray-800" : "border-gray-100 bg-gray-50"
+                      className={`mb-4 rounded-lg border p-3 ${
+                        isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-100 bg-gray-50'
                       }`}
                     >
-                      <Text className={`font-semibold mb-2 ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}>
+                      <Text className={`mb-2 font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                         {pillar}
                       </Text>
-                      <View className="flex-row mb-2">
-                        <View className="flex-1 mr-2">
-                          <Text className={`text-xs mb-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+                      <View className='mb-2 flex-row'>
+                        <View className='mr-2 flex-1'>
+                          <Text className={`mb-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             Preferred Time (HH:mm)
                           </Text>
                           <TextInput
-                            className={`border rounded px-2 py-1 ${
+                            className={`rounded border px-2 py-1 ${
                               isDarkMode
-                                ? "bg-gray-900 border-gray-700 text-gray-100"
-                                : "bg-white border-gray-300 text-gray-800"
+                                ? 'border-gray-700 bg-gray-900 text-gray-100'
+                                : 'border-gray-300 bg-white text-gray-800'
                             }`}
-                            value={timePreferences[pillar]?.preferred_time || ""}
-                            onChangeText={(t) => updatePrefField(pillar, "preferred_time", t)}
-                            placeholder="07:00"
-                            placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
+                            value={timePreferences[pillar]?.preferred_time || ''}
+                            onChangeText={(t) => updatePrefField(pillar, 'preferred_time', t)}
+                            placeholder='07:00'
+                            placeholderTextColor={isDarkMode ? '#9ca3af' : undefined}
                           />
                         </View>
-                        <View className="w-28">
-                          <Text className={`text-xs mb-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+                        <View className='w-28'>
+                          <Text className={`mb-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             Duration (min)
                           </Text>
                           <TextInput
-                            className={`border rounded px-2 py-1 ${
+                            className={`rounded border px-2 py-1 ${
                               isDarkMode
-                                ? "bg-gray-900 border-gray-700 text-gray-100"
-                                : "bg-white border-gray-300 text-gray-800"
+                                ? 'border-gray-700 bg-gray-900 text-gray-100'
+                                : 'border-gray-300 bg-white text-gray-800'
                             }`}
-                            keyboardType="numeric"
+                            keyboardType='numeric'
                             value={String(timePreferences[pillar]?.duration_minutes ?? 30)}
-                            onChangeText={(t) => updatePrefField(pillar, "duration_minutes", parseInt(t || "0"))}
-                            placeholder="30"
-                            placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
+                            onChangeText={(t) => updatePrefField(pillar, 'duration_minutes', parseInt(t || '0'))}
+                            placeholder='30'
+                            placeholderTextColor={isDarkMode ? '#9ca3af' : undefined}
                           />
                         </View>
                       </View>
 
-                      <View className="flex-row mb-2">
-                        <View className="w-40">
-                          <Text className={`text-xs mb-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+                      <View className='mb-2 flex-row'>
+                        <View className='w-40'>
+                          <Text className={`mb-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             Reminder (min)
                           </Text>
                           <TextInput
-                            className={`border rounded px-2 py-1 ${
+                            className={`rounded border px-2 py-1 ${
                               isDarkMode
-                                ? "bg-gray-900 border-gray-700 text-gray-100"
-                                : "bg-white border-gray-300 text-gray-800"
+                                ? 'border-gray-700 bg-gray-900 text-gray-100'
+                                : 'border-gray-300 bg-white text-gray-800'
                             }`}
-                            keyboardType="numeric"
+                            keyboardType='numeric'
                             value={String(timePreferences[pillar]?.reminder_before_minutes ?? 10)}
-                            onChangeText={(t) => updatePrefField(pillar, "reminder_before_minutes", parseInt(t || "0"))}
-                            placeholder="10"
-                            placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
+                            onChangeText={(t) => updatePrefField(pillar, 'reminder_before_minutes', parseInt(t || '0'))}
+                            placeholder='10'
+                            placeholderTextColor={isDarkMode ? '#9ca3af' : undefined}
                           />
                         </View>
                       </View>
 
-                      <Text className={`text-xs mb-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}>
+                      <Text className={`mb-1 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                         Days of Week
                       </Text>
-                      <View className="flex-row">
-                        {["S", "M", "T", "W", "T", "F", "S"].map((label, idx) => {
+                      <View className='flex-row'>
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((label, idx) => {
                           const active = (timePreferences[pillar]?.days_of_week || []).includes(idx);
                           return (
                             <TouchableOpacity
                               key={`${pillar}-${idx}`}
                               onPress={() => toggleDay(pillar, idx)}
-                              className={`mr-2 px-2 py-1 rounded ${
+                              className={`mr-2 rounded px-2 py-1 ${
                                 active
                                   ? isDarkMode
-                                    ? "bg-emerald-700"
-                                    : "bg-emerald-600"
+                                    ? 'bg-emerald-700'
+                                    : 'bg-emerald-600'
                                   : isDarkMode
-                                  ? "bg-gray-700"
-                                  : "bg-gray-200"
+                                    ? 'bg-gray-700'
+                                    : 'bg-gray-200'
                               }`}
                             >
                               <Text
                                 className={`text-xs ${
-                                  active ? "text-white" : isDarkMode ? "text-gray-200" : "text-gray-700"
+                                  active ? 'text-white' : isDarkMode ? 'text-gray-200' : 'text-gray-700'
                                 }`}
                               >
                                 {label}
@@ -1809,27 +1805,27 @@ export default function GoalsScreen() {
                 </ScrollView>
               )}
 
-              <View className="flex-row justify-end mt-3">
+              <View className='mt-3 flex-row justify-end'>
                 <TouchableOpacity
                   onPress={() => setShowPreferencesModal(false)}
-                  className={`px-4 py-2 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-200"} mr-2`}
+                  className={`rounded-lg px-4 py-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'} mr-2`}
                 >
-                  <Text className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>Cancel</Text>
+                  <Text className={`text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   disabled={preferencesLoading}
                   onPress={savePreferences}
-                  className={`px-4 py-2 rounded-lg ${
+                  className={`rounded-lg px-4 py-2 ${
                     preferencesLoading
                       ? isDarkMode
-                        ? "bg-emerald-900"
-                        : "bg-emerald-300"
+                        ? 'bg-emerald-900'
+                        : 'bg-emerald-300'
                       : isDarkMode
-                      ? "bg-emerald-700"
-                      : "bg-emerald-600"
+                        ? 'bg-emerald-700'
+                        : 'bg-emerald-600'
                   }`}
                 >
-                  <Text className="text-sm font-medium text-white">Save</Text>
+                  <Text className='text-sm font-medium text-white'>Save</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1839,10 +1835,10 @@ export default function GoalsScreen() {
 
       {/* Scrollable Content */}
       <ScrollView
-        style={{ height: "100%", backgroundColor: isDarkMode ? "#111827" : "#F0FDF4" }}
+        style={{ height: '100%', backgroundColor: isDarkMode ? '#111827' : '#F0FDF4' }}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps='handled'
       >
         <View style={{ paddingTop: 16, gap: 16 }}>
           <GeneratingBanner />
@@ -1851,18 +1847,18 @@ export default function GoalsScreen() {
           {loading && goals.length > 0 && (
             <View
               style={{
-                backgroundColor: isDarkMode ? "#1e40af" : "#dbeafe",
+                backgroundColor: isDarkMode ? '#1e40af' : '#dbeafe',
                 borderRadius: 12,
                 padding: 12,
                 marginHorizontal: 16,
                 marginTop: 16,
-                flexDirection: "row",
-                alignItems: "center",
+                flexDirection: 'row',
+                alignItems: 'center',
               }}
             >
-              <ActivityIndicator size="small" color={isDarkMode ? "#60a5fa" : "#1d4ed8"} />
+              <ActivityIndicator size='small' color={isDarkMode ? '#60a5fa' : '#1d4ed8'} />
               <Text
-                style={{ color: isDarkMode ? "#93c5fd" : "#1e40af", marginLeft: 12, fontSize: 13, fontWeight: "500" }}
+                style={{ color: isDarkMode ? '#93c5fd' : '#1e40af', marginLeft: 12, fontSize: 13, fontWeight: '500' }}
               >
                 Refreshing goals...
               </Text>
@@ -1872,19 +1868,19 @@ export default function GoalsScreen() {
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
             {/* Week Navigation (hidden) */}
             {false && (
-              <Card className="border-0">
-                <View className="flex-row items-center justify-between p-4">
-                  <TouchableOpacity onPress={() => handleWeekChange("prev")} className="p-2">
-                    <ChevronLeft size={20} color="#059669" />
+              <Card className='border-0'>
+                <View className='flex-row items-center justify-between p-4'>
+                  <TouchableOpacity onPress={() => handleWeekChange('prev')} className='p-2'>
+                    <ChevronLeft size={20} color='#059669' />
                   </TouchableOpacity>
-                  <View className="items-center">
-                    <Text className="font-semibold text-gray-800">Week of {formatDate(weekStart)}</Text>
-                    <Text className="text-sm text-gray-600">
+                  <View className='items-center'>
+                    <Text className='font-semibold text-gray-800'>Week of {formatDate(weekStart)}</Text>
+                    <Text className='text-sm text-gray-600'>
                       {completedGoals}/{totalGoals} goals completed
                     </Text>
                   </View>
-                  <TouchableOpacity onPress={() => handleWeekChange("next")} className="p-2">
-                    <ChevronRight size={20} color="#059669" />
+                  <TouchableOpacity onPress={() => handleWeekChange('next')} className='p-2'>
+                    <ChevronRight size={20} color='#059669' />
                   </TouchableOpacity>
                 </View>
               </Card>
@@ -1892,37 +1888,37 @@ export default function GoalsScreen() {
 
             {/* Progress Overview (hidden) */}
             {false && (
-              <Card className="border-0">
-                <View className="p-4">
-                  <View className="flex-row items-center mb-3">
-                    <BarChart3 size={20} color="#059669" className="mr-2" />
-                    <Text className="text-lg font-semibold text-gray-800">Weekly Progress</Text>
+              <Card className='border-0'>
+                <View className='p-4'>
+                  <View className='mb-3 flex-row items-center'>
+                    <BarChart3 size={20} color='#059669' className='mr-2' />
+                    <Text className='text-lg font-semibold text-gray-800'>Weekly Progress</Text>
                   </View>
-                  <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-sm text-gray-600">Completion Rate</Text>
-                    <Text className="text-sm font-semibold text-gray-800">{completionRate.toFixed(0)}%</Text>
+                  <View className='mb-2 flex-row items-center justify-between'>
+                    <Text className='text-sm text-gray-600'>Completion Rate</Text>
+                    <Text className='text-sm font-semibold text-gray-800'>{completionRate.toFixed(0)}%</Text>
                   </View>
-                  <View className="h-3 bg-gray-200 rounded-full">
+                  <View className='h-3 rounded-full bg-gray-200'>
                     <View
-                      className="h-3 rounded-full"
+                      className='h-3 rounded-full'
                       style={{
-                        backgroundColor: "#114131",
+                        backgroundColor: '#114131',
                         width: `${completionRate}%`,
                       }}
                     />
                   </View>
-                  <View className="flex-row justify-between mt-3">
-                    <View className="items-center">
-                      <Text className="text-2xl font-bold" style={{ color: "#114131" }}></Text>
-                      <Text className="text-xs text-gray-600">Completed</Text>
+                  <View className='mt-3 flex-row justify-between'>
+                    <View className='items-center'>
+                      <Text className='text-2xl font-bold' style={{ color: '#114131' }}></Text>
+                      <Text className='text-xs text-gray-600'>Completed</Text>
                     </View>
-                    <View className="items-center">
-                      <Text className="text-2xl font-bold text-gray-400"></Text>
-                      <Text className="text-xs text-gray-600">Remaining</Text>
+                    <View className='items-center'>
+                      <Text className='text-2xl font-bold text-gray-400'></Text>
+                      <Text className='text-xs text-gray-600'>Remaining</Text>
                     </View>
-                    <View className="items-center">
-                      <Text className="text-2xl font-bold text-blue-600"></Text>
-                      <Text className="text-xs text-gray-600">Total</Text>
+                    <View className='items-center'>
+                      <Text className='text-2xl font-bold text-blue-600'></Text>
+                      <Text className='text-xs text-gray-600'>Total</Text>
                     </View>
                   </View>
                 </View>
@@ -1942,7 +1938,7 @@ export default function GoalsScreen() {
                 }))}
                 onViewAll={() => {
                   // Scroll to goals list or show all goals
-                  console.log("View all goals");
+                  console.log('View all goals');
                 }}
               />
             )}
@@ -1951,12 +1947,12 @@ export default function GoalsScreen() {
             {!loading && goals.length === 0 && (
               <View
                 style={{
-                  backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                  backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
                   borderRadius: 16,
                   padding: 32,
                   marginBottom: 16,
-                  alignItems: "center",
-                  shadowColor: "#000",
+                  alignItems: 'center',
+                  shadowColor: '#000',
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: isDarkMode ? 0.3 : 0.1,
                   shadowRadius: 4,
@@ -1968,21 +1964,21 @@ export default function GoalsScreen() {
                     width: 80,
                     height: 80,
                     borderRadius: 40,
-                    backgroundColor: isDarkMode ? "#374151" : "#f3f4f6",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     marginBottom: 16,
                   }}
                 >
-                  <Target size={32} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
+                  <Target size={32} color={isDarkMode ? '#9ca3af' : '#6b7280'} />
                 </View>
                 <Text
                   style={{
                     fontSize: 18,
-                    fontWeight: "600",
-                    color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                    fontWeight: '600',
+                    color: isDarkMode ? '#f3f4f6' : '#1f2937',
                     marginBottom: 8,
-                    textAlign: "center",
+                    textAlign: 'center',
                   }}
                 >
                   No Goals Yet
@@ -1990,8 +1986,8 @@ export default function GoalsScreen() {
                 <Text
                   style={{
                     fontSize: 14,
-                    color: isDarkMode ? "#9ca3af" : "#6b7280",
-                    textAlign: "center",
+                    color: isDarkMode ? '#9ca3af' : '#6b7280',
+                    textAlign: 'center',
                     marginBottom: 24,
                     lineHeight: 20,
                   }}
@@ -2002,21 +1998,21 @@ export default function GoalsScreen() {
                 <TouchableOpacity
                   onPress={() => setShowAddGoal(true)}
                   style={{
-                    backgroundColor: isDarkMode ? "#059669" : "#114131",
+                    backgroundColor: isDarkMode ? '#059669' : '#114131',
                     paddingHorizontal: 24,
                     paddingVertical: 12,
                     borderRadius: 12,
-                    flexDirection: "row",
-                    alignItems: "center",
+                    flexDirection: 'row',
+                    alignItems: 'center',
                   }}
                   activeOpacity={0.8}
                 >
-                  <Plus size={18} color="#ffffff" style={{ marginRight: 8 }} />
+                  <Plus size={18} color='#ffffff' style={{ marginRight: 8 }} />
                   <Text
                     style={{
-                      color: "#ffffff",
+                      color: '#ffffff',
                       fontSize: 16,
-                      fontWeight: "600",
+                      fontWeight: '600',
                     }}
                   >
                     Create Your First Goal
@@ -2030,11 +2026,11 @@ export default function GoalsScreen() {
               <View
                 key={goal.id}
                 style={{
-                  backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                  backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
                   borderRadius: 16,
                   padding: 16,
                   marginBottom: 16,
-                  shadowColor: "#000",
+                  shadowColor: '#000',
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: isDarkMode ? 0.3 : 0.1,
                   shadowRadius: 4,
@@ -2045,20 +2041,20 @@ export default function GoalsScreen() {
                   <View style={{ marginBottom: 16 }}>
                     <View
                       style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                         marginBottom: 12,
                       }}
                     >
-                      <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                         <Text style={{ fontSize: 20, marginRight: 8 }}>{getCategoryIcon(goal.category)}</Text>
                         <Text
                           style={{
                             fontSize: 18,
-                            fontWeight: "600",
+                            fontWeight: '600',
                             flex: 1,
-                            color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                            color: isDarkMode ? '#f3f4f6' : '#1f2937',
                           }}
                         >
                           {goal.title}
@@ -2071,14 +2067,14 @@ export default function GoalsScreen() {
                             progress={getGoalCompletionPercentage(goal.id)}
                             color={
                               getGoalCompletionPercentage(goal.id) >= 80
-                                ? "#10b981" // Green for high completion
+                                ? '#10b981' // Green for high completion
                                 : getGoalCompletionPercentage(goal.id) >= 50
-                                ? "#f59e0b" // Yellow for medium completion
-                                : "#ef4444" // Red for low completion
+                                  ? '#f59e0b' // Yellow for medium completion
+                                  : '#ef4444' // Red for low completion
                             }
-                            backgroundColor={isDarkMode ? "#374151" : "#e5e7eb"}
+                            backgroundColor={isDarkMode ? '#374151' : '#e5e7eb'}
                             showPercentage={true}
-                            textColor={isDarkMode ? "#d1d5db" : "#374151"}
+                            textColor={isDarkMode ? '#d1d5db' : '#374151'}
                           />
                         </View>
                       </View>
@@ -2090,35 +2086,35 @@ export default function GoalsScreen() {
                         style={{
                           paddingHorizontal: 16,
                           paddingVertical: 12,
-                          backgroundColor: "#10b981",
+                          backgroundColor: '#10b981',
                           borderRadius: 12,
-                          flexDirection: "row",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           opacity: generatingPlan ? 0.5 : 1,
                           marginBottom: 8,
                         }}
                         activeOpacity={0.7}
                       >
                         {generatingPlan ? (
-                          <ActivityIndicator size="small" color="#ffffff" />
+                          <ActivityIndicator size='small' color='#ffffff' />
                         ) : (
                           <View style={{ marginRight: 8 }}>
-                            <BarChart3 size={18} color="#ffffff" />
+                            <BarChart3 size={18} color='#ffffff' />
                           </View>
                         )}
-                        <Text style={{ color: "white", fontSize: 14, fontWeight: "600" }}>
-                          {generatingPlan ? "Generating…" : "Generate Plan"}
+                        <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>
+                          {generatingPlan ? 'Generating…' : 'Generate Plan'}
                         </Text>
                       </TouchableOpacity>
                     )}
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Text
                         style={{
                           fontSize: 12,
-                          fontWeight: "600",
+                          fontWeight: '600',
                           color:
-                            goal.priority === "high" ? "#ef4444" : goal.priority === "medium" ? "#f59e0b" : "#10b981",
+                            goal.priority === 'high' ? '#ef4444' : goal.priority === 'medium' ? '#f59e0b' : '#10b981',
                         }}
                       >
                         {goal.priority.toUpperCase()} PRIORITY
@@ -2128,8 +2124,8 @@ export default function GoalsScreen() {
 
                   {/* Action Items */}
                   {(goal.action_plan?.action_items?.length ?? 0) > 0 && (
-                    <View className="mt-4">
-                      <Text className={`text-lg font-semibold mb-2 ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}>
+                    <View className='mt-4'>
+                      <Text className={`mb-2 text-lg font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
                         Action Items
                       </Text>
                       <View>
@@ -2144,10 +2140,10 @@ export default function GoalsScreen() {
                   {goal.target_value && (
                     <GoalProgressTracker
                       goalId={goal.id}
-                      title=""
+                      title=''
                       currentValue={goal.current_value || 0}
                       targetValue={goal.target_value}
-                      unit={goal.unit || ""}
+                      unit={goal.unit || ''}
                       onProgressUpdate={handleUpdateProgress}
                       showQuickActions={true}
                     />
@@ -2158,20 +2154,20 @@ export default function GoalsScreen() {
 
             {/* Weekend Reflection */}
             {new Date().getDay() === 0 && ( // Sunday
-              <Card className="border-0 bg-blue-50">
-                <View className="p-4">
-                  <View className="flex-row items-center mb-3">
-                    <BookOpen size={20} color="#3b82f6" className="mr-2" />
-                    <Text className="text-lg font-semibold text-blue-800">Weekly Reflection</Text>
+              <Card className='border-0 bg-blue-50'>
+                <View className='p-4'>
+                  <View className='mb-3 flex-row items-center'>
+                    <BookOpen size={20} color='#3b82f6' className='mr-2' />
+                    <Text className='text-lg font-semibold text-blue-800'>Weekly Reflection</Text>
                   </View>
-                  <Text className="text-sm text-blue-700 mb-3">
+                  <Text className='mb-3 text-sm text-blue-700'>
                     Take a moment to reflect on your week and plan for the next one.
                   </Text>
                   <TouchableOpacity
                     onPress={() => setShowReflection(true)}
-                    className="bg-blue-600 px-4 py-2 rounded-lg self-start"
+                    className='self-start rounded-lg bg-blue-600 px-4 py-2'
                   >
-                    <Text className="text-white font-medium">Start Reflection</Text>
+                    <Text className='font-medium text-white'>Start Reflection</Text>
                   </TouchableOpacity>
                 </View>
               </Card>
@@ -2183,15 +2179,15 @@ export default function GoalsScreen() {
                 goalId={goals[0].id}
                 goalTitle={goals[0].title}
                 suggestedHabits={[
-                  "Set a daily reminder",
-                  "Track progress in the morning",
-                  "Review goals before bed",
-                  "Celebrate small wins",
+                  'Set a daily reminder',
+                  'Track progress in the morning',
+                  'Review goals before bed',
+                  'Celebrate small wins',
                 ]}
-                completedHabits={["Set a daily reminder"]}
+                completedHabits={['Set a daily reminder']}
                 onHabitToggle={(habit) => {
                   // Handle habit toggle
-                  console.log("Habit toggled:", habit);
+                  console.log('Habit toggled:', habit);
                 }}
               />
             )}
@@ -2204,16 +2200,16 @@ export default function GoalsScreen() {
         <Modal
           visible={showAddGoal}
           transparent
-          animationType="fade"
+          animationType='fade'
           onRequestClose={() => {
             setShowAddGoal(false);
             setShowSuggestions(false);
           }}
         >
           <KeyboardAvoidingView
-            className="flex-1"
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+            className='flex-1'
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
           >
             <TouchableWithoutFeedback
               onPress={() => {
@@ -2222,90 +2218,90 @@ export default function GoalsScreen() {
                 setShowSuggestions(false);
               }}
             >
-              <View className="flex-1 bg-black bg-opacity-30 justify-center items-center">
+              <View className='flex-1 items-center justify-center bg-black bg-opacity-30'>
                 <TouchableWithoutFeedback onPress={(e: any) => e.stopPropagation()}>
-                  <View className={`rounded-lg m-4 w-full max-w-md ${isDarkMode ? "bg-gray-800" : "bg-white"}`}>
+                  <View className={`m-4 w-full max-w-md rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
                     <ScrollView
                       contentContainerStyle={{ flexGrow: 1 }}
-                      keyboardShouldPersistTaps="handled"
+                      keyboardShouldPersistTaps='handled'
                       showsVerticalScrollIndicator={false}
                     >
-                      <View className="p-6">
+                      <View className='p-6'>
                         <Text
-                          className={`text-xl font-semibold mb-4 ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}
+                          className={`mb-4 text-xl font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}
                         >
                           Add New Goal
                         </Text>
 
                         <TextInput
-                          placeholder="Goal title"
+                          placeholder='Goal title'
                           value={formData.title}
                           onChangeText={(text: string) => setFormData({ ...formData, title: text })}
-                          className={`rounded-lg px-3 py-2 mb-3 border ${
+                          className={`mb-3 rounded-lg border px-3 py-2 ${
                             isDarkMode
-                              ? "bg-gray-700 border-gray-600 text-gray-100"
-                              : "bg-white border-gray-300 text-gray-800"
+                              ? 'border-gray-600 bg-gray-700 text-gray-100'
+                              : 'border-gray-300 bg-white text-gray-800'
                           }`}
-                          placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
-                          returnKeyType="next"
+                          placeholderTextColor={isDarkMode ? '#9ca3af' : undefined}
+                          returnKeyType='next'
                           onSubmitEditing={() => {
                             // Focus will automatically move to next input
                           }}
                         />
 
                         <TextInput
-                          placeholder="Description (optional)"
+                          placeholder='Description (optional)'
                           value={formData.description}
                           onChangeText={(text: string) => setFormData({ ...formData, description: text })}
-                          className={`rounded-lg px-3 py-2 mb-3 border ${
+                          className={`mb-3 rounded-lg border px-3 py-2 ${
                             isDarkMode
-                              ? "bg-gray-700 border-gray-600 text-gray-100"
-                              : "bg-white border-gray-300 text-gray-800"
+                              ? 'border-gray-600 bg-gray-700 text-gray-100'
+                              : 'border-gray-300 bg-white text-gray-800'
                           }`}
-                          placeholderTextColor={isDarkMode ? "#9ca3af" : undefined}
+                          placeholderTextColor={isDarkMode ? '#9ca3af' : undefined}
                           multiline
                           numberOfLines={3}
-                          textAlignVertical="top"
-                          returnKeyType="done"
+                          textAlignVertical='top'
+                          returnKeyType='done'
                           onSubmitEditing={Keyboard.dismiss}
                         />
 
                         {/* Show Suggestions Button */}
                         <TouchableOpacity
                           onPress={() => setShowSuggestions(!showSuggestions)}
-                          className={`mb-3 p-2 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-100"}`}
+                          className={`mb-3 rounded-lg p-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}
                         >
-                          <Text className={`text-sm text-center ${isDarkMode ? "text-gray-200" : "text-gray-600"}`}>
-                            {showSuggestions ? "Hide Suggestions" : "Show Suggestions"}
+                          <Text className={`text-center text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-600'}`}>
+                            {showSuggestions ? 'Hide Suggestions' : 'Show Suggestions'}
                           </Text>
                         </TouchableOpacity>
 
                         {/* Goal Suggestions */}
                         {showSuggestions && (
-                          <View className="mb-4">
+                          <View className='mb-4'>
                             <Text
-                              className={`text-sm font-medium mb-2 ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}
+                              className={`mb-2 text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}
                             >
                               SUGGESTIONS
                             </Text>
-                            <View className="space-y-2">
+                            <View className='space-y-2'>
                               {[
-                                "Sleep 8 hours a day",
-                                "Follow recommended diet",
-                                "Exercise 4 times a week for 75 min each",
-                                "Meditate for 20 min daily",
-                                "Connect with social group twice a week after work",
+                                'Sleep 8 hours a day',
+                                'Follow recommended diet',
+                                'Exercise 4 times a week for 75 min each',
+                                'Meditate for 20 min daily',
+                                'Connect with social group twice a week after work',
                               ].map((suggestion, index) => (
                                 <TouchableOpacity
                                   key={index}
                                   onPress={() => {
                                     setFormData({ ...formData, title: suggestion });
                                   }}
-                                  className={`border rounded-lg p-3 ${
-                                    isDarkMode ? "bg-gray-700 border-gray-600" : "bg-gray-50 border-gray-200"
+                                  className={`rounded-lg border p-3 ${
+                                    isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'
                                   }`}
                                 >
-                                  <Text className={`text-sm ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
+                                  <Text className={`text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                                     {suggestion}
                                   </Text>
                                 </TouchableOpacity>
@@ -2314,32 +2310,32 @@ export default function GoalsScreen() {
                           </View>
                         )}
 
-                        <View className="flex-row justify-between mb-3">
-                          <Text className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
+                        <View className='mb-3 flex-row justify-between'>
+                          <Text className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                             Priority:
                           </Text>
-                          <View className="flex-row">
-                            {(["low", "medium", "high"] as const).map((priority) => (
+                          <View className='flex-row'>
+                            {(['low', 'medium', 'high'] as const).map((priority) => (
                               <TouchableOpacity
                                 key={priority}
                                 onPress={() => setFormData({ ...formData, priority })}
-                                className={`px-3 py-1 rounded mr-1 ${
+                                className={`mr-1 rounded px-3 py-1 ${
                                   formData.priority === priority
                                     ? isDarkMode
-                                      ? "bg-emerald-700"
-                                      : "bg-emerald-900"
+                                      ? 'bg-emerald-700'
+                                      : 'bg-emerald-900'
                                     : isDarkMode
-                                    ? "bg-gray-700"
-                                    : "bg-gray-200"
+                                      ? 'bg-gray-700'
+                                      : 'bg-gray-200'
                                 }`}
                               >
                                 <Text
                                   className={`text-xs ${
                                     formData.priority === priority
-                                      ? "text-white"
+                                      ? 'text-white'
                                       : isDarkMode
-                                      ? "text-gray-200"
-                                      : "text-gray-700"
+                                        ? 'text-gray-200'
+                                        : 'text-gray-700'
                                   }`}
                                 >
                                   {priority.toUpperCase()}
@@ -2349,32 +2345,32 @@ export default function GoalsScreen() {
                           </View>
                         </View>
 
-                        <View className="flex-row justify-between mb-3">
-                          <Text className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
+                        <View className='mb-3 flex-row justify-between'>
+                          <Text className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                             Category:
                           </Text>
-                          <View className="flex-row">
-                            {(["health", "fitness", "nutrition", "mental", "personal"] as const).map((category) => (
+                          <View className='flex-row'>
+                            {(['health', 'fitness', 'nutrition', 'mental', 'personal'] as const).map((category) => (
                               <TouchableOpacity
                                 key={category}
                                 onPress={() => setFormData({ ...formData, category })}
-                                className={`px-2 py-1 rounded mr-1 ${
+                                className={`mr-1 rounded px-2 py-1 ${
                                   formData.category === category
                                     ? isDarkMode
-                                      ? "bg-emerald-700"
-                                      : "bg-emerald-900"
+                                      ? 'bg-emerald-700'
+                                      : 'bg-emerald-900'
                                     : isDarkMode
-                                    ? "bg-gray-700"
-                                    : "bg-gray-200"
+                                      ? 'bg-gray-700'
+                                      : 'bg-gray-200'
                                 }`}
                               >
                                 <Text
                                   className={`text-xs ${
                                     formData.category === category
-                                      ? "text-white"
+                                      ? 'text-white'
                                       : isDarkMode
-                                      ? "text-gray-200"
-                                      : "text-gray-700"
+                                        ? 'text-gray-200'
+                                        : 'text-gray-700'
                                   }`}
                                 >
                                   {category}
@@ -2384,26 +2380,26 @@ export default function GoalsScreen() {
                           </View>
                         </View>
 
-                        <View className="flex-row">
+                        <View className='flex-row'>
                           <TouchableOpacity
                             onPress={() => {
                               setShowAddGoal(false);
                               setShowSuggestions(false);
                             }}
-                            className={`flex-1 px-4 py-2 rounded-lg mr-2 ${isDarkMode ? "bg-gray-700" : "bg-gray-300"}`}
+                            className={`mr-2 flex-1 rounded-lg px-4 py-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-300'}`}
                           >
-                            <Text className={`text-center ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
+                            <Text className={`text-center ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                               Cancel
                             </Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                             onPress={handleAddGoal}
-                            className="flex-1 px-4 py-2 rounded-lg ml-2"
+                            className='ml-2 flex-1 rounded-lg px-4 py-2'
                             style={{
-                              backgroundColor: isDarkMode ? "#059669" : "#114131",
+                              backgroundColor: isDarkMode ? '#059669' : '#114131',
                             }}
                           >
-                            <Text className="text-center text-white">Add Goal</Text>
+                            <Text className='text-center text-white'>Add Goal</Text>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -2433,56 +2429,56 @@ export default function GoalsScreen() {
       {selectedActionItem && (
         <View
           style={{
-            position: "absolute",
+            position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            justifyContent: "center",
-            alignItems: "center",
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
             zIndex: 1000,
           }}
         >
           <View
             style={{
-              backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+              backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
               borderRadius: 16,
               padding: 0,
               margin: 16,
-              width: "90%",
+              width: '90%',
               maxWidth: 420,
-              maxHeight: "85%",
-              shadowColor: "#000",
+              maxHeight: '85%',
+              shadowColor: '#000',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: isDarkMode ? 0.4 : 0.2,
               shadowRadius: 8,
               elevation: 8,
-              overflow: "hidden",
+              overflow: 'hidden',
             }}
           >
             {/* Fixed Header - Non-scrollable */}
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "flex-start",
+                flexDirection: 'row',
+                alignItems: 'flex-start',
                 paddingHorizontal: 24,
                 paddingTop: 24,
                 paddingBottom: 16,
                 borderBottomWidth: 1,
-                borderBottomColor: isDarkMode ? "#374151" : "#e5e7eb",
+                borderBottomColor: isDarkMode ? '#374151' : '#e5e7eb',
               }}
             >
               <View style={{ flex: 1, paddingRight: 8 }}>
                 <Text
                   style={{
                     fontSize: 20,
-                    fontWeight: "600",
-                    color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                    fontWeight: '600',
+                    color: isDarkMode ? '#f3f4f6' : '#1f2937',
                     lineHeight: 24,
                   }}
                   numberOfLines={2}
-                  ellipsizeMode="tail"
+                  ellipsizeMode='tail'
                 >
                   {selectedActionItem?.title}
                 </Text>
@@ -2492,11 +2488,11 @@ export default function GoalsScreen() {
                 style={{
                   padding: 8,
                   borderRadius: 8,
-                  backgroundColor: isDarkMode ? "#374151" : "#f3f4f6",
+                  backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
                 }}
                 activeOpacity={0.7}
               >
-                <X size={20} color={isDarkMode ? "#9ca3af" : "#6b7280"} />
+                <X size={20} color={isDarkMode ? '#9ca3af' : '#6b7280'} />
               </TouchableOpacity>
             </View>
 
@@ -2511,8 +2507,8 @@ export default function GoalsScreen() {
                 <View style={{ marginBottom: 20 }}>
                   <Text
                     style={{
-                      fontWeight: "500",
-                      color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                      fontWeight: '500',
+                      color: isDarkMode ? '#f3f4f6' : '#1f2937',
                       marginBottom: 8,
                       fontSize: 16,
                     }}
@@ -2521,12 +2517,12 @@ export default function GoalsScreen() {
                   </Text>
                   <Text
                     style={{
-                      color: isDarkMode ? "#d1d5db" : "#6b7280",
+                      color: isDarkMode ? '#d1d5db' : '#6b7280',
                       fontSize: 14,
                       lineHeight: 20,
                     }}
                     numberOfLines={4}
-                    ellipsizeMode="tail"
+                    ellipsizeMode='tail'
                   >
                     {selectedActionItem?.description}
                   </Text>
@@ -2537,8 +2533,8 @@ export default function GoalsScreen() {
               <View style={{ marginBottom: 16 }}>
                 <Text
                   style={{
-                    fontWeight: "600",
-                    color: isDarkMode ? "#f3f4f6" : "#1f2937",
+                    fontWeight: '600',
+                    color: isDarkMode ? '#f3f4f6' : '#1f2937',
                     marginBottom: 16,
                     fontSize: 18,
                   }}
@@ -2551,7 +2547,7 @@ export default function GoalsScreen() {
                     <View key={day} style={{ marginBottom: 16 }}>
                       <View
                         style={{
-                          backgroundColor: isDarkMode ? "#065f46" : "#d1fae5",
+                          backgroundColor: isDarkMode ? '#065f46' : '#d1fae5',
                           paddingHorizontal: 12,
                           paddingVertical: 6,
                           borderRadius: 8,
@@ -2560,10 +2556,10 @@ export default function GoalsScreen() {
                       >
                         <Text
                           style={{
-                            fontWeight: "600",
-                            color: isDarkMode ? "#34d399" : "#059669",
+                            fontWeight: '600',
+                            color: isDarkMode ? '#34d399' : '#059669',
                             fontSize: 15,
-                            textAlign: "center",
+                            textAlign: 'center',
                           }}
                         >
                           {day.charAt(0).toUpperCase() + day.slice(1)}
@@ -2574,34 +2570,34 @@ export default function GoalsScreen() {
                         <View
                           key={index}
                           style={{
-                            backgroundColor: isDarkMode ? "#374151" : "#f9fafb",
+                            backgroundColor: isDarkMode ? '#374151' : '#f9fafb',
                             padding: 16,
                             borderRadius: 12,
                             marginBottom: 8,
                             borderLeftWidth: 4,
-                            borderLeftColor: isDarkMode ? "#34d399" : "#10b981",
+                            borderLeftColor: isDarkMode ? '#34d399' : '#10b981',
                           }}
                         >
                           <View
                             style={{
-                              flexDirection: "row",
-                              justifyContent: "space-between",
-                              alignItems: "center",
+                              flexDirection: 'row',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
                               marginBottom: 4,
                             }}
                           >
                             <Text
                               style={{
                                 fontSize: 16,
-                                color: isDarkMode ? "#f3f4f6" : "#1f2937",
-                                fontWeight: "600",
+                                color: isDarkMode ? '#f3f4f6' : '#1f2937',
+                                fontWeight: '600',
                               }}
                             >
                               {slot.start_time} - {slot.end_time}
                             </Text>
                             <View
                               style={{
-                                backgroundColor: isDarkMode ? "#065f46" : "#ecfdf5",
+                                backgroundColor: isDarkMode ? '#065f46' : '#ecfdf5',
                                 paddingHorizontal: 8,
                                 paddingVertical: 2,
                                 borderRadius: 12,
@@ -2610,8 +2606,8 @@ export default function GoalsScreen() {
                               <Text
                                 style={{
                                   fontSize: 12,
-                                  color: isDarkMode ? "#34d399" : "#059669",
-                                  fontWeight: "500",
+                                  color: isDarkMode ? '#34d399' : '#059669',
+                                  fontWeight: '500',
                                 }}
                               >
                                 {slot.duration}
@@ -2622,7 +2618,7 @@ export default function GoalsScreen() {
                           {slot.health_notes && slot.health_notes.length > 0 && (
                             <View
                               style={{
-                                backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                                backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
                                 padding: 8,
                                 borderRadius: 6,
                                 marginTop: 8,
@@ -2631,8 +2627,8 @@ export default function GoalsScreen() {
                               <Text
                                 style={{
                                   fontSize: 12,
-                                  color: isDarkMode ? "#9ca3af" : "#6b7280",
-                                  fontStyle: "italic",
+                                  color: isDarkMode ? '#9ca3af' : '#6b7280',
+                                  fontStyle: 'italic',
                                   lineHeight: 16,
                                 }}
                               >
@@ -2654,24 +2650,24 @@ export default function GoalsScreen() {
                 paddingHorizontal: 24,
                 paddingVertical: 16,
                 borderTopWidth: 1,
-                borderTopColor: isDarkMode ? "#374151" : "#e5e7eb",
-                backgroundColor: isDarkMode ? "#111827" : "#f9fafb",
+                borderTopColor: isDarkMode ? '#374151' : '#e5e7eb',
+                backgroundColor: isDarkMode ? '#111827' : '#f9fafb',
               }}
             >
               <TouchableOpacity
                 onPress={() => setSelectedActionItem(null)}
                 style={{
-                  backgroundColor: "#10b981",
+                  backgroundColor: '#10b981',
                   paddingVertical: 14,
                   borderRadius: 12,
-                  alignItems: "center",
+                  alignItems: 'center',
                 }}
                 activeOpacity={0.8}
               >
                 <Text
                   style={{
-                    color: "#ffffff",
-                    fontWeight: "600",
+                    color: '#ffffff',
+                    fontWeight: '600',
                     fontSize: 16,
                   }}
                 >

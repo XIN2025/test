@@ -1,8 +1,8 @@
-import { Tabs } from "expo-router";
-import { Globe, Heart, MessageCircle, ShoppingBag, Target, User, Users } from "lucide-react-native";
-import React from "react";
-import ProtectedRoute from "../../components/ProtectedRoute";
-import { ThemeProvider, useTheme } from "../../context/ThemeContext";
+import { Tabs } from 'expo-router';
+import { Globe, Heart, MessageCircle, ShoppingBag, Target, User, Users } from 'lucide-react-native';
+import React from 'react';
+import ProtectedRoute from '../../components/ProtectedRoute';
+import { ThemeProvider, useTheme } from '../../context/ThemeContext';
 
 function TabsNavigator() {
   const { isDarkMode } = useTheme();
@@ -12,66 +12,66 @@ function TabsNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: isDarkMode ? "#1a1a1a" : "#ffffff",
-          borderTopColor: isDarkMode ? "#374151" : "#e5e7eb",
+          backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+          borderTopColor: isDarkMode ? '#374151' : '#e5e7eb',
         },
-        tabBarActiveTintColor: isDarkMode ? "#34d399" : "#059669",
-        tabBarInactiveTintColor: isDarkMode ? "#9ca3af" : "#64748b",
+        tabBarActiveTintColor: isDarkMode ? '#34d399' : '#059669',
+        tabBarInactiveTintColor: isDarkMode ? '#9ca3af' : '#64748b',
       }}
     >
       <Tabs.Screen
-        name="main"
+        name='main'
         options={{
-          title: "Dashboard",
-          tabBarLabel: "Dashboard",
+          title: 'Dashboard',
+          tabBarLabel: 'Dashboard',
           tabBarIcon: ({ color, size }) => <Heart color={color} size={size ?? 22} />,
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name='chat'
         options={{
-          title: "Chat",
-          tabBarLabel: "Chat",
+          title: 'Chat',
+          tabBarLabel: 'Chat',
           tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size ?? 22} />,
         }}
       />
       <Tabs.Screen
-        name="goals"
+        name='goals'
         options={{
-          title: "Goals",
-          tabBarLabel: "Goals",
+          title: 'Goals',
+          tabBarLabel: 'Goals',
           tabBarIcon: ({ color, size }) => <Target color={color} size={size ?? 22} />,
         }}
       />
       <Tabs.Screen
-        name="orders"
+        name='orders'
         options={{
-          title: "Orders",
-          tabBarLabel: "Orders",
+          title: 'Orders',
+          tabBarLabel: 'Orders',
           tabBarIcon: ({ color, size }) => <ShoppingBag color={color} size={size ?? 22} />,
         }}
       />
       <Tabs.Screen
-        name="supplements"
+        name='supplements'
         options={{
-          title: "Hub",
-          tabBarLabel: "Hub",
+          title: 'Hub',
+          tabBarLabel: 'Hub',
           tabBarIcon: ({ color, size }) => <Users color={color} size={size ?? 22} />,
         }}
       />
       <Tabs.Screen
-        name="community"
+        name='community'
         options={{
-          title: "Community",
-          tabBarLabel: "Community",
+          title: 'Community',
+          tabBarLabel: 'Community',
           tabBarIcon: ({ color, size }) => <Globe color={color} size={size ?? 22} />,
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name='profile'
         options={{
-          title: "Profile",
-          tabBarLabel: "Profile",
+          title: 'Profile',
+          tabBarLabel: 'Profile',
           tabBarIcon: ({ color, size }) => <User color={color} size={size ?? 22} />,
         }}
       />

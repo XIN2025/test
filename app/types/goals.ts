@@ -1,10 +1,5 @@
-export type GoalPriority = "high" | "medium" | "low";
-export type GoalCategory =
-  | "health"
-  | "fitness"
-  | "nutrition"
-  | "mental"
-  | "personal";
+export type GoalPriority = 'high' | 'medium' | 'low';
+export type GoalCategory = 'health' | 'fitness' | 'nutrition' | 'mental' | 'personal';
 
 export interface TimeEstimate {
   min_duration: string;

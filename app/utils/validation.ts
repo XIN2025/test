@@ -6,12 +6,12 @@ export interface ValidationResult {
 
 export const validateEmail = (email: string): ValidationResult => {
   if (!email.trim()) {
-    return { isValid: false, error: "Email is required" };
+    return { isValid: false, error: 'Email is required' };
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return { isValid: false, error: "Please enter a valid email address" };
+    return { isValid: false, error: 'Please enter a valid email address' };
   }
 
   return { isValid: true };
@@ -19,17 +19,17 @@ export const validateEmail = (email: string): ValidationResult => {
 
 export const validateName = (name: string): ValidationResult => {
   if (!name.trim()) {
-    return { isValid: false, error: "Name is required" };
+    return { isValid: false, error: 'Name is required' };
   }
 
   if (name.trim().length < 2) {
-    return { isValid: false, error: "Name must be at least 2 characters long" };
+    return { isValid: false, error: 'Name must be at least 2 characters long' };
   }
 
   if (!/^[a-zA-Z\s]+$/.test(name.trim())) {
     return {
       isValid: false,
-      error: "Name can only contain letters and spaces",
+      error: 'Name can only contain letters and spaces',
     };
   }
 
@@ -38,14 +38,14 @@ export const validateName = (name: string): ValidationResult => {
 
 export const validateAge = (age: string): ValidationResult => {
   if (!age.trim()) {
-    return { isValid: false, error: "Age is required" };
+    return { isValid: false, error: 'Age is required' };
   }
 
   const ageNum = parseInt(age);
   if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
     return {
       isValid: false,
-      error: "Please enter a valid age between 1 and 120",
+      error: 'Please enter a valid age between 1 and 120',
     };
   }
 
@@ -54,12 +54,12 @@ export const validateAge = (age: string): ValidationResult => {
 
 export const validateGender = (gender: string): ValidationResult => {
   if (!gender.trim()) {
-    return { isValid: false, error: "Gender is required" };
+    return { isValid: false, error: 'Gender is required' };
   }
 
-  const validGenders = ["male", "female", "other", "prefer not to say"];
+  const validGenders = ['male', 'female', 'other', 'prefer not to say'];
   if (!validGenders.includes(gender.toLowerCase())) {
-    return { isValid: false, error: "Please select a valid gender option" };
+    return { isValid: false, error: 'Please select a valid gender option' };
   }
 
   return { isValid: true };
@@ -67,11 +67,11 @@ export const validateGender = (gender: string): ValidationResult => {
 
 export const validateOTP = (otp: string): ValidationResult => {
   if (!otp.trim()) {
-    return { isValid: false, error: "OTP is required" };
+    return { isValid: false, error: 'OTP is required' };
   }
 
   if (!/^\d{6}$/.test(otp.trim())) {
-    return { isValid: false, error: "OTP must be 6 digits" };
+    return { isValid: false, error: 'OTP must be 6 digits' };
   }
 
   return { isValid: true };

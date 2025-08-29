@@ -10,7 +10,10 @@
     "web": "expo start --web",
     "web:build": "expo export --platform web",
     "web:start": "expo start --web --port 3000",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "format:fix": "prettier --write .",
+    "format:check": "prettier --check .",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -22,9 +25,9 @@
     "@react-navigation/native": "^7.1.6",
     "axios": "^1.11.0",
     "babel-plugin-module-resolver": "^5.0.2",
-    "babel-preset-expo": "^13.2.3",
+    "babel-preset-expo": "^13.0.0",
     "eslint-config-expo": "~9.2.0",
-    "expo": "~53.0.20",
+    "expo": "~53.0.22",
     "expo-blur": "~14.1.5",
     "expo-constants": "~17.1.7",
     "expo-document-picker": "~13.1.6",
@@ -34,17 +37,17 @@
     "expo-image-picker": "~16.1.4",
     "expo-linear-gradient": "^14.1.5",
     "expo-linking": "~7.1.7",
-    "expo-router": "~5.1.4",
+    "expo-router": "~5.1.5",
     "expo-splash-screen": "~0.30.10",
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.5",
-    "expo-system-ui": "~5.0.10",
+    "expo-system-ui": "~5.0.11",
     "expo-web-browser": "~14.2.0",
     "lucide-react-native": "^0.525.0",
     "nativewind": "^4.1.23",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "react-native": "0.79.5",
+    "react-native": "^0.79.5",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-progress": "^5.0.1",
     "react-native-reanimated": "~3.17.4",
@@ -55,12 +58,14 @@
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss": "^3.4.17",
-    "typescript": "~5.8.3"
+    "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
+    "typescript": "~5.8.3",
     "@babel/core": "^7.25.2",
     "@types/react": "~19.0.10",
-    "eslint": "^9.25.0"
+    "eslint": "^9.25.0",
+    "prettier": "^3.6.2",
+    "prettier-plugin-tailwindcss": "^0.6.14"
   }
 }

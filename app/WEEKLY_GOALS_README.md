@@ -2,7 +2,8 @@
 
 ## Overview
 
-The Weekly Goal Setting feature provides users with an intuitive interface to define, track, and reflect on weekly goals with auto-assist features and integration into planner and habit modules.
+The Weekly Goal Setting feature provides users with an intuitive interface to define, track, and reflect on weekly goals
+with auto-assist features and integration into planner and habit modules.
 
 ## Features Implemented
 
@@ -119,8 +120,8 @@ interface Goal {
   id: string;
   title: string;
   description: string;
-  priority: "high" | "medium" | "low";
-  category: "health" | "fitness" | "nutrition" | "mental" | "personal";
+  priority: 'high' | 'medium' | 'low';
+  category: 'health' | 'fitness' | 'nutrition' | 'mental' | 'personal';
   targetValue?: number;
   currentValue?: number;
   unit?: string;
@@ -212,4 +213,5 @@ app/
 - NativeWind (for styling)
 - React Native Safe Area Context
 
-The weekly goal setting feature is now fully implemented and integrated into the app's navigation system, providing users with a comprehensive tool for setting, tracking, and reflecting on their weekly health and wellness goals.
+The weekly goal setting feature is now fully implemented and integrated into the app's navigation system, providing
+users with a comprehensive tool for setting, tracking, and reflecting on their weekly health and wellness goals.

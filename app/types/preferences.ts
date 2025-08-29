@@ -1,9 +1,9 @@
 export enum PillarType {
-  HEALTH = "HEALTH",
-  FITNESS = "FITNESS",
-  NUTRITION = "NUTRITION",
-  MENTAL = "MENTAL",
-  PERSONAL = "PERSONAL",
+  HEALTH = 'HEALTH',
+  FITNESS = 'FITNESS',
+  NUTRITION = 'NUTRITION',
+  MENTAL = 'MENTAL',
+  PERSONAL = 'PERSONAL',
 }
 
 export interface TimePreference {

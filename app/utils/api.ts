@@ -18,27 +18,24 @@ export class ApiException extends Error {
 
   constructor(message: string, status: number = 500, code?: string) {
     super(message);
-    this.name = "ApiException";
+    this.name = 'ApiException';
     this.status = status;
     this.code = code;
   }
 }
 
-import Constants from "expo-constants";
+import Constants from 'expo-constants';
 
 // Base API configuration
-const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || 'http://localhost:8000';
 
 // Generic API request function
-export const apiRequest = async <T = any>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> => {
+export const apiRequest = async <T = any>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   const url = `${API_BASE_URL}${endpoint}`;
 
   const defaultOptions: RequestInit = {
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...options.headers,
     },
   };
@@ -52,10 +49,7 @@ export const apiRequest = async <T = any>(
     const data: ApiResponse<T> = await response.json();
 
     if (!response.ok) {
-      throw new ApiException(
-        data.detail || data.error || "An unexpected error occurred",
-        response.status
-      );
+      throw new ApiException(data.detail || data.error || 'An unexpected error occurred', response.status);
     }
 
     return data as T;
@@ -64,42 +58,40 @@ export const apiRequest = async <T = any>(
       throw error;
     }
 
-    if (error instanceof TypeError && error.message.includes("fetch")) {
-      throw new ApiException("Network error. Please check your connection.", 0);
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new ApiException('Network error. Please check your connection.', 0);
     }
 
-    throw new ApiException(
-      error instanceof Error ? error.message : "An unexpected error occurred"
-    );
+    throw new ApiException(error instanceof Error ? error.message : 'An unexpected error occurred');
   }
 };
 
 // Specific API functions
 export const authApi = {
   login: async (email: string) => {
-    return apiRequest("/login", {
-      method: "POST",
+    return apiRequest('/login', {
+      method: 'POST',
       body: JSON.stringify({ email }),
     });
   },
 
   register: async (name: string, email: string) => {
-    return apiRequest("/register", {
-      method: "POST",
+    return apiRequest('/register', {
+      method: 'POST',
       body: JSON.stringify({ name, email }),
     });
   },
 
   verifyLoginOTP: async (email: string, otp: string) => {
-    return apiRequest("/verify-login-otp", {
-      method: "POST",
+    return apiRequest('/verify-login-otp', {
+      method: 'POST',
       body: JSON.stringify({ email, otp }),
     });
   },
 
   verifyRegistrationOTP: async (email: string, otp: string) => {
-    return apiRequest("/verify-registration-otp", {
-      method: "POST",
+    return apiRequest('/verify-registration-otp', {
+      method: 'POST',
       body: JSON.stringify({ email, otp }),
     });
   },
@@ -107,8 +99,8 @@ export const authApi = {
 
 export const userApi = {
   savePreferences: async (preferences: any) => {
-    return apiRequest("/api/user/preferences", {
-      method: "POST",
+    return apiRequest('/api/user/preferences', {
+      method: 'POST',
       body: JSON.stringify(preferences),
     });
   },
@@ -128,5 +120,5 @@ export const handleApiError = (error: unknown): string => {
     return error.message;
   }
 
-  return "An unexpected error occurred. Please try again.";
+  return 'An unexpected error occurred. Please try again.';
 };

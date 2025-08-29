@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { goalsApi } from "../services/goalsApi";
+import { useState, useEffect, useCallback } from 'react';
+import { goalsApi } from '../services/goalsApi';
 
 export interface ActionCompletionStats {
   goal_id: string;
@@ -18,9 +18,7 @@ export interface ActionCompletionStats {
 }
 
 export const useActionCompletions = (userEmail: string) => {
-  const [completionStats, setCompletionStats] = useState<
-    Record<string, ActionCompletionStats>
-  >({});
+  const [completionStats, setCompletionStats] = useState<Record<string, ActionCompletionStats>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +28,7 @@ export const useActionCompletions = (userEmail: string) => {
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Get Monday
     const monday = new Date(today);
     monday.setDate(today.getDate() + mondayOffset);
-    return monday.toISOString().split("T")[0]; // YYYY-MM-DD format
+    return monday.toISOString().split('T')[0]; // YYYY-MM-DD format
   };
 
   const loadCompletionStats = useCallback(
@@ -42,18 +40,12 @@ export const useActionCompletions = (userEmail: string) => {
 
       try {
         const week = weekStart || getCurrentWeekStart();
-        const stats = await goalsApi.getAllGoalsCompletionStats(
-          userEmail,
-          week
-        );
+        const stats = await goalsApi.getAllGoalsCompletionStats(userEmail, week);
         setCompletionStats(stats);
       } catch (err) {
-        const message =
-          err instanceof Error
-            ? err.message
-            : "Failed to load completion stats";
+        const message = err instanceof Error ? err.message : 'Failed to load completion stats';
         setError(message);
-        console.error("Error loading completion stats:", err);
+        console.error('Error loading completion stats:', err);
       } finally {
         setLoading(false);
       }
@@ -69,9 +61,9 @@ export const useActionCompletions = (userEmail: string) => {
       notes?: string,
       completionDate?: string
     ) => {
-      if (!userEmail) throw new Error("User email required");
+      if (!userEmail) throw new Error('User email required');
 
-      const date = completionDate || new Date().toISOString().split("T")[0];
+      const date = completionDate || new Date().toISOString().split('T')[0];
 
       try {
         await goalsApi.markActionItemCompletion(goalId, userEmail, {
@@ -86,10 +78,9 @@ export const useActionCompletions = (userEmail: string) => {
 
         return true;
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to mark completion";
+        const message = err instanceof Error ? err.message : 'Failed to mark completion';
         setError(message);
-        console.error("Error marking completion:", err);
+        console.error('Error marking completion:', err);
         return false;
       }
     },
@@ -109,9 +100,9 @@ export const useActionCompletions = (userEmail: string) => {
       const stats = completionStats[goalId];
       if (!stats) return null;
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toISOString().split('T')[0];
       const todayStats = stats.daily_stats.find((day) => {
-        const statsDate = new Date(day.date).toISOString().split("T")[0];
+        const statsDate = new Date(day.date).toISOString().split('T')[0];
         return statsDate === today;
       });
       return todayStats || null;

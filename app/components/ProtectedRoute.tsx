@@ -1,10 +1,10 @@
-import React, { useEffect } from "react";
-import { View, Text, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/context/ThemeContext";
+import React, { useEffect } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 // @ts-ignore
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,7 +18,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       // Redirect to login page if not authenticated
-      router.replace("/login");
+      router.replace('/login');
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -26,13 +26,13 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (isLoading) {
     return (
       <LinearGradient
-        colors={isDarkMode ? ["#0f172a", "#1e293b"] : ["#f0f9f6", "#e6f4f1"]}
-        className="flex-1 justify-center items-center"
+        colors={isDarkMode ? ['#0f172a', '#1e293b'] : ['#f0f9f6', '#e6f4f1']}
+        className='flex-1 items-center justify-center'
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <ActivityIndicator size="large" color={isDarkMode ? "#34d399" : "#059669"} />
-        <Text className={`mt-4 text-lg ${isDarkMode ? "text-gray-100" : "text-gray-800"}`}>Loading...</Text>
+        <ActivityIndicator size='large' color={isDarkMode ? '#34d399' : '#059669'} />
+        <Text className={`mt-4 text-lg ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>Loading...</Text>
       </LinearGradient>
     );
   }
