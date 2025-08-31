@@ -4,7 +4,7 @@ export default {
     slug: 'app',
     version: '1.0.3',
     orientation: 'portrait',
-    icon: './assets/images/evra.png',
+    icon: './assets/images/logo.png',
     scheme: 'app',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -19,7 +19,7 @@ export default {
       package: 'com.evra.app',
       adaptiveIcon: {
         foregroundImage: './assets/images/adaptive-icon.png',
-        backgroundColor: '#ffffff',
+        backgroundColor: '#fdf4de',
       },
       edgeToEdgeEnabled: true,
     },
@@ -33,7 +33,7 @@ export default {
       [
         'expo-splash-screen',
         {
-          image: './assets/images/splash-icon.png',
+          image: './assets/images/evra.png',
           imageWidth: 200,
           resizeMode: 'contain',
           backgroundColor: '#ffffff',

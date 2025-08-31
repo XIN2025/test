@@ -5,11 +5,12 @@ import { useActionCompletions } from '@/hooks/useActionCompletions';
 import { useGoals } from '@/hooks/useGoals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Bell, Calendar, Flame, Heart, MessageCircle, Settings, Target } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, Modal, Pressable, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import Tooltip from 'react-native-walkthrough-tooltip';
 import { goalsApi } from '../../services/goalsApi';
 
@@ -990,34 +991,70 @@ export default function MainDashboard() {
                     elevation: 16,
                   }}
                 >
-                  <View
-                    style={{
-                      width: width * 0.35, // Responsive width
-                      height: width * 0.35, // Responsive height
-                      borderRadius: width * 0.175,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: '#fed7aa',
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 4,
-                      elevation: 3,
-                    }}
-                  >
-                    <View
+                  <View style={{ alignItems: 'center' }}>
+                    {/* Semicircular Progress Gauge */}
+                    <View style={{ width: width * 0.35, height: (width * 0.35) / 2 + 20 }}>
+                      <Svg width={width * 0.35} height={(width * 0.35) / 2 + 10}>
+                        {/* Background semicircle */}
+                        <Circle
+                          cx={(width * 0.35) / 2}
+                          cy={(width * 0.35) / 2}
+                          r={(width * 0.35) / 2 - 8}
+                          stroke='#fed7aa'
+                          strokeWidth={8}
+                          fill='transparent'
+                          strokeDasharray={`${Math.PI * ((width * 0.35) / 2 - 8)} ${2 * Math.PI * ((width * 0.35) / 2 - 8)}`}
+                          strokeLinecap='round'
+                          transform={`rotate(180 ${(width * 0.35) / 2} ${(width * 0.35) / 2})`}
+                        />
+
+                        {/* Progress semicircle (84% progress) */}
+                        <Circle
+                          cx={(width * 0.35) / 2}
+                          cy={(width * 0.35) / 2}
+                          r={(width * 0.35) / 2 - 8}
+                          stroke='#f97316'
+                          strokeWidth={8}
+                          fill='transparent'
+                          strokeDasharray={`${(84 / 100) * Math.PI * ((width * 0.35) / 2 - 8)} ${2 * Math.PI * ((width * 0.35) / 2 - 8)}`}
+                          strokeLinecap='round'
+                          transform={`rotate(180 ${(width * 0.35) / 2} ${(width * 0.35) / 2})`}
+                        />
+                      </Svg>
+
+                      {/* Score text in center */}
+                      <View
+                        style={{
+                          position: 'absolute',
+                          top: (width * 0.35) / 2 - 30,
+                          left: 0,
+                          right: 0,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: '#f97316',
+                            fontSize: width * 0.08,
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          84
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Label below */}
+                    <Text
                       style={{
-                        width: width * 0.28,
-                        height: width * 0.28,
-                        borderRadius: width * 0.14,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: '#f97316',
+                        color: '#00000080',
+                        fontSize: 12,
+                        fontWeight: '500',
+                        textAlign: 'center',
                       }}
                     >
-                      <Text style={{ color: 'white', fontSize: 12, fontWeight: '500' }}>Health Score</Text>
-                      <Text style={{ color: 'white', fontSize: 28, fontWeight: 'bold' }}>84</Text>
-                    </View>
+                      Health Score
+                    </Text>
                   </View>
                 </Tooltip>
               </View>
