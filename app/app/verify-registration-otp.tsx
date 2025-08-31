@@ -19,6 +19,7 @@ import EvraLogo from '../components/EvraLogo';
 
 export default function VerifyRegistrationOtpScreen() {
   const { email } = useLocalSearchParams();
+  const { name } = useLocalSearchParams();
   const [otp, setOtp] = useState('');
   const [errors, setErrors] = useState<{ otp?: string }>({});
   const [apiError, setApiError] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export default function VerifyRegistrationOtpScreen() {
       setApiError(null);
       setErrors({});
       const normalizedEmail = Array.isArray(email) ? email[0] : String(email || '');
+      const normalizedName = Array.isArray(name) ? name[0] : String(name || '');
       const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || 'http://localhost:8000';
       const response = await fetch(`${API_BASE_URL}/verify-registration-otp`, {
         method: 'POST',
@@ -68,7 +70,7 @@ export default function VerifyRegistrationOtpScreen() {
       Alert.alert('Success', 'Registration verified! Please set your preferences.');
       router.push({
         pathname: './initial-preferences',
-        params: { email: normalizedEmail },
+        params: { email: normalizedEmail, name: normalizedName },
       });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));

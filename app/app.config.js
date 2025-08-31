@@ -22,6 +22,7 @@ export default {
         backgroundColor: '#fdf4de',
       },
       edgeToEdgeEnabled: true,
+      googleServicesFile: './google-services.json',
     },
     web: {
       bundler: 'metro',

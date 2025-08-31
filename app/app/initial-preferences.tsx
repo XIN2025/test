@@ -57,7 +57,7 @@ const genderOptions = ['Male', 'Female', 'Other'];
 export default function InitialPreferences() {
   const { email, name } = useLocalSearchParams();
   const router = useRouter();
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   // Redirect if already authenticated and not setting initial preferences
   useEffect(() => {
@@ -142,19 +142,22 @@ export default function InitialPreferences() {
 
       await userApi.savePreferences(preferences);
 
-      console.log('Success! Navigating to dashboard...');
+      console.log('Success! Navigating to permissions page...');
       const normalizedEmail = Array.isArray(email) ? email[0] : String(email || '');
       const normalizedName = Array.isArray(name) ? name[0] : String(name || '');
-
-      // Set user as authenticated in the auth context
-      await login(normalizedEmail, normalizedName);
 
       // Store walkthrough trigger in AsyncStorage since URL params get lost in tab navigation
       await AsyncStorage.setItem(`showWalkthrough:${normalizedEmail}`, 'register');
 
+      // Pass all required data to the /permissions page, but do NOT set user as authenticated yet
       router.push({
-        pathname: '/dashboard/main',
-        params: { email: normalizedEmail, name: normalizedName },
+        pathname: '/permissions',
+        params: {
+          email: normalizedEmail,
+          name: normalizedName,
+          // Pass preferences as JSON string to next page
+          preferences: JSON.stringify(preferences),
+        },
       });
     } catch (err) {
       const errorMessage = handleApiError(err);

@@ -154,7 +154,10 @@ export default function RegisterScreen() {
       Alert.alert('Success', 'OTP sent to your email.');
       router.push({
         pathname: './verify-registration-otp',
-        params: { email: formData.email.trim() },
+        params: {
+          email: formData.email.trim(),
+          name: formData.name.trim(),
+        },
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.';

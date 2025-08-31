@@ -1,3 +1,5 @@
 node_modules
 **/__pycache__
 **/.env
+app/evra-fcm-firebase-adminsdk-fbsvc-aa3eba28fe.json
+app/google-services.json
