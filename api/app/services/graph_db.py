@@ -2,7 +2,8 @@ from neo4j import GraphDatabase
 from ..config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 from typing import List, Dict, Optional, Tuple
 import logging
-from .vector_store import get_vector_store
+# from .vector_store import get_vector_store
+from app.services.rag_services.mongodb_vectorstore import get_vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ class GraphDatabaseService:
         context_info: List[str] = []
         
         # Step 1: Use vector search to find semantically relevant nodes
-        relevant_nodes = self.vector_store.search(query, top_k=5)
+        relevant_nodes = self.vector_store.search(query=query, top_k=5 , user_email=user_email)
         
         # Step 2: Get entity information for semantically relevant nodes
         starting_nodes = set()

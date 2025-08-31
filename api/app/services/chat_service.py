@@ -8,7 +8,8 @@ from langchain_openai import ChatOpenAI
 import logging
 from ..config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 from .graph_db import get_graph_db
-from .vector_store import get_vector_store
+# from .vector_store import get_vector_store
+from app.services.rag_services.mongodb_vectorstore import get_vector_store
 from .prompts import ChatPrompts
 
 logger = logging.getLogger(__name__)
@@ -114,7 +115,7 @@ class ChatService:
             print(f"🔍 [CONTEXT RETRIEVAL] Step 2: Searching vector store for query: '{state.query}'")
             print(f"🔍 [CONTEXT RETRIEVAL] Step 2a: Calling vector_store.search()...")
             
-            relevant_nodes = self.vector_store.search(state.query, top_k=5)
+            relevant_nodes = self.vector_store.search(query=state.query, top_k=5 , user_email=state.user_email)
             
             print(f"🔍 [CONTEXT RETRIEVAL] Step 2b: Vector store returned {len(relevant_nodes)} nodes")
             print(f"🔍 [CONTEXT RETRIEVAL] Step 2c: Relevant nodes found: {relevant_nodes}")

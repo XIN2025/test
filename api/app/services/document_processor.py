@@ -6,8 +6,8 @@ import logging
 import time
 from ..config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 from .graph_db import get_graph_db
-from .vector_store import get_vector_store
-
+# from .vector_store import get_vector_store
+from app.services.rag_services.mongodb_vectorstore import get_vector_store
 logger = logging.getLogger(__name__)
 
 # Load spaCy model
@@ -67,7 +67,7 @@ class DocumentProcessor:
             created_nodes, created_relationships = self._store_in_graph(entities, relationships, user_email)
             
             # Update vector store
-            self._update_vector_store(entities)
+            self._update_vector_store(entities , user_email=user_email)
             
             # Update progress: Finalizing
             if progress_callback:
@@ -294,12 +294,13 @@ class DocumentProcessor:
         
         return created_nodes, created_relationships
 
-    def _update_vector_store(self, entities: List[Dict]):
+
+    def _update_vector_store(self, entities: List[Dict] , user_email:str):
         """Update the vector store with new entities"""
         for entity in entities:
             try:
                 text = f"{entity.get('name')} {entity.get('description', '')}"
-                self.vector_store.add_node(entity.get('name'), text)
+                self.vector_store.add_node(entity.get('name'), text , user_email=user_email)
             except Exception as e:
                 logger.error(f"Error updating vector store for entity {entity.get('name')}: {e}")
 

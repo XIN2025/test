@@ -97,6 +97,7 @@ class GoalsService:
         return goals_with_plans
 
     def get_goal_by_id(self, goal_id: str, user_email: str) -> Optional[Goal]:
+        
         goal = self.goals_collection.find_one({"_id": ObjectId(goal_id), "user_email": user_email})
         if not goal:
             return None

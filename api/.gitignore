@@ -6,6 +6,7 @@ app.egg-info/**
 .DS_Store
 .env
 venv
+.venv
 faiss_index_maps.pkl
 faiss_index.bin
 
