@@ -158,7 +158,7 @@ class HealthInsightsService:
                 ]
             }
 
-            insight_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0).with_structured_output(insight_schema)
+            insight_llm = ChatOpenAI(model="gpt-5", temperature=0).with_structured_output(insight_schema)
 
             insight_prompt = ChatPromptTemplate.from_messages([
                 ("system", """You are a medical assistant that provides comprehensive health insights and recommendations.
