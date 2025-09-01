@@ -168,6 +168,7 @@ class MAIDxOService:
             "Missing Elements: <list>\n"
             "Recommendations: <list>"
         )
+        
 
         try:
             response = self._ask_model(prompt)

@@ -6,7 +6,8 @@ import re
 from ..schemas.goals import Goal
 from ..schemas.planner import ActionPlan, ActionItem, TimeEstimate, ActionPriority, WeeklyCompletionStatus
 from ..schemas.health_insights import HealthContext, HealthInsight
-from ..services.health_insights_service import get_health_insights_service
+# from ..services.health_insights_service import get_health_insights_service
+from ..services.health_insight_services.health_insights_service import get_health_insights_service
 from openai import OpenAI, RateLimitError
 import os
 import json
