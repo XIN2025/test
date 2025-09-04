@@ -16,4 +16,5 @@ async def register_fcm_token(token_data: FCMTokenRequest = Body(...)):
             return FCMTokenResponse(success=True, message="FCM token registered successfully.")
         else:
             raise HTTPException(status_code=400, detail="Failed to register FCM token.")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
