@@ -1,0 +1,513 @@
+{
+  "success": true,
+  "message": "Goal plan generated successfully",
+  "data": {
+    "goal": {
+      "title": "Reduce My Fat",
+      "description": "I want to reduce my fatty body",
+      "priority": "medium",
+      "category": "health",
+      "target_value": 0.0,
+      "unit": "1",
+      "due_date": "2025-09-01T09:30:38.212000",
+      "id": "68b568ebcd9d9e336cdf34bc",
+      "user_email": "yethu.heizen@work.com",
+      "current_value": 0.0,
+      "completed": false,
+      "notes": [],
+      "created_at": "2025-09-01T09:35:39.568000",
+      "updated_at": "2025-09-01T13:44:51.714000"
+    },
+    "action_plan": {
+      "goal_id": "68b568ebcd9d9e336cdf34bc",
+      "goal_title": "Reduce My Fat",
+      "action_items": [
+        {
+          "title": "Walking",
+          "description": "Walk at a moderate pace for at least 30 minutes. Start with a 5-minute warm-up at a slower pace, then increase your speed for the next 20 minutes, and finish with a 5-minute cool-down.",
+          "priority": "high",
+          "time_estimate": {
+            "min_duration": "00:30:00",
+            "max_duration": "01:00:00",
+            "recommended_frequency": "daily",
+            "time_of_day": null
+          },
+          "prerequisites": [
+            "Comfortable walking shoes",
+            "Water bottle"
+          ],
+          "success_criteria": [
+            "Walk at least 30 minutes daily",
+            "Maintain a heart rate within target zone"
+          ],
+          "adaptation_notes": [
+            "Choose flat terrain to reduce strain",
+            "Use a walking stick if needed for balance"
+          ],
+          "weekly_schedule": {
+            "monday": {
+              "date": "2025-09-01T00:00:00",
+              "time_slots": [
+                {
+                  "start_time": "07:00",
+                  "end_time": "07:30",
+                  "duration": "0:30:00",
+                  "pillar": "FITNESS",
+                  "frequency": null,
+                  "priority": null,
+                  "health_notes": [
+                    "Choose flat terrain to reduce strain",
+                    "Use a walking stick if needed for balance"
+                  ]
+                }
+              ],
+              "total_duration": "0:30:00"
+            },
+            "tuesday": null,
+            "wednesday": {
+              "date": "2025-09-03T00:00:00",
+              "time_slots": [
+                {
+                  "start_time": "07:00",
+                  "end_time": "07:30",
+                  "duration": "0:30:00",
+                  "pillar": "FITNESS",
+                  "frequency": null,
+                  "priority": null,
+                  "health_notes": [
+                    "Choose flat terrain to reduce strain",
+                    "Use a walking stick if needed for balance"
+                  ]
+                }
+              ],
+              "total_duration": "0:30:00"
+            },
+            "thursday": null,
+            "friday": {
+              "date": "2025-09-05T00:00:00",
+              "time_slots": [
+                {
+                  "start_time": "07:00",
+                  "end_time": "07:30",
+                  "duration": "0:30:00",
+                  "pillar": "FITNESS",
+                  "frequency": null,
+                  "priority": null,
+                  "health_notes": [
+                    "Choose flat terrain to reduce strain",
+                    "Use a walking stick if needed for balance"
+                  ]
+                }
+              ],
+              "total_duration": "0:30:00"
+            },
+            "saturday": null,
+            "sunday": null,
+            "total_weekly_duration": "01:30:00",
+            "pillar_distribution": {
+              "FITNESS": 1.0
+            }
+          },
+          "weekly_completion": [
+            {
+              "week_start": "2025-09-01T00:00:00",
+              "is_complete": false
+            },
+            {
+              "week_start": "2025-09-08T00:00:00",
+              "is_complete": false
+            },
+            {
+              "week_start": "2025-09-15T00:00:00",
+              "is_complete": false
+            },
+            {
+              "week_start": "2025-09-22T00:00:00",
+              "is_complete": false
+            }
+          ]
+        },
+        {
+          "title": "Strength Training",
+          "description": "Perform bodyweight exercises such as squats, push-ups, and lunges. Start with 2 sets of 10-15 repetitions for each exercise, resting for 30 seconds between sets.",
+          "priority": "medium",
+          "time_estimate": {
+            "min_duration": "00:30:00",
+            "max_duration": "01:00:00",
+            "recommended_frequency": "twice_weekly",
+            "time_of_day": null
+          },
+          "prerequisites": [
+            "Exercise mat",
+            "Resistance bands (optional)"
+          ],
+          "success_criteria": [
+            "Complete all sets with proper form",
+            "Increase repetitions or sets over time"
+          ],
+          "adaptation_notes": [
+            "Modify exercises to reduce intensity if needed",
+            "Focus on form to prevent injury"
+          ],
+          "weekly_schedule": {
+            "monday": null,
+            "tuesday": null,
+            "wednesday": {
+              "date": "2025-09-03T00:00:00",
+              "time_slots": [
+                {
+                  "start_time": "07:30",
+                  "end_time": "08:00",
+                  "duration": "0:30:00",
+                  "pillar": "FITNESS",
+                  "frequency": null,
+                  "priority": null,
+                  "health_notes": [
+                    "Modify exercises to reduce intensity if needed",
+                    "Focus on form to prevent injury"
+                  ]
+                }
+              ],
+              "total_duration": "0:30:00"
+            },
+            "thursday": null,
+            "friday": {
+              "date": "2025-09-05T00:00:00",
+              "time_slots": [
+                {
+                  "start_time": "07:30",
+                  "end_time": "08:00",
+                  "duration": "0:30:00",
+                  "pillar": "FITNESS",
+                  "frequency": null,
+                  "priority": null,
+                  "health_notes": [
+                    "Modify exercises to reduce intensity if needed",
+                    "Focus on form to prevent injury"
+                  ]
+                }
+              ],
+              "total_duration": "0:30:00"
+            },
+            "saturday": null,
+            "sunday": null,
+            "total_weekly_duration": "01:00:00",
+            "pillar_distribution": {
+              "FITNESS": 1.0
+            }
+          },
+          "weekly_completion": [
+            {
+              "week_start": "2025-09-01T00:00:00",
+              "is_complete": false
+            },
+            {
+              "week_start": "2025-09-08T00:00:00",
+              "is_complete": false
+            },
+            {
+              "week_start": "2025-09-15T00:00:00",
+              "is_complete": false
+            },
+            {
+              "week_start": "2025-09-22T00:00:00",
+              "is_complete": false
+            }
+          ]
+        },
+        {
+          "title": "Yoga",
+          "description": "Engage in a gentle yoga session focusing on flexibility and relaxation. Include poses such as Child's Pose, Cat-Cow, and Seated Forward Bend. Hold each pose for 30 seconds to 1 minute.",
+          "priority": "low",
+          "time_estimate": {
+            "min_duration": "00:30:00",
+            "max_duration": "01:00:00",
+            "recommended_frequency": "weekly",
+            "time_of_day": null
+          },
+          "prerequisites": [
+            "Yoga mat",
+            "Comfortable clothing"
+          ],
+          "success_criteria": [
+            "Complete a full session without discomfort",
+            "Improve flexibility over time"
+          ],
+          "adaptation_notes": [
+            "Avoid poses that strain the back",
+            "Use props for support if necessary"
+          ],
+          "weekly_schedule": {
+            "monday": {
+              "date": "2025-09-01T00:00:00",
+              "time_slots": [
+                {
+                  "start_time": "07:30",
+                  "end_time": "08:00",
+                  "duration": "0:30:00",
+                  "pillar": "FITNESS",
+                  "frequency": null,
+                  "priority": null,
+                  "health_notes": [
+                    "Avoid poses that strain the back",
+                    "Use props for support if necessary"
+                  ]
+                }
+              ],
+              "total_duration": "0:30:00"
+            },
+            "tuesday": null,
+            "wednesday": null,
+            "thursday": null,
+            "friday": null,
+            "saturday": null,
+            "sunday": null,
+            "total_weekly_duration": "00:30:00",
+            "pillar_distribution": {
+              "FITNESS": 1.0
+            }
+          },
+          "weekly_completion": [
+            {
+              "week_start": "2025-09-01T00:00:00",
+              "is_complete": false
+            },
+            {
+              "week_start": "2025-09-08T00:00:00",
+              "is_complete": false
+            },
+            {
+              "week_start": "2025-09-15T00:00:00",
+              "is_complete": false
+            },
+            {
+              "week_start": "2025-09-22T00:00:00",
+              "is_complete": false
+            }
+          ]
+        }
+      ],
+      "total_estimated_time_per_week": "06:45:00",
+      "suggested_schedule": {
+        "morning": [
+          {
+            "action": "Walking",
+            "duration": "0:30:00 - 1:00:00",
+            "frequency": "daily"
+          },
+          {
+            "action": "Strength Training",
+            "duration": "0:30:00 - 1:00:00",
+            "frequency": "twice_weekly"
+          },
+          {
+            "action": "Yoga",
+            "duration": "0:30:00 - 1:00:00",
+            "frequency": "weekly"
+          }
+        ],
+        "afternoon": [],
+        "evening": []
+      },
+      "health_adaptations": [
+        "Type 2 Diabetes Health_Condition Angela Rivera"
+      ],
+      "created_at": "2025-09-01T13:49:49.960183",
+      "user_email": "yethu.heizen@work.com",
+      "id": "68b5a47d937bf37f21f2584c"
+    },
+    "weekly_schedule": {
+      "start_date": "2025-09-01T00:00:00",
+      "end_date": "2025-09-07T00:00:00",
+      "daily_schedules": {
+        "monday": {
+          "date": "2025-09-01T00:00:00",
+          "time_slots": [
+            {
+              "start_time": "07:00:00",
+              "end_time": "07:30:00",
+              "duration": "00:30:00",
+              "pillar": "FITNESS",
+              "action_item": "Walking",
+              "frequency": null,
+              "priority": null,
+              "health_notes": [
+                "Choose flat terrain to reduce strain",
+                "Use a walking stick if needed for balance"
+              ]
+            },
+            {
+              "start_time": "07:30:00",
+              "end_time": "08:00:00",
+              "duration": "00:30:00",
+              "pillar": "FITNESS",
+              "action_item": "Yoga",
+              "frequency": null,
+              "priority": null,
+              "health_notes": [
+                "Avoid poses that strain the back",
+                "Use props for support if necessary"
+              ]
+            }
+          ],
+          "total_duration": "01:00:00",
+          "pillars_covered": [
+            "FITNESS"
+          ]
+        },
+        "tuesday": {
+          "date": "2025-09-02T00:00:00",
+          "time_slots": [
+            {
+              "start_time": "18:00:00",
+              "end_time": "18:30:00",
+              "duration": "00:30:00",
+              "pillar": "NUTRITION",
+              "action_item": "Nutrition",
+              "frequency": null,
+              "priority": null,
+              "health_notes": []
+            }
+          ],
+          "total_duration": "00:30:00",
+          "pillars_covered": [
+            "NUTRITION"
+          ]
+        },
+        "wednesday": {
+          "date": "2025-09-03T00:00:00",
+          "time_slots": [
+            {
+              "start_time": "07:00:00",
+              "end_time": "07:30:00",
+              "duration": "00:30:00",
+              "pillar": "FITNESS",
+              "action_item": "Walking",
+              "frequency": null,
+              "priority": null,
+              "health_notes": [
+                "Choose flat terrain to reduce strain",
+                "Use a walking stick if needed for balance"
+              ]
+            },
+            {
+              "start_time": "07:30:00",
+              "end_time": "08:00:00",
+              "duration": "00:30:00",
+              "pillar": "FITNESS",
+              "action_item": "Strength Training",
+              "frequency": null,
+              "priority": null,
+              "health_notes": [
+                "Modify exercises to reduce intensity if needed",
+                "Focus on form to prevent injury"
+              ]
+            }
+          ],
+          "total_duration": "01:00:00",
+          "pillars_covered": [
+            "FITNESS"
+          ]
+        },
+        "thursday": {
+          "date": "2025-09-04T00:00:00",
+          "time_slots": [
+            {
+              "start_time": "18:00:00",
+              "end_time": "18:30:00",
+              "duration": "00:30:00",
+              "pillar": "NUTRITION",
+              "action_item": "Nutrition",
+              "frequency": null,
+              "priority": null,
+              "health_notes": []
+            }
+          ],
+          "total_duration": "00:30:00",
+          "pillars_covered": [
+            "NUTRITION"
+          ]
+        },
+        "friday": {
+          "date": "2025-09-05T00:00:00",
+          "time_slots": [
+            {
+              "start_time": "07:00:00",
+              "end_time": "07:30:00",
+              "duration": "00:30:00",
+              "pillar": "FITNESS",
+              "action_item": "Walking",
+              "frequency": null,
+              "priority": null,
+              "health_notes": [
+                "Choose flat terrain to reduce strain",
+                "Use a walking stick if needed for balance"
+              ]
+            },
+            {
+              "start_time": "07:30:00",
+              "end_time": "08:00:00",
+              "duration": "00:30:00",
+              "pillar": "FITNESS",
+              "action_item": "Strength Training",
+              "frequency": null,
+              "priority": null,
+              "health_notes": [
+                "Modify exercises to reduce intensity if needed",
+                "Focus on form to prevent injury"
+              ]
+            }
+          ],
+          "total_duration": "01:00:00",
+          "pillars_covered": [
+            "FITNESS"
+          ]
+        },
+        "saturday": {
+          "date": "2025-09-06T00:00:00",
+          "time_slots": [],
+          "total_duration": "00:00:00",
+          "pillars_covered": []
+        },
+        "sunday": {
+          "date": "2025-09-07T00:00:00",
+          "time_slots": [
+            {
+              "start_time": "22:00:00",
+              "end_time": "22:20:00",
+              "duration": "00:20:00",
+              "pillar": "HEALTH",
+              "action_item": "Health Check",
+              "frequency": null,
+              "priority": null,
+              "health_notes": [
+                "Type 2 Diabetes Health_Condition Angela Rivera"
+              ]
+            }
+          ],
+          "total_duration": "00:20:00",
+          "pillars_covered": [
+            "HEALTH"
+          ]
+        }
+      },
+      "total_weekly_hours": 4.333333333333333,
+      "pillar_distribution": {
+        "FITNESS": 0.6923076923076923,
+        "NUTRITION": 0.23076923076923078,
+        "HEALTH": 0.07692307692307693
+      },
+      "health_adaptations": [
+        "Type 2 Diabetes Health_Condition Angela Rivera"
+      ],
+      "schedule_notes": [
+        "Activities scheduled with rest periods in between",
+        "Morning slots prioritized for higher energy activities"
+      ],
+      "goal_id": "68b568ebcd9d9e336cdf34bc",
+      "user_email": "yethu.heizen@work.com",
+      "created_at": "2025-09-01T13:49:50.001841",
+      "id": "68b5a47e937bf37f21f2584d"
+    }
+  }
+}
