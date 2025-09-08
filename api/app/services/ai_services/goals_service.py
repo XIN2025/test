@@ -13,6 +13,7 @@ from app.services.ai_services.mongodb_vectorstore import get_vector_store
 from ..backend_services.db import get_db
 from .planner_service import get_planner_service
 from ..backend_services.scheduler_service import get_scheduler_service
+from ..backend_services.nudge_service import NudgeService
 from ..miscellaneous.graph_db import get_graph_db
 import logging
 
@@ -58,6 +59,7 @@ class GoalsService:
         self.action_completions_collection = self.db["action_completions"]
         self.planner_service = get_planner_service()
         self.scheduler_service = get_scheduler_service()
+        self.nudge_service = NudgeService()
         self.graph_db = get_graph_db()
 
     def create_goal(self, goal_data: GoalCreate) -> Goal:
@@ -231,7 +233,7 @@ class GoalsService:
                 break
         return streak
 
-    def generate_goal_plan(
+    async def generate_goal_plan(
     self,
     goal_id: str,
     user_email: str,
@@ -378,6 +380,7 @@ class GoalsService:
                     }
                 }
             )
+            await self.nudge_service.create_nudges_from_goal(goal_id)
 
             return {
                 "success": True,

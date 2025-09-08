@@ -220,11 +220,7 @@ async def generate_goal_plan(
     pillar_preferences: List[PillarTimePreferences] = Body(default=[])
 ):
     try:
-        # Run goal plan generation in thread pool to avoid blocking
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            executor,
-            goals_service.generate_goal_plan,
+        result = await goals_service.generate_goal_plan(
             goal_id,
             user_email,
             pillar_preferences

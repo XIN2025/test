@@ -1,22 +1,4 @@
 services:
-  web:
-    build:
-      context: ./app
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    env_file:
-      - app/.env
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - EXPO_PUBLIC_API_URL=https://api.evra.opengig.work
-    restart: on-failure:5
-    networks:
-      - app_network
-    depends_on:
-      - api
-
   api:
     build:
       context: ./api
