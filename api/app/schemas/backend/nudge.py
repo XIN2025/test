@@ -26,8 +26,7 @@ class Nudge(BaseModel):
     created_at: Optional[datetime] = None
 
 class FCMTokenRequest(BaseModel):
-    success: bool
-    message: str
+    email: EmailStr
     fcm_token: str
 
 class FCMTokenResponse(BaseModel):

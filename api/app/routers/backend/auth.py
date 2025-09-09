@@ -11,6 +11,7 @@ def register(user: UserRegister):
     users = db["users"]
     existing_user = users.find_one({"email": user.email})
     otp = generate_otp()
+    print(otp)
     user_dict = {
         "name": user.name,
         "email": user.email,

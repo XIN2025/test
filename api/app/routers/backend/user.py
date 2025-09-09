@@ -69,23 +69,29 @@ def update_user_profile(profile: UserProfileUpdate):
             "updated_at": datetime.utcnow()  # Track when profile was last updated
         }
 
-        # Only include fields that were sent in the request
-        if hasattr(profile, 'full_name'):
+        # Only include fields that were sent in the request and are not None/empty
+        if hasattr(profile, 'full_name') and profile.full_name is not None and profile.full_name.strip():
             update_data["name"] = profile.full_name
             
         # Only update these fields if they were explicitly provided (not None)
         for field, db_field in [
             ('phone_number', 'phone_number'),
             ('date_of_birth', 'date_of_birth'),
-            ('blood_type', 'blood_type'),
-            ('notifications_enabled', 'notifications_enabled')
+            ('blood_type', 'blood_type')
         ]:
             if hasattr(profile, field) and getattr(profile, field) is not None:
                 value = getattr(profile, field)
+                # Skip empty strings
+                if isinstance(value, str) and not value.strip():
+                    continue
                 # Special handling for blood type
                 if field == 'blood_type' and value:
                     value = value.upper()
                 update_data[db_field] = value
+        
+        # Handle notifications_enabled separately as it's a boolean
+        if hasattr(profile, 'notifications_enabled') and profile.notifications_enabled is not None:
+            update_data['notifications_enabled'] = profile.notifications_enabled
         
         # Update user profile with only the provided fields
         result = users.update_one(
