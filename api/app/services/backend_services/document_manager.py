@@ -90,10 +90,10 @@ class DocumentManager:
             logger.error(f"Error getting documents: {e}")
             return []
     
-    def get_document_by_upload_id(self, upload_id: str) -> Optional[Dict]:
+    async def get_document_by_upload_id(self, upload_id: str) -> Optional[Dict]:
         """Get a specific document by upload ID"""
         try:
-            document = self.files_collection.find_one({"upload_id": upload_id})
+            document = await self.files_collection.find_one({"upload_id": upload_id})
             if document:
                 document["_id"] = str(document["_id"])
             return document

@@ -15,7 +15,7 @@ preferences_service = PreferencesService()
 @preferences_router.post("/api/preferences/time", response_model=TimePreferenceResponse)
 async def set_time_preferences(preferences: PillarTimePreferences):
     try:
-        success = preferences_service.set_time_preferences(
+        success = await preferences_service.set_time_preferences(
             preferences.user_email,
             preferences.preferences
         )
@@ -32,7 +32,7 @@ async def set_time_preferences(preferences: PillarTimePreferences):
 @preferences_router.get("/api/preferences/time", response_model=TimePreferenceResponse)
 async def get_time_preferences(user_email: EmailStr = Query(...)):
     try:
-        preferences = preferences_service.get_time_preferences(user_email)
+        preferences = await preferences_service.get_time_preferences(user_email)
         if not preferences:
             return TimePreferenceResponse(
                 success=True,
@@ -54,7 +54,7 @@ async def update_pillar_preference(
     user_email: EmailStr = Query(...)
 ):
     try:
-        success = preferences_service.update_pillar_preference(user_email, pillar, preference)
+        success = await preferences_service.update_pillar_preference(user_email, pillar, preference)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update pillar preference")
         return TimePreferenceResponse(
@@ -71,7 +71,7 @@ async def delete_pillar_preference(
     user_email: EmailStr = Query(...)
 ):
     try:
-        success = preferences_service.delete_pillar_preference(user_email, pillar)
+        success = await preferences_service.delete_pillar_preference(user_email, pillar)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to delete pillar preference")
         return TimePreferenceResponse(

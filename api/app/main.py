@@ -4,10 +4,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
-from starlette.concurrency import run_in_threadpool
 import asyncio
 
-from app.services.backend_services.db import get_db, close_db
+from app.services.backend_services.db import get_db, get_client, close_db
 from app.services.backend_services.email_utils import send_email
 from app.services.backend_services.nudge_service import NudgeService
 from app.routers.backend.auth import auth_router
@@ -20,16 +19,6 @@ from app.routers.backend.nudge import nudge_router
 from app.exceptions import AppException, custom_exception_handler, generic_exception_handler
 
 
-def run_async(coro):
-    """Run async coroutine inside scheduler sync context"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
-
-
 async def check_and_send_nudges():
     db = get_db()
     nudges_collection = db["nudges"]
@@ -38,16 +27,13 @@ async def check_and_send_nudges():
     now = datetime.utcnow()
     ten_minutes_later = now + timedelta(minutes=10)
 
-    # Fetch pending nudges in next 10 mins
-    pending_nudges = await run_in_threadpool(
-        lambda: list(nudges_collection.find({
-            "status": "pending",
-            "scheduled_time": {
-                "$gte": now,
-                "$lt": ten_minutes_later
-            }
-        }))
-    )
+    pending_nudges = await nudges_collection.find({
+        "status": "pending",
+        "scheduled_time": {
+            "$gte": now,
+            "$lt": ten_minutes_later
+        }
+    }).to_list(length=None)
 
     print(f"🔍 Found {len(pending_nudges)} nudges at {now}")
 
@@ -59,16 +45,14 @@ async def check_and_send_nudges():
                 body=nudge.get("body", "You have a scheduled action coming up.")
             )
 
-            await run_in_threadpool(
-                nudges_collection.update_one,
+            await nudges_collection.update_one(
                 {"_id": nudge["_id"]},
                 {"$set": {"status": "sent", "sent_at": datetime.utcnow()}}
             )
             print(f"✅ Sent nudge: {nudge.get('title')} to {nudge.get('user_email')}")
 
         except Exception as e:
-            await run_in_threadpool(
-                nudges_collection.update_one,
+            await nudges_collection.update_one(
                 {"_id": nudge["_id"]},
                 {"$set": {"status": "failed", "error": str(e), "failed_at": datetime.utcnow()}}
             )
@@ -80,9 +64,13 @@ async def check_and_send_nudges():
 
 
 def nudge_job_wrapper():
-    """Scheduler wrapper → calls async job"""
     try:
-        run_async(check_and_send_nudges())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(check_and_send_nudges())
+        finally:
+            loop.close()
     except Exception as e:
         print(f"❌ Error in nudge job: {e}")
 
@@ -109,7 +97,7 @@ async def lifespan(app: FastAPI):
     yield
 
     stop_scheduler(scheduler)
-    close_db()
+    await close_db()
     print("✅ Shutdown complete")
 
 
@@ -148,10 +136,19 @@ app.include_router(nudge_router, prefix="/api", tags=["nudge"])
 
 @app.get("/")
 async def root():
-    db = get_db()
     try:
-        server_info = db.client.server_info()
-        return {"message": "Hello World", "mongodb": "connected", "version": server_info.get("version", "unknown")}
+        db = get_db()
+        client = get_client()
+        
+        collections = await db.list_collection_names()
+        server_info = await client.server_info()
+        
+        return {
+            "message": "Hello World", 
+            "mongodb": "connected", 
+            "collections_count": len(collections),
+            "mongodb_version": server_info.get("version", "unknown")
+        }
     except Exception as e:
         return {"message": "Hello World", "mongodb": f"connection error: {str(e)}"}
 

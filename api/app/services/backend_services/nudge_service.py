@@ -1,4 +1,3 @@
-from starlette.concurrency import run_in_threadpool
 from .db import get_db
 import httpx
 from datetime import datetime, timedelta
@@ -21,8 +20,7 @@ class NudgeService:
         self.nudges_collection = self.db["nudges"]
 
     async def save_fcm_token(self, email: str, fcm_token: str) -> bool:
-        result = await run_in_threadpool(
-            self.collection.update_one,
+        result = await self.collection.update_one(
             {"email": email},
             {"$set": {"fcm_token": fcm_token}},
             upsert=True,
@@ -30,7 +28,7 @@ class NudgeService:
         return result.acknowledged
 
     async def send_fcm_notification(self, email: str, title: str, body: str, fcm_client=None):
-        token_doc_raw = await run_in_threadpool(self.collection.find_one, {"email": email})
+        token_doc_raw = await self.collection.find_one({"email": email})
         
         if not token_doc_raw:
             raise UserNotFoundError(f"User not found: {email}")
@@ -90,8 +88,7 @@ class NudgeService:
         else:
             goal_object_id = goal_id
             
-        goal_doc_raw = await run_in_threadpool(
-            self.goals_collection.find_one,
+        goal_doc_raw = await self.goals_collection.find_one(
             {"_id": goal_object_id}
         )
         
@@ -151,8 +148,7 @@ class NudgeService:
                 nudge_dict = nudge.model_dump(exclude={'id'})
                 nudge_dict["created_at"] = datetime.utcnow()
                 
-                result = await run_in_threadpool(
-                    self.nudges_collection.insert_one,
+                result = await self.nudges_collection.insert_one(
                     nudge_dict
                 )
                 

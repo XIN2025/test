@@ -11,14 +11,14 @@ user_router = APIRouter()
 db = get_db()
 
 @user_router.get("/api/user/preferences")
-def get_user_preferences(email: EmailStr = Query(...)):
-    prefs = db["preferences"].find_one({"email": email})
+async def get_user_preferences(email: EmailStr = Query(...)):
+    prefs = await db["preferences"].find_one({"email": email})
     return {"exists": bool(prefs)}
 
 @user_router.post("/api/user/preferences")
-def save_user_preferences(prefs: UserPreferences):
+async def save_user_preferences(prefs: UserPreferences):
     preferences = db["preferences"]
-    preferences.update_one(
+    await preferences.update_one(
         {"email": prefs.email},
         {"$set": prefs.dict()},
         upsert=True
@@ -26,9 +26,9 @@ def save_user_preferences(prefs: UserPreferences):
     return {"message": "Preferences saved"}
 
 @user_router.get("/api/user/profile")
-def get_user_profile(email: EmailStr = Query(...)):
+async def get_user_profile(email: EmailStr = Query(...)):
     """Get user profile information."""
-    profile = db["users"].find_one({"email": email}, {"_id": 0})
+    profile = await db["users"].find_one({"email": email}, {"_id": 0})
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -54,12 +54,12 @@ def get_user_profile(email: EmailStr = Query(...)):
     }
 
 @user_router.post("/api/user/profile/update")
-def update_user_profile(profile: UserProfileUpdate):
+async def update_user_profile(profile: UserProfileUpdate):
     """Update user profile information."""
     users = db["users"]
     
     # First check if user exists
-    existing_user = users.find_one({"email": profile.email})
+    existing_user = await users.find_one({"email": profile.email})
     if not existing_user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -94,7 +94,7 @@ def update_user_profile(profile: UserProfileUpdate):
             update_data['notifications_enabled'] = profile.notifications_enabled
         
         # Update user profile with only the provided fields
-        result = users.update_one(
+        result = await users.update_one(
             {"email": profile.email},
             {"$set": update_data}
         )
@@ -106,7 +106,7 @@ def update_user_profile(profile: UserProfileUpdate):
         # Return the updated profile
         return {
             "message": "Profile updated successfully",
-            "profile": get_user_profile(email=profile.email)
+            "profile": await get_user_profile(email=profile.email)
         }
         
     except Exception as e:
@@ -121,7 +121,7 @@ async def upload_profile_picture(
     try:
         users = db["users"]
         # First check if user exists
-        existing_user = users.find_one({"email": email})
+        existing_user = await users.find_one({"email": email})
         if not existing_user:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -131,7 +131,7 @@ async def upload_profile_picture(
         base64_image = base64.b64encode(content).decode('utf-8')
         
         # Update user profile with the picture
-        result = users.update_one(
+        result = await users.update_one(
             {"email": email},
             {
                 "$set": {
