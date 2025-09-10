@@ -31,7 +31,7 @@ async def get_daily_completion(
     """Return a mapping of YYYY-MM-DD to number of completed action items for the user in the given month/year."""
     try:
         # This method should be implemented in your GoalsService
-        daily_completion = goals_service.get_daily_completion(user_email, month, year)
+        daily_completion = await goals_service.get_daily_completion(user_email, month, year)
         return GoalResponse(
             success=True,
             message="Daily completion retrieved successfully",
@@ -46,7 +46,7 @@ async def get_daily_completion(
 @goals_router.get("/api/goals/stats", response_model=GoalResponse)
 async def get_goal_stats(user_email: EmailStr = Query(...), weeks: int = Query(4, ge=1, le=52)):
     try:
-        stats = goals_service.get_goal_stats(user_email, weeks)
+        stats = await goals_service.get_goal_stats(user_email, weeks)
         return GoalResponse(success=True, message="Goal statistics retrieved successfully", data={"stats": stats.dict()})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -58,7 +58,7 @@ async def get_weekly_reflection(user_email: EmailStr = Query(...), week_start: s
             week_start_date = datetime.fromisoformat(week_start.replace('Z', '+00:00'))
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid week_start date format")
-        reflection = goals_service.get_weekly_reflection(user_email, week_start_date)
+        reflection = await goals_service.get_weekly_reflection(user_email, week_start_date)
         return GoalResponse(success=True, message="Weekly reflection retrieved successfully", data={"reflection": reflection})
     except HTTPException:
         raise
@@ -94,7 +94,7 @@ async def get_current_week_goals(user_email: EmailStr = Query(...)):
         days_since_monday = today.weekday()
         week_start = today - timedelta(days=days_since_monday)
         week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
-        goals = goals_service.get_user_goals(user_email, week_start)
+        goals = await goals_service.get_user_goals(user_email, week_start)
         return GoalResponse(success=True, message="Current week goals retrieved successfully", data={"week_start": week_start.isoformat(), "goals": goals})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -102,13 +102,7 @@ async def get_current_week_goals(user_email: EmailStr = Query(...)):
 @goals_router.post("/api/goals", response_model=GoalResponse)
 async def create_goal(goal_data: GoalCreate):
     try:
-        # Run goal creation in thread pool to avoid blocking
-        loop = asyncio.get_event_loop()
-        goal = await loop.run_in_executor(
-            executor,
-            goals_service.create_goal,
-            goal_data
-        )
+        goal = await goals_service.create_goal(goal_data)
         return GoalResponse(success=True, message="Goal created successfully", data={"goal": goal.dict()})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -122,7 +116,7 @@ async def get_user_goals(user_email: EmailStr = Query(...), week_start: Optional
                 week_start_date = datetime.fromisoformat(week_start.replace('Z', '+00:00'))
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid week_start date format")
-        goals = goals_service.get_user_goals(user_email, week_start_date)
+        goals = await goals_service.get_user_goals(user_email, week_start_date)
         return GoalResponse(success=True, message="Goals retrieved successfully", data={"goals": goals})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -156,7 +150,7 @@ async def get_all_goals_completion_stats(
 @goals_router.get("/api/goals/{goal_id}", response_model=GoalResponse)
 async def get_goal(goal_id: str, user_email: EmailStr = Query(...)):
     try:
-        goal = goals_service.get_goal_by_id(goal_id, user_email)
+        goal = await goals_service.get_goal_by_id(goal_id, user_email)
         if not goal:
             raise HTTPException(status_code=404, detail="Goal not found")
         return GoalResponse(success=True, message="Goal retrieved successfully", data={"goal": goal.dict()})

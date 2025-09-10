@@ -23,7 +23,7 @@ logger.setLevel(logging.INFO)
 
 class GoalsService:
     vectorstore = get_vector_store()
-    def get_daily_completion(self, user_email: str, month: int, year: int) -> Dict[str, int]:
+    async def get_daily_completion(self, user_email: str, month: int, year: int) -> Dict[str, int]:
         """
         Returns a mapping of YYYY-MM-DD to number of completed action items for the user in the given month/year.
         """
@@ -38,7 +38,7 @@ class GoalsService:
             "completion_date": {"$gte": start_date, "$lte": end_date}
         })
         daily_counts = {}
-        for c in completions:
+        async for c in completions:
             # Normalize to YYYY-MM-DD string
             dt = c.get("completion_date")
             if isinstance(dt, datetime):
@@ -62,7 +62,7 @@ class GoalsService:
         self.nudge_service = NudgeService()
         self.graph_db = get_graph_db()
 
-    def create_goal(self, goal_data: GoalCreate) -> Goal:
+    async def create_goal(self, goal_data: GoalCreate) -> Goal:
         goal_dict = goal_data.dict()
         goal_dict["_id"] = ObjectId()
         goal_dict["current_value"] = 0
@@ -72,16 +72,16 @@ class GoalsService:
         goal_dict["updated_at"] = datetime.utcnow()
         if goal_dict.get("target_value"):
             goal_dict["completed"] = goal_dict["current_value"] >= goal_dict["target_value"]
-        result = self.goals_collection.insert_one(goal_dict)
+        result = await self.goals_collection.insert_one(goal_dict)
         goal_dict["id"] = str(result.inserted_id)
         return Goal(**goal_dict)
 
-    def get_user_goals(self, user_email: str, week_start: Optional[datetime] = None) -> List[Dict[str, Any]]:
+    async def get_user_goals(self, user_email: str, week_start: Optional[datetime] = None) -> List[Dict[str, Any]]:
         query = {"user_email": user_email}
         if week_start:
             week_end = week_start + timedelta(days=7)
             query["created_at"] = {"$gte": week_start, "$lt": week_end}
-        goals = list(self.goals_collection.find(query).sort("created_at", -1))
+        goals = await self.goals_collection.find(query).sort("created_at", -1).to_list(None)
         
         goals_with_plans = []
         for goal in goals:
@@ -91,7 +91,7 @@ class GoalsService:
             goal_dict = goal_obj.dict()
             
             # Get action plan and schedule
-            goal_plan = self.get_goal_plan(str(goal_obj.id), user_email)
+            goal_plan = await self.get_goal_plan(str(goal_obj.id), user_email)
             if goal_plan:
                 goal_dict["action_plan"] = goal_plan["action_plan"]
                 goal_dict["weekly_schedule"] = goal_plan["weekly_schedule"]
@@ -100,9 +100,8 @@ class GoalsService:
             
         return goals_with_plans
 
-    def get_goal_by_id(self, goal_id: str, user_email: str) -> Optional[Goal]:
-        
-        goal = self.goals_collection.find_one({"_id": ObjectId(goal_id), "user_email": user_email})
+    async def get_goal_by_id(self, goal_id: str, user_email: str) -> Optional[Goal]:
+        goal = await self.goals_collection.find_one({"_id": ObjectId(goal_id), "user_email": user_email})
         if not goal:
             return None
         goal["id"] = str(goal["_id"])
@@ -113,59 +112,59 @@ class GoalsService:
         update_dict = update_data.dict(exclude_unset=True)
         update_dict["updated_at"] = datetime.utcnow()
         if "current_value" in update_dict or "target_value" in update_dict:
-            goal = self.get_goal_by_id(goal_id, user_email)
+            goal = await self.get_goal_by_id(goal_id, user_email)
             if goal:
                 current_val = update_dict.get("current_value", goal.current_value or 0)
                 target_val = update_dict.get("target_value", goal.target_value)
                 if target_val:
                     update_dict["completed"] = current_val >= target_val
-        result = self.goals_collection.update_one(
+        result = await self.goals_collection.update_one(
             {"_id": ObjectId(goal_id), "user_email": user_email},
             {"$set": update_dict}
         )
         if result.modified_count == 0:
             return None
-        return self.get_goal_by_id(goal_id, user_email)
+        return await self.get_goal_by_id(goal_id, user_email)
 
     async def delete_goal(self, goal_id: str, user_email: str) -> bool:
-        result = self.goals_collection.delete_one({"_id": ObjectId(goal_id), "user_email": user_email})
+        result = await self.goals_collection.delete_one({"_id": ObjectId(goal_id), "user_email": user_email})
         return result.deleted_count > 0
 
     async def update_goal_progress(self, goal_id: str, user_email: str, current_value: float, note: Optional[str] = None) -> Optional[Goal]:
         update_data = {"current_value": current_value, "updated_at": datetime.utcnow()}
-        goal = self.get_goal_by_id(goal_id, user_email)
+        goal = await self.get_goal_by_id(goal_id, user_email)
         if not goal:
             return None
         if goal.target_value:
             update_data["completed"] = current_value >= goal.target_value
         if note:
             update_data["notes"] = goal.notes + [note]
-        result = self.goals_collection.update_one(
+        result = await self.goals_collection.update_one(
             {"_id": ObjectId(goal_id), "user_email": user_email},
             {"$set": update_data}
         )
         if result.modified_count == 0:
             return None
-        return self.get_goal_by_id(goal_id, user_email)
+        return await self.get_goal_by_id(goal_id, user_email)
 
     async def add_goal_note(self, goal_id: str, user_email: str, note: str) -> Optional[Goal]:
-        goal = self.get_goal_by_id(goal_id, user_email)
+        goal = await self.get_goal_by_id(goal_id, user_email)
         if not goal:
             return None
         new_notes = goal.notes + [note]
-        result = self.goals_collection.update_one(
+        result = await self.goals_collection.update_one(
             {"_id": ObjectId(goal_id), "user_email": user_email},
             {"$set": {"notes": new_notes, "updated_at": datetime.utcnow()}}
         )
         if result.modified_count == 0:
             return None
-        return self.get_goal_by_id(goal_id, user_email)
+        return await self.get_goal_by_id(goal_id, user_email)
 
     async def save_weekly_reflection(self, reflection_data: WeeklyReflection) -> Dict[str, Any]:
         reflection_dict = reflection_data.dict()
         reflection_dict["_id"] = ObjectId()
         reflection_dict["created_at"] = datetime.utcnow()
-        result = self.reflections_collection.insert_one(reflection_dict)
+        result = await self.reflections_collection.insert_one(reflection_dict)
         reflection_dict["id"] = str(result.inserted_id)
         # Remove non-serializable ObjectId before returning
         if "_id" in reflection_dict:
@@ -176,9 +175,9 @@ class GoalsService:
             "data": reflection_dict
         }
 
-    def get_weekly_reflection(self, user_email: str, week_start: datetime) -> Optional[Dict[str, Any]]:
+    async def get_weekly_reflection(self, user_email: str, week_start: datetime) -> Optional[Dict[str, Any]]:
         week_end = week_start + timedelta(days=7)
-        reflection = self.reflections_collection.find_one({
+        reflection = await self.reflections_collection.find_one({
             "user_email": user_email,
             "week_start": {"$gte": week_start, "$lt": week_end}
         })
@@ -187,25 +186,25 @@ class GoalsService:
             del reflection["_id"]
         return reflection
 
-    def get_goal_stats(self, user_email: str, weeks: int = 4) -> GoalStats:
+    async def get_goal_stats(self, user_email: str, weeks: int = 4) -> GoalStats:
         start_date = datetime.utcnow() - timedelta(weeks=weeks)
-        goals = list(self.goals_collection.find({
+        goals = await self.goals_collection.find({
             "user_email": user_email,
             "created_at": {"$gte": start_date}
-        }))
+        }).to_list(None)
         total_goals = len(goals)
         completed_goals = len([g for g in goals if g.get("completed", False)])
         completion_rate = (completed_goals / total_goals * 100) if total_goals > 0 else 0
-        reflections = list(self.reflections_collection.find({
+        reflections = await self.reflections_collection.find({
             "user_email": user_email,
             "created_at": {"$gte": start_date}
-        }))
+        }).to_list(None)
         average_rating = None
         if reflections:
             ratings = [r.get("rating", 0) for r in reflections if r.get("rating")]
             if ratings:
                 average_rating = sum(ratings) / len(ratings)
-        weekly_streak = self._calculate_weekly_streak(user_email)
+        weekly_streak = await self._calculate_weekly_streak(user_email)
         return GoalStats(
             total_goals=total_goals,
             completed_goals=completed_goals,
@@ -214,16 +213,16 @@ class GoalsService:
             weekly_streak=weekly_streak
         )
 
-    def _calculate_weekly_streak(self, user_email: str) -> int:
+    async def _calculate_weekly_streak(self, user_email: str) -> int:
         current_week = datetime.utcnow()
         streak = 0
         for i in range(52):
             week_start = current_week - timedelta(weeks=i)
             week_end = week_start + timedelta(days=7)
-            goals = list(self.goals_collection.find({
+            goals = await self.goals_collection.find({
                 "user_email": user_email,
                 "created_at": {"$gte": week_start, "$lt": week_end}
-            }))
+            }).to_list(None)
             if not goals:
                 break
             completed_goals = [g for g in goals if g.get("completed", False)]
@@ -242,7 +241,7 @@ class GoalsService:
         """Generate action plan and weekly schedule for a goal using vector search instead of graph DB"""
         try:
             # 1. Get the goal
-            goal = self.get_goal_by_id(goal_id, user_email)
+            goal = await self.get_goal_by_id(goal_id, user_email)
             if not goal:
                 return {"success": False, "message": "Goal not found"}
 
@@ -449,13 +448,13 @@ class GoalsService:
         del schedule_dict["_id"]
         return schedule_dict
 
-    def get_goal_plan(self, goal_id: str, user_email: str) -> Optional[Dict[str, Any]]:
+    async def get_goal_plan(self, goal_id: str, user_email: str) -> Optional[Dict[str, Any]]:
         """Get stored action plan and schedule for a goal"""
-        action_plan = self.action_plans_collection.find_one({
+        action_plan = await self.action_plans_collection.find_one({
             "goal_id": goal_id,
             "user_email": user_email
         })
-        weekly_schedule = self.schedules_collection.find_one({
+        weekly_schedule = await self.schedules_collection.find_one({
             "goal_id": goal_id,
             "user_email": user_email
         })
