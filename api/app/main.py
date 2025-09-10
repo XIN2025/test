@@ -17,60 +17,62 @@ from app.routers.ai.goals import goals_router
 from app.routers.backend.preferences import preferences_router
 from app.routers.backend.nudge import nudge_router
 from app.exceptions import AppException, custom_exception_handler, generic_exception_handler
+from motor.motor_asyncio import AsyncIOMotorClient
+from .config import MONGODB_URI
 
+async def check_and_send_nudges(): 
+    client = AsyncIOMotorClient(MONGODB_URI)
+    try:
+        db = client.get_database()
+        nudges_collection = db["nudges"]
+        nudge_service = NudgeService()
 
-async def check_and_send_nudges():
-    db = get_db()
-    nudges_collection = db["nudges"]
-    nudge_service = NudgeService()
+        now = datetime.utcnow()
+        ten_minutes_later = now + timedelta(minutes=10)
 
-    now = datetime.utcnow()
-    ten_minutes_later = now + timedelta(minutes=10)
+        pending_nudges = await nudges_collection.find({
+            "status": "pending",
+            "scheduled_time": {
+                "$gte": now,
+                "$lt": ten_minutes_later
+            }
+        }).to_list(length=None)
 
-    pending_nudges = await nudges_collection.find({
-        "status": "pending",
-        "scheduled_time": {
-            "$gte": now,
-            "$lt": ten_minutes_later
-        }
-    }).to_list(length=None)
+        print(f"🔍 Found {len(pending_nudges)} nudges at {now}")
 
-    print(f"🔍 Found {len(pending_nudges)} nudges at {now}")
+        async def process_nudge(nudge):
+            try:
+                await nudge_service.send_fcm_notification(
+                    email=nudge.get("user_email"),
+                    title=nudge.get("title", f"Reminder: {nudge.get('action_item_title', '')}"),
+                    body=nudge.get("body", "You have a scheduled action coming up.")
+                )
 
-    async def process_nudge(nudge):
-        try:
-            await nudge_service.send_fcm_notification(
-                email=nudge.get("user_email"),
-                title=nudge.get("title", f"Reminder: {nudge.get('action_item_title', '')}"),
-                body=nudge.get("body", "You have a scheduled action coming up.")
-            )
+                await nudges_collection.update_one(
+                    {"_id": nudge["_id"]},
+                    {"$set": {"status": "sent", "sent_at": datetime.utcnow()}}
+                )
+                print(f"✅ Sent nudge: {nudge.get('title')} to {nudge.get('user_email')}")
 
-            await nudges_collection.update_one(
-                {"_id": nudge["_id"]},
-                {"$set": {"status": "sent", "sent_at": datetime.utcnow()}}
-            )
-            print(f"✅ Sent nudge: {nudge.get('title')} to {nudge.get('user_email')}")
+            except Exception as e:
+                await nudges_collection.update_one(
+                    {"_id": nudge["_id"]},
+                    {"$set": {"status": "failed", "error": str(e), "failed_at": datetime.utcnow()}}
+                )
+                print(f"❌ Failed to send nudge to {nudge.get('user_email')}: {e}")
 
-        except Exception as e:
-            await nudges_collection.update_one(
-                {"_id": nudge["_id"]},
-                {"$set": {"status": "failed", "error": str(e), "failed_at": datetime.utcnow()}}
-            )
-            print(f"❌ Failed to send nudge to {nudge.get('user_email')}: {e}")
-
-    tasks = [asyncio.create_task(process_nudge(n)) for n in pending_nudges]
-    if tasks:
-        await asyncio.gather(*tasks)
+        tasks = [asyncio.create_task(process_nudge(n)) for n in pending_nudges]
+        if tasks:
+            await asyncio.gather(*tasks)
+    finally:
+        # Always close the connection when done
+        client.close()
 
 
 def nudge_job_wrapper():
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(check_and_send_nudges())
-        finally:
-            loop.close()
+        # Use asyncio.run() which properly manages the event loop
+        asyncio.run(check_and_send_nudges())
     except Exception as e:
         print(f"❌ Error in nudge job: {e}")
 
