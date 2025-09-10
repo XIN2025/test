@@ -362,14 +362,15 @@ class GoalsService:
 
             # 7. Save plan + schedule
             goal_dict = goal.dict()
+            goal_dict = self._convert_time_objects_to_str(goal_dict)  # Clean up any ObjectIds or timedeltas
             action_plan_dict = action_plan.dict() if hasattr(action_plan, "dict") else action_plan
             weekly_schedule_dict = weekly_schedule.dict() if hasattr(weekly_schedule, "dict") else weekly_schedule
 
-            stored_plan = self._store_action_plan(goal_id, user_email, action_plan)
-            stored_schedule = self._store_weekly_schedule(goal_id, user_email, weekly_schedule)
+            stored_plan = await self._store_action_plan(goal_id, user_email, action_plan)
+            stored_schedule = await self._store_weekly_schedule(goal_id, user_email, weekly_schedule)
 
             # 8. Update goal document
-            self.goals_collection.update_one(
+            await self.goals_collection.update_one(
                 {"_id": ObjectId(goal_id)},
                 {
                     "$set": {
@@ -395,11 +396,13 @@ class GoalsService:
             return {"success": False, "message": f"Failed to generate plan: {str(e)}"}
 
     def _convert_time_objects_to_str(self, obj: Any) -> Any:
-        """Recursively convert time-related objects to string format"""
+        """Recursively convert time-related objects and ObjectIds to string format"""
         if isinstance(obj, dict):
             return {key: self._convert_time_objects_to_str(value) for key, value in obj.items()}
         elif isinstance(obj, list):
             return [self._convert_time_objects_to_str(item) for item in obj]
+        elif isinstance(obj, ObjectId):
+            return str(obj)
         elif isinstance(obj, timedelta):
             total_seconds = int(obj.total_seconds())
             hours = total_seconds // 3600
@@ -412,7 +415,7 @@ class GoalsService:
             return obj.strftime("%H:%M:%S")
         return obj
 
-    def _store_action_plan(self, goal_id: str, user_email: str, action_plan: ActionPlan) -> Dict:
+    async def _store_action_plan(self, goal_id: str, user_email: str, action_plan: ActionPlan) -> Dict:
         """Store action plan in database"""
         # Convert the action plan to dict and handle timedelta objects
         plan_dict = action_plan.dict()
@@ -425,12 +428,12 @@ class GoalsService:
         plan_dict["created_at"] = datetime.utcnow()
         
         # Store in database
-        self.action_plans_collection.insert_one(plan_dict)
+        await self.action_plans_collection.insert_one(plan_dict)
         plan_dict["id"] = str(plan_dict["_id"])
         del plan_dict["_id"]
         return plan_dict
 
-    def _store_weekly_schedule(self, goal_id: str, user_email: str, schedule: WeeklySchedule) -> Dict:
+    async def _store_weekly_schedule(self, goal_id: str, user_email: str, schedule: WeeklySchedule) -> Dict:
         """Store weekly schedule in database"""
         # Convert the schedule to dict and handle timedelta objects
         schedule_dict = schedule.dict()
@@ -443,7 +446,7 @@ class GoalsService:
         schedule_dict["created_at"] = datetime.utcnow()
         
         # Store in database
-        self.schedules_collection.insert_one(schedule_dict)
+        await self.schedules_collection.insert_one(schedule_dict)
         schedule_dict["id"] = str(schedule_dict["_id"])
         del schedule_dict["_id"]
         return schedule_dict

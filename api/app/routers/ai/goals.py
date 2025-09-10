@@ -267,7 +267,7 @@ async def get_goal_action_plan(
 ):
     """Get the action plan for a goal with current weekly completion status"""
     try:
-        action_plan = goals_service.action_plans_collection.find_one({
+        action_plan = await goals_service.action_plans_collection.find_one({
             "goal_id": goal_id,
             "user_email": user_email
         })
