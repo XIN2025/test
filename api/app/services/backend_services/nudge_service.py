@@ -11,76 +11,83 @@ from app.exceptions import (
     NotificationDisabledError,
 )
 from typing import List
+import firebase_admin
+from firebase_admin import credentials, messaging
+import os
 
 class NudgeService:
     def __init__(self):
         self.db = get_db()
-        self.collection = self.db["fcm_tokens"]
+        self.users_collection = self.db["users"]
         self.goals_collection = self.db["goals"]
         self.nudges_collection = self.db["nudges"]
+        self._initialize_firebase()
+    
+    def _initialize_firebase(self):
+        if not firebase_admin._apps:
+            firebase_service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
+            if firebase_service_account_path and os.path.exists(firebase_service_account_path):
+                cred = credentials.Certificate(firebase_service_account_path)
+                firebase_admin.initialize_app(cred)
+            else:
+                print(f"Warning: Firebase service account file not found or FIREBASE_SERVICE_ACCOUNT_PATH not set")
 
     async def save_fcm_token(self, email: str, fcm_token: str) -> bool:
-        result = await self.collection.update_one(
+        result = await self.users_collection.update_one(
             {"email": email},
             {"$set": {"fcm_token": fcm_token}},
-            upsert=True,
+            upsert=False,
         )
         return result.acknowledged
 
     async def send_fcm_notification(self, email: str, title: str, body: str, fcm_client=None):
-        token_doc_raw = await self.collection.find_one({"email": email})
+        user_doc = await self.users_collection.find_one({"email": email})
         
-        if not token_doc_raw:
+        if not user_doc:
             raise UserNotFoundError(f"User not found: {email}")
         
-        if not token_doc_raw.get("fcm_token"):
-            raise TokenNotFoundError(f"No Expo token found for user: {email}")
+        if not user_doc.get("fcm_token"):
+            raise TokenNotFoundError(f"No FCM token found for user: {email}")
             
-        if not token_doc_raw.get("notifications_enabled", True):
+        if not user_doc.get("notifications_enabled", True):
             raise NotificationDisabledError(f"Notifications are disabled for user: {email}")
 
-        expo_token = token_doc_raw["fcm_token"]
+        fcm_token = user_doc["fcm_token"]
 
-        message = {
-            "to": expo_token,
-            "sound": "default",
-            "title": title,
-            "body": body,
-            "icon": "https://raw.githubusercontent.com/opengig/evra-app/5e95d4e27b1b25ddc9711619e3d3a481db331703/assets/images/evra.png?token=GHSAT0AAAAAADKIQPHIYQ7APDWXEHRSSIMM2FWJV6A",
-            "android": {
-                "icon": "@drawable/notification_icon",
-                "color": "#16A34A",
-                "channelId": "default"
-            },
-            "data": {
+        message = messaging.Message(
+            token=fcm_token,
+            notification=messaging.Notification(
+                title=title,
+                body=body,
+            ),
+            data={
                 "type": "nudge",
-                "iconUrl": "https://raw.githubusercontent.com/opengig/evra-app/5e95d4e27b1b25ddc9711619e3d3a481db331703/assets/images/evra.png?token=GHSAT0AAAAAADKIQPHIYQ7APDWXEHRSSIMM2FWJV6A"
-            }
-        }
-
-        expo_url = 'https://exp.host/--/api/v2/push/send'
-        headers = {
-            'Accept': 'application/json',
-            'Accept-encoding': 'gzip, deflate',
-            'Content-Type': 'application/json',
-        }
-
-        timeout_config = httpx.Timeout(10.0, connect=5.0)
-        
-        async with httpx.AsyncClient(timeout=timeout_config) as client:
-            response = await client.post(
-                expo_url,
-                json=message,
-                headers=headers
-            )
-            
-            if response.status_code == 200:
-                return response.json()
-            else:
-                raise NotificationError(
-                    f"Failed to send notification: {response.status_code}", 
-                    details={"response": response.json(), "email": email}
+                "email": email,
+            },
+            android=messaging.AndroidConfig(
+                priority="high",
+                notification=messaging.AndroidNotification(
+                    channel_id="default",
+                    sound="default",
+                    color="#16A34A",
+                    icon="@drawable/notification_icon",
+                ),
+            ),
+            apns=messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(sound="default")
                 )
+            ),
+        )
+
+        try:
+            message_id = messaging.send(message)
+            return {"success": True, "message_id": message_id}
+        except Exception as e:
+            raise NotificationError(
+                f"Failed to send FCM notification: {str(e)}",
+                details={"email": email},
+            )
 
     async def create_nudges_from_goal(self, goal_id: str) -> List[Nudge]:
         if isinstance(goal_id, str):
