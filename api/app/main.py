@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -69,17 +69,10 @@ async def check_and_send_nudges():
         client.close()
 
 
-def nudge_job_wrapper():
-    try:
-        # Use asyncio.run() which properly manages the event loop
-        asyncio.run(check_and_send_nudges())
-    except Exception as e:
-        print(f"❌ Error in nudge job: {e}")
-
 
 def start_scheduler():
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(nudge_job_wrapper, CronTrigger(minute="*/1"))  
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(check_and_send_nudges, CronTrigger(minute="*/1"))  # Directly schedule the coroutine
     scheduler.start()
     print("✅ Nudge scheduler started")
     return scheduler
