@@ -249,7 +249,7 @@ class GoalsService:
 
     async def generate_goal_plan(
         self,
-        goal_id: int,
+        goal_id: str,
         user_email: str,
         pillar_preferences: Optional[PillarTimePreferences],
     ) -> dict:
