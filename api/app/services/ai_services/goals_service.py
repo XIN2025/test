@@ -38,7 +38,7 @@ class GoalsService:
         self.vector_store = get_vector_store()
         self.nudge_service = NudgeService()
 
-    def _invoke_structured_llm(
+    async def _invoke_structured_llm(
         self, schema: dict, system_prompt: str, user_prompt: str, input_vars: dict
     ) -> dict:
         llm = ChatOpenAI(
@@ -48,7 +48,7 @@ class GoalsService:
             [("system", system_prompt), ("user", user_prompt)]
         )
         chain = prompt | llm
-        return chain.invoke(input_vars)
+        return await chain.ainvoke(input_vars)
 
     async def get_daily_completion(self, user_email: str, month: int, year: int) -> Dict[str, int]:
         """
