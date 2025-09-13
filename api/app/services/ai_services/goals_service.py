@@ -289,7 +289,9 @@ class GoalsService:
                 print(f"Context categorization failed, using raw context: {str(e)}")
                 health_context["lifestyle_factors"] = context_list
 
-            def format_pillar_preferences(prefs: List[PillarTimePreferences]) -> str:
+            def format_pillar_preferences(prefs: Optional[List[PillarTimePreferences]]) -> str:
+                if not prefs:
+                    return "None specified"
                 lines = []
                 for pref in prefs:
                     for pillar, time_pref in pref.preferences.items():
@@ -298,7 +300,7 @@ class GoalsService:
                             f"{pillar}: Preferred time {time_pref.preferred_time}, "
                             f"Duration {time_pref.duration_minutes} min, Days {days}"
                         )
-                return "\n".join(lines) if lines else "None specified"
+                return "\n".join(lines)
 
             pillar_pref_str = format_pillar_preferences(pillar_preferences)
             print(pillar_pref_str)
