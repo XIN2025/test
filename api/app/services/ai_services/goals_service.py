@@ -251,7 +251,7 @@ class GoalsService:
         self,
         goal_id: str,
         user_email: str,
-        pillar_preferences: Optional[PillarTimePreferences],
+        pillar_preferences: Optional[List[PillarTimePreferences]],
     ) -> dict:
         try:
             goal = await self.get_goal_by_id(goal_id, user_email)
