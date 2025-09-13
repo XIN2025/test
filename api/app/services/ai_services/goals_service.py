@@ -42,7 +42,7 @@ class GoalsService:
         self, schema: dict, system_prompt: str, user_prompt: str, input_vars: dict
     ) -> dict:
         llm = ChatOpenAI(
-            model=LLM_MODEL, temperature=0, openai_api_key=OPENAI_API_KEY
+            model=LLM_MODEL, openai_api_key=OPENAI_API_KEY
         ).with_structured_output(schema)
         prompt = ChatPromptTemplate.from_messages(
             [("system", system_prompt), ("user", user_prompt)]

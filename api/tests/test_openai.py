@@ -16,7 +16,7 @@ def test_openai_api():
         response = client.chat.completions.create(
             model="gpt-4o-mini",  # Using the model from your env
             messages=[{"role": "user", "content": "Simple test message. Say hi!"}],
-            temperature=0.1
+            temperature=1
         )
         
         print("✅ API call successful!")
