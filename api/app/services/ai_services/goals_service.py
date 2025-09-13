@@ -279,7 +279,7 @@ class GoalsService:
                 "risk_factors": [],
             }
             try:
-                health_context = self._invoke_structured_llm(
+                health_context = await self._invoke_structured_llm(
                     schema=CONTEXT_CATEGORY_SCHEMA,
                     system_prompt="Categorize the following context items into a health goal",
                     user_prompt="Context items: {context_items}",
