@@ -25,6 +25,7 @@ from app.prompts import (
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from app.config import OPENAI_API_KEY
+from app.services.backend_services.nudge_service import NudgeService
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class GoalsService:
         self.db = get_db()
         self.goals_collection = self.db["goals"]
         self.vector_store = get_vector_store()
+        self.nudge_service = NudgeService()
 
     def _invoke_structured_llm(
         self, schema: dict, system_prompt: str, user_prompt: str, input_vars: dict
@@ -336,6 +338,8 @@ class GoalsService:
                     }
                 },
             )
+
+            await self.nudge_service.create_nudges_from_goal(goal_id)
 
             goal_dict = goal.model_dump()
             goal_dict = self._convert_time_objects_to_str(goal_dict)
