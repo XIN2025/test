@@ -24,7 +24,7 @@ from app.prompts import (
 )
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
-from app.config import OPENAI_API_KEY
+from app.config import OPENAI_API_KEY, LLM_MODEL
 from app.services.backend_services.nudge_service import NudgeService
 
 # Set up logging
@@ -42,7 +42,7 @@ class GoalsService:
         self, schema: dict, system_prompt: str, user_prompt: str, input_vars: dict
     ) -> dict:
         llm = ChatOpenAI(
-            model="gpt-4o-mini", temperature=0, openai_api_key=OPENAI_API_KEY
+            model=LLM_MODEL, temperature=0, openai_api_key=OPENAI_API_KEY
         ).with_structured_output(schema)
         prompt = ChatPromptTemplate.from_messages(
             [("system", system_prompt), ("user", user_prompt)]
