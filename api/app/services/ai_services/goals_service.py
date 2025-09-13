@@ -100,7 +100,7 @@ class GoalsService:
         goals_with_plans = []
         for goal in goals:
             goal["id"] = str(goal["_id"])
-            del goal["_id"]            
+            del goal["_id"]   
             goals_with_plans.append(goal)
             
         return goals_with_plans
@@ -111,7 +111,7 @@ class GoalsService:
             return None
         goal["id"] = str(goal["_id"])
         del goal["_id"]
-        return Goal(**goal)
+        return goal
 
     async def update_goal(self, goal_id: str, user_email: str, update_data: GoalUpdate) -> Optional[Goal]:
         update_dict = update_data.dict(exclude_unset=True)

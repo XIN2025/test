@@ -108,15 +108,9 @@ async def create_goal(goal_data: GoalCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @goals_router.get("/api/goals", response_model=GoalResponse)
-async def get_user_goals(user_email: EmailStr = Query(...), week_start: Optional[str] = Query(None)):
+async def get_user_goals(user_email: EmailStr = Query(...)):
     try:
-        week_start_date = None
-        if week_start:
-            try:
-                week_start_date = datetime.fromisoformat(week_start.replace('Z', '+00:00'))
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid week_start date format")
-        goals = await goals_service.get_user_goals(user_email, week_start_date)
+        goals = await goals_service.get_user_goals(user_email)
         return GoalResponse(success=True, message="Goals retrieved successfully", data={"goals": goals})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -133,7 +127,7 @@ async def get_all_goals_completion_stats(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid week_start date format. Use YYYY-MM-DD")
         
-        stats = goals_service.get_all_goals_completion_stats(user_email, week_start_date)
+        stats = await goals_service.get_all_goals_completion_stats(user_email, week_start_date)
         return GoalResponse(
             success=True,
             message="All goals completion statistics retrieved successfully",
