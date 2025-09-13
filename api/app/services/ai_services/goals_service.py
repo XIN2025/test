@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, time, date, timezone
+from pprint import pprint
 from typing import List, Optional, Dict, Any, Tuple
 from bson import ObjectId
 from ...schemas.ai.goals import GoalCreate, GoalUpdate, Goal, WeeklyReflection, GoalStats
@@ -91,27 +92,16 @@ class GoalsService:
         goal_dict["id"] = str(result.inserted_id)
         return Goal(**goal_dict)
 
-    async def get_user_goals(self, user_email: str, week_start: Optional[datetime] = None) -> List[Dict[str, Any]]:
-        query = {"user_email": user_email}
-        if week_start:
-            week_end = week_start + timedelta(days=7)
-            query["created_at"] = {"$gte": week_start, "$lt": week_end}
-        goals = await self.goals_collection.find(query).sort("created_at", -1).to_list(None)
-        
+    async def get_user_goals(self, user_email: str) -> List[Dict[str, Any]]:
+        goals = await self.goals_collection.find({
+            "user_email": user_email
+        }).sort("created_at", -1).to_list(None)
+
         goals_with_plans = []
         for goal in goals:
             goal["id"] = str(goal["_id"])
-            del goal["_id"]
-            goal_obj = Goal(**goal)
-            goal_dict = goal_obj.dict()
-            
-            # Get action plan and schedule
-            goal_plan = await self.get_goal_plan(str(goal_obj.id), user_email)
-            if goal_plan:
-                goal_dict["action_plan"] = goal_plan["action_plan"]
-                goal_dict["weekly_schedule"] = goal_plan["weekly_schedule"]
-            
-            goals_with_plans.append(goal_dict)
+            del goal["_id"]            
+            goals_with_plans.append(goal)
             
         return goals_with_plans
 
@@ -608,93 +598,81 @@ class GoalsService:
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
 
-    def get_goal_completion_stats(self, goal_id: str, user_email: str, week_start: date) -> WeeklyCompletionStats:
+    async def get_goal_completion_stats(self, goal_id: str, user_email: str, week_start: date) -> WeeklyCompletionStats:
         """Calculate completion statistics for a goal for a specific week"""
         week_end = week_start + timedelta(days=6)
-        
-        # Get the goal's weekly schedule
-        goal_plan = self.get_goal_plan(goal_id, user_email)
-        if not goal_plan or not goal_plan.get("weekly_schedule"):
+
+        goal = await self.get_goal_by_id(goal_id, user_email)
+        if not goal or not getattr(goal, "weekly_schedule", None):
             return WeeklyCompletionStats(
                 goal_id=goal_id,
-                week_start=datetime.combine(week_start, time.min),  # Convert to datetime
-                week_end=datetime.combine(week_end, time.min),      # Convert to datetime
+                week_start=datetime.combine(week_start, time.min),
+                week_end=datetime.combine(week_end, time.min),
                 total_scheduled_days=0,
                 completed_days=0,
                 daily_stats=[],
                 overall_completion_percentage=0.0
             )
-        
-        weekly_schedule = goal_plan["weekly_schedule"]
+
+        weekly_schedule = goal.weekly_schedule
         daily_schedules = weekly_schedule.get("daily_schedules", {})
-        
+
         daily_stats = []
         total_scheduled_days = 0
         completed_days = 0
-        
-        # Check each day of the week
+
         days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
         for i, day in enumerate(days):
             current_date = week_start + timedelta(days=i)
             day_schedule = daily_schedules.get(day, {})
             time_slots = day_schedule.get("time_slots", [])
-            
-            if time_slots:  # If there are scheduled action items for this day
+
+            if time_slots:
                 total_scheduled_days += 1
-                
-                # Convert date to datetime for MongoDB query (MongoDB expects datetime objects)
                 current_datetime = datetime.combine(current_date, time.min)
-                
-                # Get completed action items for this date
                 completed_items = list(self.action_completions_collection.find({
                     "user_email": user_email,
                     "goal_id": goal_id,
                     "completion_date": current_datetime,
                     "completed": True
                 }))
-                
-                # Get all scheduled action items for this day
                 scheduled_action_items = []
                 for slot in time_slots:
                     action_item = slot.get("action_item", "")
                     if action_item and action_item not in scheduled_action_items:
                         scheduled_action_items.append(action_item)
-                
                 completed_action_items = [item["action_item_title"] for item in completed_items]
                 completion_percentage = (len(completed_action_items) / len(scheduled_action_items) * 100) if scheduled_action_items else 0
-                
-                # If all action items for the day are completed, count as completed day
                 if completion_percentage == 100:
                     completed_days += 1
-                
                 daily_stats.append(DailyCompletionStats(
-                    date=current_datetime,  # Use datetime instead of date
+                    date=current_datetime,
                     total_scheduled_items=len(scheduled_action_items),
                     completed_items=len(completed_action_items),
                     completion_percentage=completion_percentage,
-                    action_items=completed_action_items  # Store completed items instead of scheduled items
+                    action_items=completed_action_items
                 ))
-        
+
         overall_completion_percentage = (completed_days / total_scheduled_days * 100) if total_scheduled_days > 0 else 0
-        
+
         return WeeklyCompletionStats(
             goal_id=goal_id,
-            week_start=datetime.combine(week_start, time.min),  # Convert to datetime
-            week_end=datetime.combine(week_end, time.min),      # Convert to datetime
+            week_start=datetime.combine(week_start, time.min),
+            week_end=datetime.combine(week_end, time.min),
             total_scheduled_days=total_scheduled_days,
             completed_days=completed_days,
             daily_stats=daily_stats,
             overall_completion_percentage=overall_completion_percentage
         )
 
-    def get_all_goals_completion_stats(self, user_email: str, week_start: date) -> Dict[str, WeeklyCompletionStats]:
+    async def get_all_goals_completion_stats(self, user_email: str, week_start: date) -> Dict[str, WeeklyCompletionStats]:
         """Get completion statistics for all user goals for a specific week"""
-        goals = self.get_user_goals(user_email)
+        goals = await self.get_user_goals(user_email)
         completion_stats = {}
         
         for goal in goals:
             goal_id = goal.get("id") or str(goal.get("_id"))
-            stats = self.get_goal_completion_stats(goal_id, user_email, week_start)
+            stats = await self.get_goal_completion_stats(goal_id, user_email, week_start)
             completion_stats[goal_id] = stats
         
         return completion_stats
