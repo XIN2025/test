@@ -306,7 +306,7 @@ class GoalsService:
             print(pillar_pref_str)
 
             # TODO: Make health context a separate function and add a schema for it
-            action_plan_with_schedule = self._invoke_structured_llm(
+            action_plan_with_schedule = await self._invoke_structured_llm(
                 schema=ACTION_PLAN_SCHEMA,
                 system_prompt=GENERATE_ACTION_PLAN_WITH_SCHEDULE_SYSTEM_PROMPT,
                 user_prompt=GENERATE_ACTION_PLAN_WITH_SCHEDULE_USER_PROMPT,

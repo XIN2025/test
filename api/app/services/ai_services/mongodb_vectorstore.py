@@ -1,3 +1,5 @@
+# TODO: Migrate pymongo to motor (async)
+
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_openai import OpenAIEmbeddings
 from langchain.schema import Document
