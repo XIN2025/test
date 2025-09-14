@@ -19,7 +19,7 @@ from ..miscellaneous.graph_db import get_graph_db
 import logging
 from app.prompts import (
     CONTEXT_CATEGORY_SCHEMA,
-    ACTION_PLAN_SCHEMA,
+    ACTION_ITEM_SCHEMA,
     GENERATE_ACTION_PLAN_WITH_SCHEDULE_SYSTEM_PROMPT,
     GENERATE_ACTION_PLAN_WITH_SCHEDULE_USER_PROMPT,
 )
@@ -36,6 +36,7 @@ class GoalsService:
     def __init__(self):
         self.db = get_db()
         self.goals_collection = self.db["goals"]
+        self.action_plan_collection = self.db["action_plans"]
         self.vector_store = get_vector_store()
         self.nudge_service = NudgeService()
 
@@ -111,7 +112,7 @@ class GoalsService:
             return None
         goal["id"] = str(goal["_id"])
         del goal["_id"]
-        return goal
+        return Goal(**goal)
 
     async def update_goal(self, goal_id: str, user_email: str, update_data: GoalUpdate) -> Optional[Goal]:
         update_dict = update_data.dict(exclude_unset=True)
@@ -267,6 +268,7 @@ class GoalsService:
                 "medical_context": [],
                 "lifestyle_factors": [],
                 "risk_factors": [],
+                "other_context": [],
             }
             try:
                 health_context = await self._invoke_structured_llm(
@@ -279,6 +281,7 @@ class GoalsService:
                 print(f"Context categorization failed, using raw context: {str(e)}")
                 health_context["lifestyle_factors"] = context_list
 
+            # TODO: Look into if we really need this and will it be a good idea to transfer it to utility class
             def format_pillar_preferences(prefs: Optional[List[PillarTimePreferences]]) -> str:
                 if not prefs:
                     return "None specified"
@@ -296,8 +299,8 @@ class GoalsService:
             print(pillar_pref_str)
 
             # TODO: Make health context a separate function and add a schema for it
-            action_plan_with_schedule = await self._invoke_structured_llm(
-                schema=ACTION_PLAN_SCHEMA,
+            action_item_with_schedule = await self._invoke_structured_llm(
+                schema=ACTION_ITEM_SCHEMA,
                 system_prompt=GENERATE_ACTION_PLAN_WITH_SCHEDULE_SYSTEM_PROMPT,
                 user_prompt=GENERATE_ACTION_PLAN_WITH_SCHEDULE_USER_PROMPT,
                 input_vars={
@@ -317,19 +320,13 @@ class GoalsService:
                 },
             )
 
-            action_plan = action_plan_with_schedule.get("action_plan", {})
-            weekly_schedule = action_plan_with_schedule.get("weekly_schedule", {})
+            action_items = action_item_with_schedule.get("action_items", [])
 
-            await self.goals_collection.update_one(
-                {"_id": ObjectId(goal_id)},
-                {
-                    "$set": {
-                        "action_plan": action_plan,
-                        "weekly_schedule": weekly_schedule,
-                        "updated_at": datetime.now(timezone.utc),
-                    }
-                },
-            )
+            for action_item in action_items:
+                await self.action_plan_collection.insert_one({
+                    "goal_id": goal_id,
+                    **action_item
+                })
 
             await self.nudge_service.create_nudges_from_goal(goal_id)
 
@@ -341,8 +338,7 @@ class GoalsService:
                 "message": "Plan generated successfully",
                 "data": {
                     "goal": goal_dict,
-                    "action_plan": action_plan,
-                    "weekly_schedule": weekly_schedule,
+                    "action_plan": action_items,
                 },
             }
         except Exception as e:

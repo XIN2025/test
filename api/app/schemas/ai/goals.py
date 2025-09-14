@@ -38,6 +38,7 @@ class GoalUpdate(BaseModel):
     completed: Optional[bool] = None
     due_date: Optional[datetime] = None
 
+# TODO: Covert user email to user_id
 class Goal(GoalBase):
     id: str
     user_email: EmailStr
@@ -46,9 +47,6 @@ class Goal(GoalBase):
     notes: List[str] = []
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class GoalProgressUpdate(BaseModel):
     goal_id: str
