@@ -320,9 +320,17 @@ class GoalsService:
             action_items = action_item_with_schedule.get("action_items", [])
 
             for action_item in action_items:
+                weekly_schedule = { 
+                    day: {
+                        **schedule, 
+                        "complete": False
+                    } if schedule else None 
+                    for day, schedule in action_item.get("weekly_schedule").items()
+                }
                 await self.action_items_collection.insert_one({
                     "goal_id": goal_id,
-                    **action_item
+                    **action_item,
+                    "weekly_schedule": weekly_schedule
                 })
 
             await self.nudge_service.create_nudges_from_goal(goal_id)
