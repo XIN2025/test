@@ -36,6 +36,7 @@ class GoalsService:
     def __init__(self):
         self.db = get_db()
         self.goals_collection = self.db["goals"]
+        self.action_plan_collection = self.db["action_plans"]
         self.vector_store = get_vector_store()
         self.nudge_service = NudgeService()
 
