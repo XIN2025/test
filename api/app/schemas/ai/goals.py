@@ -93,3 +93,34 @@ class GoalResponse(BaseModel):
     success: bool
     message: str
     data: Optional[dict] = None 
+
+# Action Plan Schemas
+
+class ActionPriority(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+class DailySchedule(BaseModel):
+    date: datetime
+    start_time: datetime
+    end_time: datetime
+    note: Optional[str] = None
+    complete: bool = False
+
+class WeeklyActionSchedule(BaseModel):
+    monday: Optional[DailySchedule] = None
+    tuesday: Optional[DailySchedule] = None
+    wednesday: Optional[DailySchedule] = None
+    thursday: Optional[DailySchedule] = None
+    friday: Optional[DailySchedule] = None
+    saturday: Optional[DailySchedule] = None
+    sunday: Optional[DailySchedule] = None
+
+class ActionItem(BaseModel):
+    id: str
+    goal_id: str
+    title: str
+    description: str
+    priority: ActionPriority
+    weekly_schedule: Optional[WeeklyActionSchedule] = None 
