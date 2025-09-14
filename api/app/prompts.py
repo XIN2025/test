@@ -1,3 +1,4 @@
+# TODO: Should we filter out irrelevant context during categorization?
 CONTEXT_CATEGORY_SCHEMA = {
     "title": "ContextCategorization",
     "description": "Intelligently categorize health-related context items",
@@ -23,6 +24,11 @@ CONTEXT_CATEGORY_SCHEMA = {
             "items": {"type": "string"},
             "description": "Health risks, warnings, contraindications, precautions",
         },
+        "other_context": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Any other health context not covered above",
+        }
     },
     "required": [
         "goal_related_entities",
@@ -32,7 +38,7 @@ CONTEXT_CATEGORY_SCHEMA = {
     ],
 }
 
-ACTION_PLAN_SCHEMA = {
+ACTION_ITEM_SCHEMA = {
     "title": "ActionPlanWithSchedule",
     "description": "A health goal action plan with a separate weekly schedule.",
     "type": "object",
@@ -93,16 +99,48 @@ ACTION_PLAN_SCHEMA = {
     },
 }
 
+# TODO: Make a prompt to make sure the schedule generated is consistent with piller preferences add a validation system
 GENERATE_ACTION_PLAN_WITH_SCHEDULE_SYSTEM_PROMPT = """
-You are a health and fitness planning assistant. 
-Given a health goal, user context, and user time preferences for different health pillars, generate a JSON object with:
-- goal_id, goal_title
-- 2-3 detailed action items (see schema)
-- total_estimated_time_per_week (ISO 8601 duration)
-- suggested_schedule (weekly schedule mapping each action to days of the week)
-- health_adaptations (array)
-- created_at (ISO 8601 datetime)
-Only return the JSON object"""
+You are a health and fitness planning assistant.
+Given a health goal, user context, and user time preferences for different health pillars, generate a JSON object that strictly follows the ActionPlanWithSchedule schema below.
+Generate 2-3 action items in the action_items array. Only include the fields and structure defined in the schema—do not add any extra fields.
+
+ActionPlanWithSchedule schema:
+{{
+    "action_items": [
+        {{
+            "title": "string",
+            "description": "string",
+            "priority": "high | medium | low",
+            "weekly_schedule": {{
+                "monday": {{ "date": "string", "start_time": "string", "end_time": "string", "notes": "string or null" }},
+                "tuesday": {{ ... }},
+                "wednesday": {{ ... }},
+                "thursday": {{ ... }},
+                "friday": {{ ... }},
+                "saturday": {{ ... }},
+                "sunday": {{ ... }}
+            }}
+        }},
+        {{
+            "title": "string",
+            "description": "string",
+            "priority": "high | medium | low",
+            "weekly_schedule": {{
+                "monday": {{ "date": "string", "start_time": "string", "end_time": "string", "notes": "string or null" }},
+                "tuesday": {{ ... }},
+                "wednesday": {{ ... }},
+                "thursday": {{ ... }},
+                "friday": {{ ... }},
+                "saturday": {{ ... }},
+                "sunday": {{ ... }}
+            }}
+        }}
+        // Optionally add a third example
+    ]
+}}
+Return only the JSON object.
+"""
 
 GENERATE_ACTION_PLAN_WITH_SCHEDULE_USER_PROMPT = """
 Goal: {goal_title} - {goal_description}

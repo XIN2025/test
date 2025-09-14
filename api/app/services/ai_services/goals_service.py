@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, time, date, timezone
 from pprint import pprint
 from typing import List, Optional, Dict, Any, Tuple
 from bson import ObjectId
-from ...schemas.ai.goals import GoalCreate, GoalUpdate, Goal, WeeklyReflection, GoalStats
+from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem
 from ...schemas.ai.planner import ActionPlan, WeeklyActionSchedule
 from ...schemas.backend.scheduler import WeeklySchedule
 from ...schemas.backend.preferences import PillarTimePreferences
@@ -36,7 +36,7 @@ class GoalsService:
     def __init__(self):
         self.db = get_db()
         self.goals_collection = self.db["goals"]
-        self.action_plan_collection = self.db["action_plans"]
+        self.action_items_collection = self.db["action_items"]
         self.vector_store = get_vector_store()
         self.nudge_service = NudgeService()
 
@@ -79,16 +79,9 @@ class GoalsService:
             daily_counts[day_str] = daily_counts.get(day_str, 0) + 1
         return daily_counts
 
-    async def create_goal(self, goal_data: GoalCreate) -> Goal:
-        goal_dict = goal_data.dict()
+    async def create_goal(self, goal_data: Goal) -> Goal:
+        goal_dict = goal_data.model_dump()
         goal_dict["_id"] = ObjectId()
-        goal_dict["current_value"] = 0
-        goal_dict["completed"] = False
-        goal_dict["notes"] = []
-        goal_dict["created_at"] = datetime.utcnow()
-        goal_dict["updated_at"] = datetime.utcnow()
-        if goal_dict.get("target_value"):
-            goal_dict["completed"] = goal_dict["current_value"] >= goal_dict["target_value"]
         result = await self.goals_collection.insert_one(goal_dict)
         goal_dict["id"] = str(result.inserted_id)
         return Goal(**goal_dict)
@@ -98,13 +91,17 @@ class GoalsService:
             "user_email": user_email
         }).sort("created_at", -1).to_list(None)
 
-        goals_with_plans = []
+        goals_with_action_items = []
         for goal in goals:
             goal["id"] = str(goal["_id"])
-            del goal["_id"]   
-            goals_with_plans.append(goal)
+            del goal["_id"]  
+            action_items = await self.action_items_collection.find({
+                "goal_id": goal["id"]
+            }).to_list(None)
+            goal["action_items"] = [ActionItem(**item) for item in action_items]
+            goals_with_action_items.append(GoalWithActionItems(**goal))
             
-        return goals_with_plans
+        return goals_with_action_items
 
     async def get_goal_by_id(self, goal_id: str, user_email: str) -> Optional[Goal]:
         goal = await self.goals_collection.find_one({"_id": ObjectId(goal_id), "user_email": user_email})
@@ -323,7 +320,7 @@ class GoalsService:
             action_items = action_item_with_schedule.get("action_items", [])
 
             for action_item in action_items:
-                await self.action_plan_collection.insert_one({
+                await self.action_items_collection.insert_one({
                     "goal_id": goal_id,
                     **action_item
                 })
@@ -338,7 +335,7 @@ class GoalsService:
                 "message": "Plan generated successfully",
                 "data": {
                     "goal": goal_dict,
-                    "action_plan": action_items,
+                    "action_items": action_items,
                 },
             }
         except Exception as e:

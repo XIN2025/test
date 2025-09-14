@@ -15,18 +15,6 @@ class GoalCategory(str, Enum):
     MENTAL = "mental"
     PERSONAL = "personal"
 
-class GoalBase(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=1000)
-    priority: GoalPriority = GoalPriority.MEDIUM
-    category: GoalCategory = GoalCategory.HEALTH
-    target_value: Optional[float] = Field(None, ge=0)
-    unit: Optional[str] = Field(None, max_length=50)
-    due_date: Optional[datetime] = None
-
-class GoalCreate(GoalBase):
-    user_email: EmailStr
-
 class GoalUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=1000)
@@ -38,15 +26,21 @@ class GoalUpdate(BaseModel):
     completed: Optional[bool] = None
     due_date: Optional[datetime] = None
 
+class GoalPriority(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
 # TODO: Covert user email to user_id
-class Goal(GoalBase):
-    id: str
+class GoalCreate(BaseModel):
     user_email: EmailStr
-    current_value: Optional[float] = Field(0, ge=0)
-    completed: bool = False
-    notes: List[str] = []
-    created_at: datetime
-    updated_at: datetime
+    title: str
+    description: Optional[str] = None
+    priority: GoalPriority
+    category: GoalCategory
+
+class Goal(GoalCreate):
+    id: str
 
 class GoalProgressUpdate(BaseModel):
     goal_id: str
@@ -115,6 +109,7 @@ class WeeklyActionSchedule(BaseModel):
     saturday: Optional[DailySchedule] = None
     sunday: Optional[DailySchedule] = None
 
+# TODO: Remove priority from action items as it's already there in goal schema
 class ActionItem(BaseModel):
     id: str
     goal_id: str
@@ -122,3 +117,6 @@ class ActionItem(BaseModel):
     description: str
     priority: ActionPriority
     weekly_schedule: Optional[WeeklyActionSchedule] = None 
+
+class GoalWithActionItems(Goal):
+    action_items: List[ActionItem] = []

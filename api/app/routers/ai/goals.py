@@ -6,8 +6,8 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import Request
 from ...schemas.ai.goals import (
-    GoalCreate, GoalUpdate, Goal, GoalProgressUpdate, GoalNote,
-    WeeklyReflection, GoalStats, GoalResponse
+    GoalUpdate, Goal, GoalProgressUpdate, GoalNote,
+    WeeklyReflection, GoalStats, GoalResponse, GoalCreate
 )
 from ...schemas.backend.preferences import PillarTimePreferences
 from ...schemas.backend.action_completions import ActionItemCompletionCreateRequest, ActionItemCompletionUpdate, ActionItemCompletionCreate
