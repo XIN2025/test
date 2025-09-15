@@ -110,10 +110,11 @@ class WeeklyActionSchedule(BaseModel):
     saturday: Optional[DailySchedule] = None
     sunday: Optional[DailySchedule] = None
 
-# TODO: Remove priority from action items as it's already there in goal schema
+# TODO: Remove priority from action items as it's already there in goal schema, convert user_email to user_id
 class ActionItem(BaseModel):
     id: str
     goal_id: str
+    user_email: EmailStr
     title: str
     description: str
     priority: ActionPriority

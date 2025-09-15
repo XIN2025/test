@@ -26,6 +26,7 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from app.config import OPENAI_API_KEY, LLM_MODEL
 from app.services.backend_services.nudge_service import NudgeService
+from calendar import monthrange
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ class GoalsService:
         self.db = get_db()
         self.goals_collection = self.db["goals"]
         self.action_items_collection = self.db["action_items"]
+        self.action_completions_collection = self.db["action_completions"]
         self.vector_store = get_vector_store()
         self.nudge_service = NudgeService()
 
@@ -51,31 +53,28 @@ class GoalsService:
         chain = prompt | llm
         return await chain.ainvoke(input_vars)
 
+    # TODO: Complete the schema for daily completion and daily completion response
+    # TODO: Add user_email in action_items schema because it is needed here to filter action items by user
     async def get_daily_completion(self, user_email: str, month: int, year: int) -> Dict[str, int]:
-        """
-        Returns a mapping of YYYY-MM-DD to number of completed action items for the user in the given month/year.
-        """
-        from calendar import monthrange
         start_date = datetime(year, month, 1)
         last_day = monthrange(year, month)[1]
         end_date = datetime(year, month, last_day, 23, 59, 59)
-        # Query all completions for this user in the month
-        completions = self.action_completions_collection.find({
-            "user_email": user_email,
-            "completed": True,
-            "completion_date": {"$gte": start_date, "$lte": end_date}
+        action_items = self.action_items_collection.find({
+            "user_email": user_email
         })
         daily_counts = {}
-        async for c in completions:
-            # Normalize to YYYY-MM-DD string
-            dt = c.get("completion_date")
-            if isinstance(dt, datetime):
-                day_str = dt.strftime("%Y-%m-%d")
-            elif isinstance(dt, date):
-                day_str = dt.isoformat()
-            else:
+        async for item in action_items:
+            weekly_schedule = item.get("weekly_schedule", {})
+            if not weekly_schedule:
                 continue
-            daily_counts[day_str] = daily_counts.get(day_str, 0) + 1
+            for daily_schedule in weekly_schedule.values():
+                if not daily_schedule:
+                    continue
+                completed = daily_schedule.get("complete", False)
+                action_item_date = datetime.strptime(daily_schedule.get("date"), "%Y-%m-%d")
+                if completed and start_date <= action_item_date <= end_date:
+                    day_str = action_item_date.strftime("%Y-%m-%d")
+                    daily_counts[day_str] = daily_counts.get(day_str, 0) + 1
         return daily_counts
 
     async def create_goal(self, goal_data: Goal) -> Goal:
@@ -129,6 +128,7 @@ class GoalsService:
             "data": reflection_dict
         }
 
+    # TODO: Check if we need this, if not then remove it
     async def get_weekly_reflection(self, user_email: str, week_start: datetime) -> Optional[Dict[str, Any]]:
         week_end = week_start + timedelta(days=7)
         reflection = await self.reflections_collection.find_one({
@@ -280,6 +280,7 @@ class GoalsService:
                 }
                 await self.action_items_collection.insert_one({
                     "goal_id": goal_id,
+                    "user_email": user_email,
                     **action_item,
                     "weekly_schedule": weekly_schedule
                 })
