@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta, time, date
+from datetime import datetime, timedelta, time, date, timezone
+from pprint import pprint
 from typing import List, Optional, Dict, Any, Tuple
 from bson import ObjectId
 from ...schemas.ai.goals import GoalCreate, GoalUpdate, Goal, WeeklyReflection, GoalStats
@@ -16,13 +17,41 @@ from ..backend_services.scheduler_service import get_scheduler_service
 from ..backend_services.nudge_service import NudgeService
 from ..miscellaneous.graph_db import get_graph_db
 import logging
+from app.prompts import (
+    CONTEXT_CATEGORY_SCHEMA,
+    ACTION_PLAN_SCHEMA,
+    GENERATE_ACTION_PLAN_WITH_SCHEDULE_SYSTEM_PROMPT,
+    GENERATE_ACTION_PLAN_WITH_SCHEDULE_USER_PROMPT,
+)
+from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from app.config import OPENAI_API_KEY, LLM_MODEL
+from app.services.backend_services.nudge_service import NudgeService
 
 # Set up logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 class GoalsService:
-    vectorstore = get_vector_store()
+    def __init__(self):
+        self.db = get_db()
+        self.goals_collection = self.db["goals"]
+        self.action_plan_collection = self.db["action_plans"]
+        self.vector_store = get_vector_store()
+        self.nudge_service = NudgeService()
+
+    async def _invoke_structured_llm(
+        self, schema: dict, system_prompt: str, user_prompt: str, input_vars: dict
+    ) -> dict:
+        llm = ChatOpenAI(
+            model=LLM_MODEL, openai_api_key=OPENAI_API_KEY
+        ).with_structured_output(schema)
+        prompt = ChatPromptTemplate.from_messages(
+            [("system", system_prompt), ("user", user_prompt)]
+        )
+        chain = prompt | llm
+        return await chain.ainvoke(input_vars)
+
     async def get_daily_completion(self, user_email: str, month: int, year: int) -> Dict[str, int]:
         """
         Returns a mapping of YYYY-MM-DD to number of completed action items for the user in the given month/year.
@@ -49,18 +78,6 @@ class GoalsService:
                 continue
             daily_counts[day_str] = daily_counts.get(day_str, 0) + 1
         return daily_counts
-    def __init__(self):
-        self.db = get_db()
-        self.goals_collection = self.db["goals"]
-        self.reflections_collection = self.db["weekly_reflections"]
-        self.habits_collection = self.db["habit_goals"]
-        self.action_plans_collection = self.db["action_plans"]
-        self.schedules_collection = self.db["weekly_schedules"]
-        self.action_completions_collection = self.db["action_completions"]
-        self.planner_service = get_planner_service()
-        self.scheduler_service = get_scheduler_service()
-        self.nudge_service = NudgeService()
-        self.graph_db = get_graph_db()
 
     async def create_goal(self, goal_data: GoalCreate) -> Goal:
         goal_dict = goal_data.dict()
@@ -76,27 +93,16 @@ class GoalsService:
         goal_dict["id"] = str(result.inserted_id)
         return Goal(**goal_dict)
 
-    async def get_user_goals(self, user_email: str, week_start: Optional[datetime] = None) -> List[Dict[str, Any]]:
-        query = {"user_email": user_email}
-        if week_start:
-            week_end = week_start + timedelta(days=7)
-            query["created_at"] = {"$gte": week_start, "$lt": week_end}
-        goals = await self.goals_collection.find(query).sort("created_at", -1).to_list(None)
-        
+    async def get_user_goals(self, user_email: str) -> List[Dict[str, Any]]:
+        goals = await self.goals_collection.find({
+            "user_email": user_email
+        }).sort("created_at", -1).to_list(None)
+
         goals_with_plans = []
         for goal in goals:
             goal["id"] = str(goal["_id"])
-            del goal["_id"]
-            goal_obj = Goal(**goal)
-            goal_dict = goal_obj.dict()
-            
-            # Get action plan and schedule
-            goal_plan = await self.get_goal_plan(str(goal_obj.id), user_email)
-            if goal_plan:
-                goal_dict["action_plan"] = goal_plan["action_plan"]
-                goal_dict["weekly_schedule"] = goal_plan["weekly_schedule"]
-            
-            goals_with_plans.append(goal_dict)
+            del goal["_id"]   
+            goals_with_plans.append(goal)
             
         return goals_with_plans
 
@@ -106,7 +112,7 @@ class GoalsService:
             return None
         goal["id"] = str(goal["_id"])
         del goal["_id"]
-        return Goal(**goal)
+        return goal
 
     async def update_goal(self, goal_id: str, user_email: str, update_data: GoalUpdate) -> Optional[Goal]:
         update_dict = update_data.dict(exclude_unset=True)
@@ -233,167 +239,117 @@ class GoalsService:
         return streak
 
     async def generate_goal_plan(
-    self,
-    goal_id: str,
-    user_email: str,
-    pillar_preferences: List[PillarTimePreferences]
-) -> Dict[str, Any]:
-        """Generate action plan and weekly schedule for a goal using vector search instead of graph DB"""
+        self,
+        goal_id: str,
+        user_email: str,
+        pillar_preferences: Optional[List[PillarTimePreferences]],
+    ) -> dict:
         try:
-            # 1. Get the goal
             goal = await self.get_goal_by_id(goal_id, user_email)
             if not goal:
-                return {"success": False, "message": "Goal not found"}
+                return {"success": False, "message": "Goal not found."}
 
-            # 2. Build query text from goal details
-            goal_text = f"{goal.title} {goal.description or ''} {goal.category or ''}".strip()
+            goal_text = (
+                f"{goal.title} {goal.description or ''} {goal.category or ''}".strip()
+            )
 
-            # 3. Retrieve context from vector store
             try:
-                search_results = self.vectorstore.search(
-                    query=goal_text,
-                    user_email=user_email,
-                    top_k=5
+                search_results = self.vector_store.search(
+                    query=goal_text, user_email=user_email, top_k=5
                 )
-                context_list = [doc.get("text", "") for doc in search_results if doc.get("text")]
+                context_list = [
+                    doc.get("text", "") for doc in search_results if doc.get("text")
+                ]
             except Exception as e:
-                logger.error(f"Error retrieving vector search context: {str(e)}")
+                print(f"Error retrieving vector search context: {str(e)}")
                 context_list = []
 
-            # 4. Generate action plan using context
+            health_context = {
+                "medical_context": [],
+                "lifestyle_factors": [],
+                "risk_factors": [],
+            }
             try:
-                action_plan = self.planner_service.create_action_plan(
-                    goal=goal,
-                    context=context_list,
-                    user_email=user_email
+                health_context = await self._invoke_structured_llm(
+                    schema=CONTEXT_CATEGORY_SCHEMA,
+                    system_prompt="Categorize the following context items into a health goal",
+                    user_prompt="Context items: {context_items}",
+                    input_vars={"context_items": "\n".join(context_list)},
                 )
             except Exception as e:
-                logger.error(f"Error creating action plan: {str(e)}")
-                raise
+                print(f"Context categorization failed, using raw context: {str(e)}")
+                health_context["lifestyle_factors"] = context_list
 
-            # 5. Generate weekly schedule using preferences
-            try:
-                weekly_schedule = self.scheduler_service.create_weekly_schedule(
-                    action_plan=action_plan,
-                    pillar_preferences=pillar_preferences,
-                    start_date=datetime.utcnow().replace(
-                        hour=0, minute=0, second=0, microsecond=0
+            def format_pillar_preferences(prefs: Optional[List[PillarTimePreferences]]) -> str:
+                if not prefs:
+                    return "None specified"
+                lines = []
+                for pref in prefs:
+                    for pillar, time_pref in pref.preferences.items():
+                        days = ", ".join(str(d) for d in time_pref.days_of_week)
+                        lines.append(
+                            f"{pillar}: Preferred time {time_pref.preferred_time}, "
+                            f"Duration {time_pref.duration_minutes} min, Days {days}"
+                        )
+                return "\n".join(lines)
+
+            pillar_pref_str = format_pillar_preferences(pillar_preferences)
+            print(pillar_pref_str)
+
+            # TODO: Make health context a separate function and add a schema for it
+            action_plan_with_schedule = await self._invoke_structured_llm(
+                schema=ACTION_PLAN_SCHEMA,
+                system_prompt=GENERATE_ACTION_PLAN_WITH_SCHEDULE_SYSTEM_PROMPT,
+                user_prompt=GENERATE_ACTION_PLAN_WITH_SCHEDULE_USER_PROMPT,
+                input_vars={
+                    "goal_title": goal.title,
+                    "goal_description": goal.description or "",
+                    "medical_context": "\n".join(
+                        health_context.get("medical_context", [])
                     )
-                )
-            except Exception as e:
-                logger.error(f"Error generating weekly schedule: {str(e)}")
-                raise
+                    or "None",
+                    "lifestyle_factors": "\n".join(
+                        health_context.get("lifestyle_factors", [])
+                    )
+                    or "None",
+                    "risk_factors": "\n".join(health_context.get("risk_factors", []))
+                    or "None",
+                    "pillar_preferences": pillar_pref_str,
+                },
+            )
 
-            # 6. Distribute weekly schedule to action items
-            for action_item in action_plan.action_items:
-                action_slots = {}
-                pillar_times = {}
-                total_duration = timedelta()
+            action_plan = action_plan_with_schedule.get("action_plan", {})
+            weekly_schedule = action_plan_with_schedule.get("weekly_schedule", {})
 
-                for day, schedule in weekly_schedule.daily_schedules.items():
-                    if not schedule or not schedule.time_slots:
-                        continue
-
-                    day_slots = []
-                    for slot in schedule.time_slots:
-                        if slot.action_item == action_item.title:
-                            # Normalize duration format
-                            duration_str = slot.duration if isinstance(slot.duration, str) else str(slot.duration)
-                            if ":" not in duration_str:
-                                duration_td = timedelta(seconds=float(duration_str))
-                                hours = int(duration_td.total_seconds() // 3600)
-                                minutes = int((duration_td.total_seconds() % 3600) // 60)
-                                seconds = int(duration_td.total_seconds() % 60)
-                                duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-
-                            slot_dict = {
-                                "start_time": slot.start_time.strftime("%H:%M") if hasattr(slot.start_time, 'strftime') else slot.start_time,
-                                "end_time": slot.end_time.strftime("%H:%M") if hasattr(slot.end_time, 'strftime') else slot.end_time,
-                                "duration": duration_str,
-                                "pillar": slot.pillar,
-                                "frequency": slot.frequency,
-                                "priority": slot.priority,
-                                "health_notes": slot.health_notes or []
-                            }
-                            day_slots.append(slot_dict)
-
-                            # Track pillar distribution
-                            try:
-                                h, m, s = duration_str.split(":")
-                                slot_duration = timedelta(hours=int(h), minutes=int(m), seconds=int(s))
-                                total_duration += slot_duration
-                                if slot.pillar:
-                                    pillar_times[slot.pillar] = pillar_times.get(slot.pillar, timedelta()) + slot_duration
-                            except Exception:
-                                logger.warning(f"Could not parse duration: {duration_str}")
-
-                    if day_slots:
-                        action_slots[day] = {
-                            "date": schedule.date.isoformat() if hasattr(schedule.date, 'isoformat') else schedule.date,
-                            "time_slots": day_slots,
-                            "total_duration": duration_str
-                        }
-
-                # Pillar distribution
-                total_seconds = total_duration.total_seconds()
-                pillar_distribution = {
-                    pillar: duration.total_seconds() / total_seconds
-                    for pillar, duration in pillar_times.items()
-                } if total_seconds > 0 else {}
-
-                # Format total weekly duration
-                hours = int(total_duration.total_seconds() // 3600)
-                minutes = int((total_duration.total_seconds() % 3600) // 60)
-                seconds = int(total_duration.total_seconds() % 60)
-                total_duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-
-                # Attach schedule to action item
-                action_item.weekly_schedule = {
-                    "monday": action_slots.get("monday"),
-                    "tuesday": action_slots.get("tuesday"),
-                    "wednesday": action_slots.get("wednesday"),
-                    "thursday": action_slots.get("thursday"),
-                    "friday": action_slots.get("friday"),
-                    "saturday": action_slots.get("saturday"),
-                    "sunday": action_slots.get("sunday"),
-                    "total_weekly_duration": total_duration_str,
-                    "pillar_distribution": pillar_distribution
-                }
-
-            # 7. Save plan + schedule
-            goal_dict = goal.dict()
-            goal_dict = self._convert_time_objects_to_str(goal_dict)  # Clean up any ObjectIds or timedeltas
-            action_plan_dict = action_plan.dict() if hasattr(action_plan, "dict") else action_plan
-            weekly_schedule_dict = weekly_schedule.dict() if hasattr(weekly_schedule, "dict") else weekly_schedule
-
-            stored_plan = await self._store_action_plan(goal_id, user_email, action_plan)
-            stored_schedule = await self._store_weekly_schedule(goal_id, user_email, weekly_schedule)
-
-            # 8. Update goal document
             await self.goals_collection.update_one(
                 {"_id": ObjectId(goal_id)},
                 {
                     "$set": {
-                        "action_plan": stored_plan,
-                        "weekly_schedule": stored_schedule,
-                        "updated_at": datetime.utcnow()
+                        "action_plan": action_plan,
+                        "weekly_schedule": weekly_schedule,
+                        "updated_at": datetime.now(timezone.utc),
                     }
-                }
+                },
             )
+
             await self.nudge_service.create_nudges_from_goal(goal_id)
+
+            goal_dict = goal.model_dump()
+            goal_dict = self._convert_time_objects_to_str(goal_dict)
 
             return {
                 "success": True,
                 "message": "Plan generated successfully",
                 "data": {
                     "goal": goal_dict,
-                    "action_plan": stored_plan,
-                    "weekly_schedule": stored_schedule
-                }
+                    "action_plan": action_plan,
+                    "weekly_schedule": weekly_schedule,
+                },
             }
         except Exception as e:
-            logger.error(f"Error generating plan: {str(e)}")
+            print(f"Error generating plan: {str(e)}")
             return {"success": False, "message": f"Failed to generate plan: {str(e)}"}
+
 
     def _convert_time_objects_to_str(self, obj: Any) -> Any:
         """Recursively convert time-related objects and ObjectIds to string format"""
@@ -643,93 +599,81 @@ class GoalsService:
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
 
-    def get_goal_completion_stats(self, goal_id: str, user_email: str, week_start: date) -> WeeklyCompletionStats:
+    async def get_goal_completion_stats(self, goal_id: str, user_email: str, week_start: date) -> WeeklyCompletionStats:
         """Calculate completion statistics for a goal for a specific week"""
         week_end = week_start + timedelta(days=6)
-        
-        # Get the goal's weekly schedule
-        goal_plan = self.get_goal_plan(goal_id, user_email)
-        if not goal_plan or not goal_plan.get("weekly_schedule"):
+
+        goal = await self.get_goal_by_id(goal_id, user_email)
+        if not goal or not getattr(goal, "weekly_schedule", None):
             return WeeklyCompletionStats(
                 goal_id=goal_id,
-                week_start=datetime.combine(week_start, time.min),  # Convert to datetime
-                week_end=datetime.combine(week_end, time.min),      # Convert to datetime
+                week_start=datetime.combine(week_start, time.min),
+                week_end=datetime.combine(week_end, time.min),
                 total_scheduled_days=0,
                 completed_days=0,
                 daily_stats=[],
                 overall_completion_percentage=0.0
             )
-        
-        weekly_schedule = goal_plan["weekly_schedule"]
+
+        weekly_schedule = goal.weekly_schedule
         daily_schedules = weekly_schedule.get("daily_schedules", {})
-        
+
         daily_stats = []
         total_scheduled_days = 0
         completed_days = 0
-        
-        # Check each day of the week
+
         days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
         for i, day in enumerate(days):
             current_date = week_start + timedelta(days=i)
             day_schedule = daily_schedules.get(day, {})
             time_slots = day_schedule.get("time_slots", [])
-            
-            if time_slots:  # If there are scheduled action items for this day
+
+            if time_slots:
                 total_scheduled_days += 1
-                
-                # Convert date to datetime for MongoDB query (MongoDB expects datetime objects)
                 current_datetime = datetime.combine(current_date, time.min)
-                
-                # Get completed action items for this date
                 completed_items = list(self.action_completions_collection.find({
                     "user_email": user_email,
                     "goal_id": goal_id,
                     "completion_date": current_datetime,
                     "completed": True
                 }))
-                
-                # Get all scheduled action items for this day
                 scheduled_action_items = []
                 for slot in time_slots:
                     action_item = slot.get("action_item", "")
                     if action_item and action_item not in scheduled_action_items:
                         scheduled_action_items.append(action_item)
-                
                 completed_action_items = [item["action_item_title"] for item in completed_items]
                 completion_percentage = (len(completed_action_items) / len(scheduled_action_items) * 100) if scheduled_action_items else 0
-                
-                # If all action items for the day are completed, count as completed day
                 if completion_percentage == 100:
                     completed_days += 1
-                
                 daily_stats.append(DailyCompletionStats(
-                    date=current_datetime,  # Use datetime instead of date
+                    date=current_datetime,
                     total_scheduled_items=len(scheduled_action_items),
                     completed_items=len(completed_action_items),
                     completion_percentage=completion_percentage,
-                    action_items=completed_action_items  # Store completed items instead of scheduled items
+                    action_items=completed_action_items
                 ))
-        
+
         overall_completion_percentage = (completed_days / total_scheduled_days * 100) if total_scheduled_days > 0 else 0
-        
+
         return WeeklyCompletionStats(
             goal_id=goal_id,
-            week_start=datetime.combine(week_start, time.min),  # Convert to datetime
-            week_end=datetime.combine(week_end, time.min),      # Convert to datetime
+            week_start=datetime.combine(week_start, time.min),
+            week_end=datetime.combine(week_end, time.min),
             total_scheduled_days=total_scheduled_days,
             completed_days=completed_days,
             daily_stats=daily_stats,
             overall_completion_percentage=overall_completion_percentage
         )
 
-    def get_all_goals_completion_stats(self, user_email: str, week_start: date) -> Dict[str, WeeklyCompletionStats]:
+    async def get_all_goals_completion_stats(self, user_email: str, week_start: date) -> Dict[str, WeeklyCompletionStats]:
         """Get completion statistics for all user goals for a specific week"""
-        goals = self.get_user_goals(user_email)
+        goals = await self.get_user_goals(user_email)
         completion_stats = {}
         
         for goal in goals:
             goal_id = goal.get("id") or str(goal.get("_id"))
-            stats = self.get_goal_completion_stats(goal_id, user_email, week_start)
+            stats = await self.get_goal_completion_stats(goal_id, user_email, week_start)
             completion_stats[goal_id] = stats
         
         return completion_stats

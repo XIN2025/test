@@ -28,8 +28,8 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 # LLM Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_KEY")  # Load from OPENAI_KEY in .env
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4-turbo-preview")  # Updated to a valid model name
-LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.1"))
+LLM_MODEL = os.getenv("LLM_MODEL")  # Updated to a valid model name
+LLM_TEMPERATURE = os.getenv("LLM_TEMPERATURE")
 
 # File Upload Configuration
 MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # 10MB
