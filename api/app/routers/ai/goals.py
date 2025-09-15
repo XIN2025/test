@@ -41,9 +41,9 @@ async def get_daily_completion(
         raise HTTPException(status_code=500, detail=str(e))
 
 @goals_router.get("/api/goals/stats", response_model=GoalResponse)
-async def get_goal_stats(user_email: EmailStr = Query(...), weeks: int = Query(4, ge=1, le=52)):
+async def get_goal_stats(user_email: EmailStr = Query(...)):
     try:
-        stats = await goals_service.get_goal_stats(user_email, weeks)
+        stats = await goals_service.get_goal_stats(user_email)
         return GoalResponse(success=True, message="Goal statistics retrieved successfully", data={"stats": stats.dict()})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
