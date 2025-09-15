@@ -92,6 +92,9 @@ class GoalsService:
             action_items = await self.action_items_collection.find({
                 "goal_id": goal["id"]
             }).to_list(None)
+            for action_item in action_items:
+                action_item["id"] = str(action_item["_id"])
+                del action_item["_id"]
             goal["action_items"] = [ActionItem(**item) for item in action_items]
             goals_with_action_items.append(GoalWithActionItems(**goal))
             
@@ -337,15 +340,9 @@ class GoalsService:
             pprint(action_item_with_schedule)
             action_items = [ActionItemCreate(**action_item, user_email=user_email, goal_id=goal_id) for action_item in action_item_with_schedule.get("action_items", [])]
             for index, action_item in enumerate(action_items):
-                insert = await self.action_items_collection.insert_one({
-                    "goal_id": goal_id,
-                    "user_email": user_email,
-                    **action_item
-                })
+                insert = await self.action_items_collection.insert_one(action_item.model_dump())
                 action_item = ActionItem(
                     id=str(insert.inserted_id),
-                    goal_id=goal_id,
-                    user_email=user_email,
                     **action_item.model_dump()
                 )
                 action_items[index] = action_item
