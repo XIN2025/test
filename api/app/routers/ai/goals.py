@@ -136,6 +136,21 @@ async def mark_action_item_complete(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@goals_router.post("/api/action-items/{action_item_id}/incomplete", response_model=GoalResponse)
+async def mark_action_item_incomplete(
+    action_item_id: str,
+    weekday_index: int = Body(..., embed=True),
+):
+    try:
+        completion = await goals_service.mark_action_item_incomplete(action_item_id, weekday_index)
+        return GoalResponse(
+            success=True,
+            message="Action item marked incomplete successfully",
+            data={"completion": completion.model_dump()}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @goals_router.get("/api/goals/{goal_id}/action-items", response_model=GoalResponse)
 async def get_goal_action_items(
     goal_id: str,

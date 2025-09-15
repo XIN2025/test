@@ -407,3 +407,19 @@ class GoalsService:
         pprint(action_item)
         action_item["weekly_schedule"] = WeeklyActionSchedule(**weekly_schedule)
         return ActionItem(**action_item)
+    
+    async def mark_action_item_incomplete(self, action_item_id: str, weekday_index: int) -> ActionItem:
+        action_item = await self.action_items_collection.find_one({ "_id": ObjectId(action_item_id) })
+        weekday = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"][weekday_index]
+        weekly_schedule = action_item["weekly_schedule"]
+        weekly_schedule[weekday]["complete"] = False
+        await self.action_items_collection.update_one(
+            { "_id": action_item["_id"]},
+            { "$set": { "weekly_schedule": weekly_schedule } }
+        )
+        action_item["id"] = str(action_item["_id"])
+        del action_item["_id"]
+        action_item["priority"] = ActionPriority(action_item["priority"])
+        pprint(action_item)
+        action_item["weekly_schedule"] = WeeklyActionSchedule(**weekly_schedule)
+        return ActionItem(**action_item)
