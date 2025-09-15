@@ -93,11 +93,12 @@ class ActionPriority(str, Enum):
     MEDIUM = "medium"
     LOW = "low"
 
+# TODO: Change date, start_time, end_time to datetime format
 class DailySchedule(BaseModel):
-    date: datetime
-    start_time: datetime
-    end_time: datetime
-    note: Optional[str] = None
+    date: str
+    start_time: str
+    end_time: str
+    notes: Optional[str] = None
     complete: bool = False
 
 class WeeklyActionSchedule(BaseModel):
@@ -120,3 +121,8 @@ class ActionItem(BaseModel):
 
 class GoalWithActionItems(Goal):
     action_items: List[ActionItem] = []
+
+class ActionItemResponse(BaseModel):
+    success: bool
+    message: str
+    data: Optional[dict] = None

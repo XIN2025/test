@@ -2,8 +2,7 @@ from datetime import datetime, timedelta, time, date, timezone
 from pprint import pprint
 from typing import List, Optional, Dict, Any, Tuple
 from bson import ObjectId
-from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem
-from ...schemas.ai.planner import ActionPlan, WeeklyActionSchedule
+from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem, ActionPriority, WeeklyActionSchedule
 from ...schemas.backend.scheduler import WeeklySchedule
 from ...schemas.backend.preferences import PillarTimePreferences
 from ...schemas.backend.action_completions import (
@@ -371,42 +370,6 @@ class GoalsService:
             return obj.strftime("%H:%M:%S")
         return obj
 
-    async def _store_action_plan(self, goal_id: str, user_email: str, action_plan: ActionPlan) -> Dict:
-        """Store action plan in database"""
-        # Convert the action plan to dict and handle timedelta objects
-        plan_dict = action_plan.dict()
-        plan_dict = self._convert_time_objects_to_str(plan_dict)
-        
-        # Add metadata
-        plan_dict["_id"] = ObjectId()
-        plan_dict["goal_id"] = goal_id
-        plan_dict["user_email"] = user_email
-        plan_dict["created_at"] = datetime.utcnow()
-        
-        # Store in database
-        await self.action_plans_collection.insert_one(plan_dict)
-        plan_dict["id"] = str(plan_dict["_id"])
-        del plan_dict["_id"]
-        return plan_dict
-
-    async def _store_weekly_schedule(self, goal_id: str, user_email: str, schedule: WeeklySchedule) -> Dict:
-        """Store weekly schedule in database"""
-        # Convert the schedule to dict and handle timedelta objects
-        schedule_dict = schedule.dict()
-        schedule_dict = self._convert_time_objects_to_str(schedule_dict)
-        
-        # Add metadata
-        schedule_dict["_id"] = ObjectId()
-        schedule_dict["goal_id"] = goal_id
-        schedule_dict["user_email"] = user_email
-        schedule_dict["created_at"] = datetime.utcnow()
-        
-        # Store in database
-        await self.schedules_collection.insert_one(schedule_dict)
-        schedule_dict["id"] = str(schedule_dict["_id"])
-        del schedule_dict["_id"]
-        return schedule_dict
-
     async def get_goal_plan(self, goal_id: str, user_email: str) -> Optional[Dict[str, Any]]:
         """Get stored action plan and schedule for a goal"""
         action_plan = await self.action_plans_collection.find_one({
@@ -465,69 +428,22 @@ class GoalsService:
             }
         }
 
-    # Action Item Completion Tracking Methods
-    
-    async def mark_action_item_completion(self, user_email: str, completion_data: ActionItemCompletionCreate) -> ActionItemCompletion:
-        """Mark an action item as completed or update its completion status"""
-        logger.info(f"Marking action item completion: user={user_email}, goal_id={completion_data.goal_id}, action_item={completion_data.action_item_title}, completed={completion_data.completed}")
-        
-        completion_dict = completion_data.dict()
-        completion_dict["user_email"] = user_email
-        completion_dict["created_at"] = datetime.utcnow()
-        completion_dict["_id"] = ObjectId()
-        
-        # Ensure completion_date is a naive UTC datetime at start of day (MongoDB expects naive UTC)
-        completion_date = completion_data.completion_date
-        if isinstance(completion_date, date) and not isinstance(completion_date, datetime):
-            completion_date = datetime.combine(completion_date, time.min)
-        elif isinstance(completion_date, str):
-            completion_date = datetime.fromisoformat(completion_date.replace('Z', '+00:00'))
-        # Normalize to naive (UTC) and zero time to avoid tz-aware/naive mismatches
-        if isinstance(completion_date, datetime):
-            completion_date = completion_date.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
-        completion_dict["completion_date"] = completion_date
-        
-        # Check if completion already exists for this date and action item
-        existing = self.action_completions_collection.find_one({
-            "user_email": user_email,
-            "goal_id": completion_data.goal_id,
-            "action_item_title": completion_data.action_item_title,
-            "completion_date": completion_date
-        })
-        
-        if existing:
-            # Update existing completion
-            self.action_completions_collection.update_one(
-                {"_id": existing["_id"]},
-                {"$set": {
-                    "completed": completion_data.completed,
-                    "notes": completion_data.notes,
-                    "updated_at": datetime.utcnow()
-                }}
-            )
-            existing.update({
-                "completed": completion_data.completed,
-                "notes": completion_data.notes
-            })
-            result = ActionItemCompletion(**existing)
-        else:
-            # Create new completion record
-            db_result = self.action_completions_collection.insert_one(completion_dict)
-            completion_dict["id"] = str(db_result.inserted_id)
-            result = ActionItemCompletion(**completion_dict)
-        
-        # Update the weekly completion status in the action plan
-        logger.info(f"About to update weekly completion status...")
-        await self._update_weekly_completion_status(
-            user_email, 
-            completion_data.goal_id, 
-            completion_data.action_item_title, 
-            completion_date, 
-            completion_data.completed
+    # TODO: You can create a get action_item by id function here 
+    async def mark_action_item_complete(self, action_item_id: str, weekday_index: int) -> ActionItem:
+        action_item = await self.action_items_collection.find_one({ "_id": ObjectId(action_item_id) })
+        weekday = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"][weekday_index]
+        weekly_schedule = action_item["weekly_schedule"]
+        weekly_schedule[weekday]["complete"] = True
+        await self.action_items_collection.update_one(
+            { "_id": action_item["_id"]},
+            { "$set": { "weekly_schedule": weekly_schedule } }
         )
-        logger.info(f"Finished updating weekly completion status")
-        
-        return result
+        action_item["id"] = str(action_item["_id"])
+        del action_item["_id"]
+        action_item["priority"] = ActionPriority(action_item["priority"])
+        pprint(action_item)
+        action_item["weekly_schedule"] = WeeklyActionSchedule(**weekly_schedule)
+        return ActionItem(**action_item)
 
     async def _update_weekly_completion_status(self, user_email: str, goal_id: str, action_item_title: str, completion_date: datetime, completed: bool):
         """Update the weekly completion status in the action plan"""

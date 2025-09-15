@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import Request
 from ...schemas.ai.goals import (
     GoalUpdate, Goal, GoalProgressUpdate, GoalNote,
-    WeeklyReflection, GoalStats, GoalResponse, GoalCreate
+    WeeklyReflection, GoalStats, GoalResponse, GoalCreate, ActionItemResponse
 )
 from ...schemas.backend.preferences import PillarTimePreferences
 from ...schemas.backend.action_completions import ActionItemCompletionCreateRequest, ActionItemCompletionUpdate, ActionItemCompletionCreate
@@ -225,58 +225,42 @@ async def generate_goal_plan(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@goals_router.post("/api/goals/{goal_id}/action-items/complete", response_model=GoalResponse)
-async def mark_action_item_completion(
-    goal_id: str,
-    completion_data: ActionItemCompletionCreateRequest,
-    user_email: EmailStr = Query(...)
+@goals_router.post("/api/action-items/{action_item_id}/complete", response_model=ActionItemResponse)
+async def mark_action_item_complete(
+    action_item_id: str,
+    weekday_index: int = Body(..., embed=True),
 ):
-    """Mark an action item as completed for a specific date"""
     try:
-        # Create the full completion data with goal_id from URL
-        full_completion_data = ActionItemCompletionCreate(
-            goal_id=goal_id,
-            action_item_title=completion_data.action_item_title,
-            completion_date=completion_data.completion_date,
-            completed=completion_data.completed,
-            notes=completion_data.notes
-        )
-        
-        completion = await goals_service.mark_action_item_completion(
-            user_email,
-            full_completion_data
-        )
-        return GoalResponse(
+        completion = await goals_service.mark_action_item_complete(action_item_id, weekday_index)
+        return ActionItemResponse(
             success=True,
-            message="Action item completion recorded successfully",
+            message="Action item marked completed successfully",
             data={"completion": completion.dict()}
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@goals_router.get("/api/goals/{goal_id}/action-plan", response_model=GoalResponse)
-async def get_goal_action_plan(
+@goals_router.get("/api/goals/{goal_id}/action-items", response_model=GoalResponse)
+async def get_goal_action_items(
     goal_id: str,
-    user_email: EmailStr = Query(...)
 ):
-    """Get the action plan for a goal with current weekly completion status"""
     try:
-        action_plan = await goals_service.action_plans_collection.find_one({
+        action_items = await goals_service.action_items_collection.find({
             "goal_id": goal_id,
-            "user_email": user_email
-        })
-        
-        if not action_plan:
-            raise HTTPException(status_code=404, detail="Action plan not found")
-        
-        # Convert ObjectId to string
-        action_plan["id"] = str(action_plan["_id"])
-        del action_plan["_id"]
-        
+        }).to_list(None)
+
+        if not action_items:
+            raise HTTPException(status_code=404, detail="Action items not found")
+
+        for action_item in action_items:
+            if "_id" in action_item:
+                action_item["id"] = str(action_item["_id"])
+                del action_item["_id"]
+
         return GoalResponse(
             success=True,
-            message="Action plan retrieved successfully",
-            data={"action_plan": action_plan}
+            message="Action items retrieved successfully",
+            data={"action_items": action_items}
         )
     except HTTPException:
         raise
