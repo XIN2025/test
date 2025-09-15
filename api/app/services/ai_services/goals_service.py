@@ -15,7 +15,6 @@ from .planner_service import get_planner_service
 from ..backend_services.scheduler_service import get_scheduler_service
 from ..backend_services.nudge_service import NudgeService
 from ..miscellaneous.graph_db import get_graph_db
-import logging
 from app.prompts import (
     CONTEXT_CATEGORY_SCHEMA,
     ACTION_ITEM_SCHEMA,
@@ -27,10 +26,6 @@ from langchain.prompts import ChatPromptTemplate
 from app.config import OPENAI_API_KEY, LLM_MODEL
 from app.services.backend_services.nudge_service import NudgeService
 from calendar import monthrange
-
-# Set up logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 class GoalsService:
     def __init__(self):
@@ -80,8 +75,10 @@ class GoalsService:
     async def create_goal(self, goal_data: Goal) -> Goal:
         goal_dict = goal_data.model_dump()
         goal_dict["_id"] = ObjectId()
+        goal_dict["created_at"] = datetime.now(timezone.utc)
         result = await self.goals_collection.insert_one(goal_dict)
         goal_dict["id"] = str(result.inserted_id)
+        del goal_dict["_id"]  
         return Goal(**goal_dict)
 
     async def get_user_goals(self, user_email: str) -> List[Dict[str, Any]]:
