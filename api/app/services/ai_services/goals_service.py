@@ -110,44 +110,9 @@ class GoalsService:
         del goal["_id"]
         return Goal(**goal)
 
-    async def update_goal(self, goal_id: str, user_email: str, update_data: GoalUpdate) -> Optional[Goal]:
-        update_dict = update_data.dict(exclude_unset=True)
-        update_dict["updated_at"] = datetime.utcnow()
-        if "current_value" in update_dict or "target_value" in update_dict:
-            goal = await self.get_goal_by_id(goal_id, user_email)
-            if goal:
-                current_val = update_dict.get("current_value", goal.current_value or 0)
-                target_val = update_dict.get("target_value", goal.target_value)
-                if target_val:
-                    update_dict["completed"] = current_val >= target_val
-        result = await self.goals_collection.update_one(
-            {"_id": ObjectId(goal_id), "user_email": user_email},
-            {"$set": update_dict}
-        )
-        if result.modified_count == 0:
-            return None
-        return await self.get_goal_by_id(goal_id, user_email)
-
     async def delete_goal(self, goal_id: str, user_email: str) -> bool:
         result = await self.goals_collection.delete_one({"_id": ObjectId(goal_id), "user_email": user_email})
         return result.deleted_count > 0
-
-    async def update_goal_progress(self, goal_id: str, user_email: str, current_value: float, note: Optional[str] = None) -> Optional[Goal]:
-        update_data = {"current_value": current_value, "updated_at": datetime.utcnow()}
-        goal = await self.get_goal_by_id(goal_id, user_email)
-        if not goal:
-            return None
-        if goal.target_value:
-            update_data["completed"] = current_value >= goal.target_value
-        if note:
-            update_data["notes"] = goal.notes + [note]
-        result = await self.goals_collection.update_one(
-            {"_id": ObjectId(goal_id), "user_email": user_email},
-            {"$set": update_data}
-        )
-        if result.modified_count == 0:
-            return None
-        return await self.get_goal_by_id(goal_id, user_email)
 
     async def save_weekly_reflection(self, reflection_data: WeeklyReflection) -> Dict[str, Any]:
         reflection_dict = reflection_data.dict()
@@ -382,37 +347,6 @@ class GoalsService:
         return {
             "action_plan": action_plan,
             "weekly_schedule": weekly_schedule
-        }
-
-    def get_weekly_progress(self, user_email: str, week_start: datetime) -> Dict[str, Any]:
-        week_end = week_start + timedelta(days=7)
-        goals = self.get_user_goals(user_email, week_start)
-        reflection = self.get_weekly_reflection(user_email, week_start)
-
-        # Get action plans and schedules for each goal (goals are dicts already)
-        goals_with_plans = []
-        for goal in goals:
-            goal_dict = dict(goal)
-            goal_plan = self.get_goal_plan(goal_dict.get("id"), user_email)
-            if goal_plan:
-                goal_dict["action_plan"] = goal_plan["action_plan"]
-                goal_dict["weekly_schedule"] = goal_plan["weekly_schedule"]
-            goals_with_plans.append(goal_dict)
-
-        total_goals = len(goals)
-        completed_goals = len([g for g in goals if g.get("completed")])
-        completion_rate = (completed_goals / total_goals * 100) if total_goals > 0 else 0
-
-        return {
-            "week_start": week_start,
-            "week_end": week_end,
-            "goals": goals_with_plans,
-            "reflection": reflection,
-            "stats": {
-                "total_goals": total_goals,
-                "completed_goals": completed_goals,
-                "completion_rate": completion_rate
-            }
         }
 
     # TODO: You can create a get action_item by id function here 

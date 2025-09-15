@@ -40,9 +40,6 @@ async def get_daily_completion(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint: Get daily completion counts for the user for a given month
-
-
 @goals_router.get("/api/goals/stats", response_model=GoalResponse)
 async def get_goal_stats(user_email: EmailStr = Query(...), weeks: int = Query(4, ge=1, le=52)):
     try:
@@ -51,51 +48,12 @@ async def get_goal_stats(user_email: EmailStr = Query(...), weeks: int = Query(4
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@goals_router.get("/api/goals/reflection", response_model=GoalResponse)
-async def get_weekly_reflection(user_email: EmailStr = Query(...), week_start: str = Query(...)):
-    try:
-        try:
-            week_start_date = datetime.fromisoformat(week_start.replace('Z', '+00:00'))
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid week_start date format")
-        reflection = await goals_service.get_weekly_reflection(user_email, week_start_date)
-        return GoalResponse(success=True, message="Weekly reflection retrieved successfully", data={"reflection": reflection})
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+# TODO: Work on reflection schema and proper database integration
 @goals_router.post("/api/goals/reflection", response_model=GoalResponse)
 async def save_weekly_reflection(reflection_data: WeeklyReflection):
     try:
         result = await goals_service.save_weekly_reflection(reflection_data)
         return GoalResponse(success=True, message="Weekly reflection saved successfully", data=result["data"])
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@goals_router.get("/api/goals/weekly-progress", response_model=GoalResponse)
-async def get_weekly_progress(user_email: EmailStr = Query(...), week_start: str = Query(...)):
-    try:
-        try:
-            week_start_date = datetime.fromisoformat(week_start.replace('Z', '+00:00'))
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid week_start date format")
-        progress = goals_service.get_weekly_progress(user_email, week_start_date)
-        return GoalResponse(success=True, message="Weekly progress retrieved successfully", data=progress)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@goals_router.get("/api/goals/current-week", response_model=GoalResponse)
-async def get_current_week_goals(user_email: EmailStr = Query(...)):
-    try:
-        today = datetime.utcnow()
-        days_since_monday = today.weekday()
-        week_start = today - timedelta(days=days_since_monday)
-        week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
-        goals = await goals_service.get_user_goals(user_email, week_start)
-        return GoalResponse(success=True, message="Current week goals retrieved successfully", data={"week_start": week_start.isoformat(), "goals": goals})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -115,32 +73,6 @@ async def get_user_goals(user_email: EmailStr = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@goals_router.get("/api/goals/completion-stats", response_model=GoalResponse)
-async def get_all_goals_completion_stats(
-    user_email: EmailStr = Query(...),
-    week_start: str = Query(..., description="Week start date in YYYY-MM-DD format")
-):
-    """Get completion statistics for all user goals for a specific week"""
-    try:
-        try:
-            week_start_date = datetime.strptime(week_start, "%Y-%m-%d").date()
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid week_start date format. Use YYYY-MM-DD")
-        
-        stats = await goals_service.get_all_goals_completion_stats(user_email, week_start_date)
-        return GoalResponse(
-            success=True,
-            message="All goals completion statistics retrieved successfully",
-            data={"completion_stats": stats}
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-## --- MOVE ALL STATIC ROUTES ABOVE DYNAMIC ROUTES --- ##
-
 @goals_router.get("/api/goals/{goal_id}", response_model=GoalResponse)
 async def get_goal(goal_id: str, user_email: EmailStr = Query(...)):
     try:
@@ -153,18 +85,7 @@ async def get_goal(goal_id: str, user_email: EmailStr = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@goals_router.put("/api/goals/{goal_id}", response_model=GoalResponse)
-async def update_goal(goal_id: str, goal_data: GoalUpdate, user_email: EmailStr = Query(...)):
-    try:
-        goal = await goals_service.update_goal(goal_id, user_email, goal_data)
-        if not goal:
-            raise HTTPException(status_code=404, detail="Goal not found")
-        return GoalResponse(success=True, message="Goal updated successfully", data={"goal": goal.dict()})
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+# TODO: Update delete_goal function of goal services for new architecture where action_items are store in a separate collection
 @goals_router.delete("/api/goals/{goal_id}", response_model=GoalResponse)
 async def delete_goal(goal_id: str, user_email: EmailStr = Query(...)):
     try:
@@ -172,18 +93,6 @@ async def delete_goal(goal_id: str, user_email: EmailStr = Query(...)):
         if not deleted:
             raise HTTPException(status_code=404, detail="Goal not found")
         return GoalResponse(success=True, message="Goal deleted successfully")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@goals_router.post("/api/goals/{goal_id}/progress", response_model=GoalResponse)
-async def update_goal_progress(goal_id: str, progress_data: GoalProgressUpdate, user_email: EmailStr = Query(...)):
-    try:
-        goal = await goals_service.update_goal_progress(goal_id, user_email, progress_data.current_value, progress_data.note)
-        if not goal:
-            raise HTTPException(status_code=404, detail="Goal not found")
-        return GoalResponse(success=True, message="Goal progress updated successfully", data={"goal": goal.dict()})
     except HTTPException:
         raise
     except Exception as e:
