@@ -189,18 +189,6 @@ async def update_goal_progress(goal_id: str, progress_data: GoalProgressUpdate, 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@goals_router.post("/api/goals/{goal_id}/notes", response_model=GoalResponse)
-async def add_goal_note(goal_id: str, note_data: GoalNote, user_email: EmailStr = Query(...)):
-    try:
-        goal = await goals_service.add_goal_note(goal_id, user_email, note_data.note)
-        if not goal:
-            raise HTTPException(status_code=404, detail="Goal not found")
-        return GoalResponse(success=True, message="Note added successfully", data={"goal": goal.dict()})
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @goals_router.post("/api/goals/{goal_id}/generate-plan", response_model=GoalResponse)
 async def generate_goal_plan(
     goal_id: str,
@@ -261,30 +249,6 @@ async def get_goal_action_items(
             success=True,
             message="Action items retrieved successfully",
             data={"action_items": action_items}
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@goals_router.get("/api/goals/{goal_id}/completion-stats", response_model=GoalResponse)
-async def get_goal_completion_stats(
-    goal_id: str,
-    user_email: EmailStr = Query(...),
-    week_start: str = Query(..., description="Week start date in YYYY-MM-DD format")
-):
-    """Get completion statistics for a goal for a specific week"""
-    try:
-        try:
-            week_start_date = datetime.strptime(week_start, "%Y-%m-%d").date()
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid week_start date format. Use YYYY-MM-DD")
-        
-        stats = goals_service.get_goal_completion_stats(goal_id, user_email, week_start_date)
-        return GoalResponse(
-            success=True,
-            message="Goal completion statistics retrieved successfully",
-            data={"completion_stats": stats.dict()}
         )
     except HTTPException:
         raise
