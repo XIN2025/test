@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, time, date, timezone
 from pprint import pprint
 from typing import List, Optional, Dict, Any, Tuple
 from bson import ObjectId
-from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem, ActionItemCreate, ActionPriority, WeeklyActionSchedule, DailySchedule
+from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflectionCreate, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem, ActionItemCreate, ActionPriority, WeeklyActionSchedule, DailySchedule
 from ...schemas.backend.preferences import PillarTimePreferences
 from ...schemas.backend.action_completions import (
     ActionItemCompletion, ActionItemCompletionCreate, ActionItemCompletionUpdate,
@@ -112,32 +112,11 @@ class GoalsService:
         result = await self.goals_collection.delete_one({"_id": ObjectId(goal_id), "user_email": user_email})
         return result.deleted_count > 0
 
-    async def save_weekly_reflection(self, reflection_data: WeeklyReflection) -> Dict[str, Any]:
-        reflection_dict = reflection_data.dict()
-        reflection_dict["_id"] = ObjectId()
-        reflection_dict["created_at"] = datetime.utcnow()
+    async def save_weekly_reflection(self, reflection_create: WeeklyReflectionCreate) -> WeeklyReflection:
+        reflection_dict = reflection_create.model_dump()
+        reflection_dict["created_at"] = datetime.now(timezone.utc)
         result = await self.reflections_collection.insert_one(reflection_dict)
-        reflection_dict["id"] = str(result.inserted_id)
-        # Remove non-serializable ObjectId before returning
-        if "_id" in reflection_dict:
-            del reflection_dict["_id"]
-        return {
-            "success": True,
-            "message": "Weekly reflection saved successfully",
-            "data": reflection_dict
-        }
-
-    # TODO: Check if we need this, if not then remove it
-    async def get_weekly_reflection(self, user_email: str, week_start: datetime) -> Optional[Dict[str, Any]]:
-        week_end = week_start + timedelta(days=7)
-        reflection = await self.reflections_collection.find_one({
-            "user_email": user_email,
-            "week_start": {"$gte": week_start, "$lt": week_end}
-        })
-        if reflection:
-            reflection["id"] = str(reflection["_id"])
-            del reflection["_id"]
-        return reflection
+        return WeeklyReflection(**reflection_dict, id=str(result.inserted_id))
 
     async def get_goal_stats(self, user_email: str, weeks: int = 4) -> GoalStats:
         goals = await self.goals_collection.find({

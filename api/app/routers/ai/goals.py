@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import Request
 from ...schemas.ai.goals import (
     GoalUpdate, Goal, GoalProgressUpdate, GoalNote,
-    WeeklyReflection, GoalStats, GoalResponse, GoalCreate, ActionItemResponse
+    WeeklyReflection, GoalStats, GoalResponse, GoalCreate, GoalResponse, WeeklyReflectionCreate
 )
 from ...schemas.backend.preferences import PillarTimePreferences
 from ...schemas.backend.action_completions import ActionItemCompletionCreateRequest, ActionItemCompletionUpdate, ActionItemCompletionCreate
@@ -48,12 +48,11 @@ async def get_goal_stats(user_email: EmailStr = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# TODO: Work on reflection schema and proper database integration
 @goals_router.post("/api/goals/reflection", response_model=GoalResponse)
-async def save_weekly_reflection(reflection_data: WeeklyReflection):
+async def save_weekly_reflection(reflection_data: WeeklyReflectionCreate):
     try:
         result = await goals_service.save_weekly_reflection(reflection_data)
-        return GoalResponse(success=True, message="Weekly reflection saved successfully", data=result["data"])
+        return GoalResponse(success=True, message="Weekly reflection saved successfully", data=result.model_dump())
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -122,17 +121,17 @@ async def generate_goal_plan(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@goals_router.post("/api/action-items/{action_item_id}/complete", response_model=ActionItemResponse)
+@goals_router.post("/api/action-items/{action_item_id}/complete", response_model=GoalResponse)
 async def mark_action_item_complete(
     action_item_id: str,
     weekday_index: int = Body(..., embed=True),
 ):
     try:
         completion = await goals_service.mark_action_item_complete(action_item_id, weekday_index)
-        return ActionItemResponse(
+        return GoalResponse(
             success=True,
             message="Action item marked completed successfully",
-            data={"completion": completion.dict()}
+            data={"completion": completion.model_dump()}
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

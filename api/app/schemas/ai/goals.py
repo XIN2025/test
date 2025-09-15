@@ -52,13 +52,15 @@ class GoalNote(BaseModel):
     goal_id: str
     note: str = Field(..., min_length=1, max_length=500)
 
-class WeeklyReflection(BaseModel):
+# TODO: Change user_email to user_id
+class WeeklyReflectionCreate(BaseModel):
     user_email: EmailStr
-    week_start: datetime
-    week_end: datetime
     rating: int = Field(..., ge=1, le=5)
     reflection: Optional[str] = Field(None, max_length=2000)
-    next_week_goals: List[str] = Field(default_factory=list)
+
+class WeeklyReflection(WeeklyReflectionCreate):
+    id: str
+    created_at: datetime
 
 class WeeklyProgress(BaseModel):
     user_email: EmailStr
@@ -125,8 +127,3 @@ class ActionItem(ActionItemCreate):
 
 class GoalWithActionItems(Goal):
     action_items: List[ActionItem] = []
-
-class ActionItemResponse(BaseModel):
-    success: bool
-    message: str
-    data: Optional[dict] = None
