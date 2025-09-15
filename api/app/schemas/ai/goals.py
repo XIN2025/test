@@ -41,6 +41,7 @@ class GoalCreate(BaseModel):
 
 class Goal(GoalCreate):
     id: str
+    created_at: datetime
 
 class GoalProgressUpdate(BaseModel):
     goal_id: str
@@ -111,14 +112,16 @@ class WeeklyActionSchedule(BaseModel):
     sunday: Optional[DailySchedule] = None
 
 # TODO: Remove priority from action items as it's already there in goal schema, convert user_email to user_id
-class ActionItem(BaseModel):
-    id: str
+class ActionItemCreate(BaseModel):
     goal_id: str
     user_email: EmailStr
     title: str
     description: str
     priority: ActionPriority
-    weekly_schedule: Optional[WeeklyActionSchedule] = None 
+    weekly_schedule: WeeklyActionSchedule
+
+class ActionItem(ActionItemCreate):
+    id: str
 
 class GoalWithActionItems(Goal):
     action_items: List[ActionItem] = []

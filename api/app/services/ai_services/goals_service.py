@@ -2,8 +2,7 @@ from datetime import datetime, timedelta, time, date, timezone
 from pprint import pprint
 from typing import List, Optional, Dict, Any, Tuple
 from bson import ObjectId
-from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem, ActionPriority, WeeklyActionSchedule
-from ...schemas.backend.scheduler import WeeklySchedule
+from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem, ActionItemCreate, ActionPriority, WeeklyActionSchedule, DailySchedule
 from ...schemas.backend.preferences import PillarTimePreferences
 from ...schemas.backend.action_completions import (
     ActionItemCompletion, ActionItemCompletionCreate, ActionItemCompletionUpdate,
@@ -252,6 +251,7 @@ class GoalsService:
                 completed_goals += 1
         return completed_goals
 
+    # TODO: Fix the pillar preferences schema it's not coming well on swagger
     async def generate_goal_plan(
         self,
         goal_id: str,
@@ -334,22 +334,21 @@ class GoalsService:
                 },
             )
 
-            action_items = action_item_with_schedule.get("action_items", [])
-
-            for action_item in action_items:
-                weekly_schedule = { 
-                    day: {
-                        **schedule, 
-                        "complete": False
-                    } if schedule else None 
-                    for day, schedule in action_item.get("weekly_schedule").items()
-                }
-                await self.action_items_collection.insert_one({
+            pprint(action_item_with_schedule)
+            action_items = [ActionItemCreate(**action_item, user_email=user_email, goal_id=goal_id) for action_item in action_item_with_schedule.get("action_items", [])]
+            for index, action_item in enumerate(action_items):
+                insert = await self.action_items_collection.insert_one({
                     "goal_id": goal_id,
                     "user_email": user_email,
-                    **action_item,
-                    "weekly_schedule": weekly_schedule
+                    **action_item
                 })
+                action_item = ActionItem(
+                    id=str(insert.inserted_id),
+                    goal_id=goal_id,
+                    user_email=user_email,
+                    **action_item.model_dump()
+                )
+                action_items[index] = action_item
 
             await self.nudge_service.create_nudges_from_goal(goal_id)
 
@@ -361,7 +360,7 @@ class GoalsService:
                 "message": "Plan generated successfully",
                 "data": {
                     "goal": goal_dict,
-                    "action_items": action_items,
+                    "action_items": [action_item.model_dump() for action_item in action_items],
                 },
             }
         except Exception as e:
