@@ -14,6 +14,7 @@ from app.routers.backend.user import user_router
 from app.routers.ai.chat import chat_router
 from app.routers.backend.upload import upload_router
 from app.routers.ai.goals import goals_router
+from app.routers.ai.lab_report import lab_report_router
 from app.routers.backend.preferences import preferences_router
 from app.routers.backend.nudge import nudge_router
 from app.exceptions import AppException, custom_exception_handler, generic_exception_handler
@@ -125,6 +126,7 @@ app.include_router(user_router, tags=["user"])
 app.include_router(chat_router, tags=["chat"])
 app.include_router(upload_router, tags=["upload"])
 app.include_router(goals_router, tags=["goals"])
+app.include_router(lab_report_router, tags=["lab-reports"])
 app.include_router(preferences_router, tags=["preferences"])
 app.include_router(nudge_router, prefix="/api", tags=["nudge"])
 
