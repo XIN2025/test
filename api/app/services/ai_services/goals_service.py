@@ -83,7 +83,7 @@ class GoalsService:
     async def get_user_goals(self, user_email: str) -> List[Dict[str, Any]]:
         goals = await self.goals_collection.find({
             "user_email": user_email
-        }).sort("created_at", -1).to_list(None)
+        }).to_list(None)
 
         goals_with_action_items = []
         for goal in goals:
