@@ -97,6 +97,8 @@ class GoalsService:
                 del action_item["_id"]
             goal["action_items"] = [ActionItem(**item) for item in action_items]
             goals_with_action_items.append(GoalWithActionItems(**goal))
+        
+        goals_with_action_items.sort(key=lambda g: g.created_at, reverse=True)
             
         return goals_with_action_items
 
