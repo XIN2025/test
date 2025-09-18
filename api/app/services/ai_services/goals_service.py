@@ -247,9 +247,12 @@ class GoalsService:
             if not goal:
                 return {"success": False, "message": "Goal not found."}
 
+            print(type(goal))
+            
             goal_text = (
                 f"{goal.title} {goal.description or ''} {goal.category or ''}".strip()
             )
+
 
             try:
                 search_results = self.vector_store.search(
