@@ -106,6 +106,7 @@ class GoalsService:
         goal = await self.goals_collection.find_one({"_id": ObjectId(goal_id), "user_email": user_email})
         if not goal:
             return None
+        print(goal)
         goal["id"] = str(goal["_id"])
         del goal["_id"]
         return Goal(**goal)
@@ -248,7 +249,7 @@ class GoalsService:
                 return {"success": False, "message": "Goal not found."}
 
             print(type(goal))
-            
+
             goal_text = (
                 f"{goal.title} {goal.description or ''} {goal.category or ''}".strip()
             )
