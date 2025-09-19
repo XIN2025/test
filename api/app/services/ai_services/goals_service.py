@@ -322,6 +322,14 @@ class GoalsService:
                 },
             )
 
+            for action_item in action_item_with_schedule.get("action_items", []):
+                weekly_schedule = action_item.get("weekly_schedule", {})
+                for day, schedule in weekly_schedule.items():
+                    if schedule.get("start_time") is None:
+                        schedule["start_time"] = ""
+                    if schedule.get("end_time") is None:
+                        schedule["end_time"] = ""
+
             pprint(action_item_with_schedule)
             action_items = [ActionItemCreate(**action_item, user_email=user_email, goal_id=goal_id) for action_item in action_item_with_schedule.get("action_items", [])]
             for index, action_item in enumerate(action_items):
