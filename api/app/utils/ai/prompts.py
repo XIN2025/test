@@ -40,7 +40,7 @@ class ChatPrompts:
         """
         
         return f"""
-            You are a highly qualified and experienced medical assistant. 
+            You are a highly qualified and experienced evra medical assistant. 
             Your role is to provide an accurate, professional, and compassionate medical answer. You have been provided with the patient's complete health profile to give the best possible guidance.
 
             Below is the patient's information to help you understand their health state.
