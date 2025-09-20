@@ -1,76 +1,71 @@
-from typing import List, Dict, Tuple, Optional, Callable, Literal
-from openai import OpenAI
-import spacy
-import json
-import logging
+from typing import Dict, Optional, Callable
 import time
-from ...config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
-
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+import fitz
+import pypandoc
 from langchain.schema import Document
-import uuid
-# from .vector_store import get_vector_store
 from app.services.ai_services.mongodb_vectorstore import get_vector_store
-logger = logging.getLogger(__name__)
-
-# Load spaCy model
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    logger.warning("spaCy model not found. Please install with: python -m spacy download en_core_web_sm")
-    nlp = None
 
 class DocumentProcessor:
     def __init__(self):
-        if not OPENAI_API_KEY:
-            raise ValueError("OpenAI API key not found in environment variables")
-        
-        self.client = OpenAI(api_key=OPENAI_API_KEY)
-        self.model = LLM_MODEL
-        self.temperature = LLM_TEMPERATURE
         self.vector_store = get_vector_store()
-        
-    def _ask_model(self, prompt: str) -> str:
-        """Send a prompt to the model and get the response"""
+        self.ensure_pandoc_installed()
+
+    def ensure_pandoc_installed(self):
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=self.temperature
-            )
-            return response.choices[0].message.content.strip()
+            pypandoc.get_pandoc_version()
+            return True
+        except OSError:
+            return False
+
+    def convert_pdf_bytes_to_markdown(self, pdf_bytes: bytes) -> Optional[str]:
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            md_lines = []
+            for page_num, page in enumerate(doc, 1):
+                text = page.get_text()
+                md_lines.append(f"\n## Page {page_num}\n\n{text}")
+            markdown = '\n'.join(md_lines)
+            print(f"Converted PDF bytes to markdown string")
+            return markdown
         except Exception as e:
-            logger.error(f"OpenAI error: {str(e)}")
-            return f"Error: {str(e)}"
+            print(f"Error converting PDF: {e}")
+            return None
+        
+    def convert_docx_bytes_to_markdown(self, docx_bytes: bytes) -> Optional[str]:
+        try:
+            output = pypandoc.convert_text(docx_bytes, 'md', format='docx')
+            print(f"Converted DOCX bytes to markdown string")
+            return output
+        except Exception as e:
+            print(f"Error converting DOCX: {e}")
+            return None
 
-
-    def process_text_file(
-    self,
-    content: str,
-    filename: str,
-    user_email: str,
-    progress_callback: Optional[Callable] = None
-) -> Dict:
-        """Process a text file by chunking raw content and uploading to vector store"""
-        logger.info(f"Processing text file: {filename} for user {user_email}")
+    def process_markdown_file(
+        self,
+        content: str,
+        filename: str,
+        user_email: str,
+        progress_callback: Optional[Callable] = None
+    ) -> Dict:
+        print(f"Processing markdown file: {filename} for user {user_email}")
 
         try:
             if progress_callback:
-                progress_callback(30, "Extracting text from document...")
+                progress_callback(
+                    percentage=60,
+                    message="Uploading document chunks...",
+                    status="processing"
+                )
                 time.sleep(0.5)
 
-            # Wrap raw content in LangChain Document
-            doc = Document(page_content=content, metadata={"user_email": user_email, "filename": filename})
+            chunks_count = self.vector_store.add_document(content, user_email, filename)
 
             if progress_callback:
-                progress_callback(50, "Splitting into chunks and uploading...")
-                time.sleep(0.5)
-
-            # ✅ Use the new add_document method
-            chunks_count = self.vector_store.add_document(doc)
-
-            if progress_callback:
-                progress_callback(95, "Finalizing upload...")
+                progress_callback(
+                    percentage=95,
+                    message="Finalizing upload...",
+                    status="processing"
+                )
                 time.sleep(0.5)
 
             return {
@@ -80,7 +75,7 @@ class DocumentProcessor:
             }
 
         except Exception as e:
-            logger.error(f"❌ Error processing text file {filename}: {e}")
+            print(f"Error processing markdown file {filename}: {e}")
             return {
                 "success": False,
                 "filename": filename,
@@ -88,79 +83,94 @@ class DocumentProcessor:
             }
 
 
+    def process_pdf_file(
+        self,
+        file_content: bytes,
+        filename: str,
+        user_email: str,
+        progress_callback: Optional[Callable] = None
+    ) -> Dict:
+        print(f"Processing PDF file: {filename} for user {user_email}")
 
-    def process_pdf_file(self, file_content: bytes, filename: str, user_email: str, progress_callback: Optional[Callable] = None) -> Dict:
-        """Process a PDF file and extract entities and relationships with progress updates"""
-        logger.info(f"Processing PDF file: {filename} for user {user_email}")
-        
         try:
-            # Update progress: Starting PDF processing
             if progress_callback:
-                progress_callback(25, "Extracting text from PDF...")
+                progress_callback(
+                    percentage=25,
+                    message="Converting PDF to markdown...",
+                    status="processing"
+                )
                 time.sleep(0.5)
-            
-            # Extract text from PDF
-            text_content = self._extract_text_from_pdf(file_content)
-            
-            # Process the extracted text
-            return self.process_text_file(text_content, filename, user_email, progress_callback)
+
+            markdown = self.convert_pdf_bytes_to_markdown(file_content)
+            if not markdown:
+                raise ValueError("Failed to convert PDF to markdown.")
+
+            return self.process_markdown_file(markdown, filename, user_email, progress_callback)
         except Exception as e:
-            logger.error(f"Error processing PDF file {filename}: {e}")
+            print(f"Error processing PDF file {filename}: {e}")
+            return {
+                "success": False,
+                "filename": filename,
+                "error": str(e)
+            }
+    
+    def process_docx_file(
+        self,
+        file_content: bytes,
+        filename: str,
+        user_email: str,
+        progress_callback: Optional[Callable] = None
+    ) -> Dict:
+        print(f"Processing DOCX file: {filename} for user {user_email}")
+
+        try:
+            if progress_callback:
+                progress_callback(
+                    percentage=25,
+                    message="Converting DOCX to markdown...",
+                    status="processing"
+                )
+                time.sleep(0.5)
+
+            markdown = self.convert_docx_bytes_to_markdown(file_content)
+            if not markdown:
+                raise ValueError("Failed to convert DOCX to markdown.")
+
+            return self.process_markdown_file(markdown, filename, user_email, progress_callback)
+        except Exception as e:
+            print(f"Error processing DOCX file {filename}: {e}")
+            return {
+                "success": False,
+                "filename": filename,
+                "error": str(e)
+            }
+    
+    def process_text_file(
+        self,
+        file_content: str,
+        filename: str,
+        user_email: str,
+        progress_callback: Optional[Callable] = None
+    ) -> Dict:
+        try:
+            if progress_callback:
+                progress_callback(
+                    percentage=25,
+                    message="Reading text file...",
+                    status="processing"
+                )
+                time.sleep(0.5)
+
+            return self.process_markdown_file(file_content, filename, user_email, progress_callback)
+        except Exception as e:
+            print(f"Error processing text file {filename}: {e}")
             return {
                 "success": False,
                 "filename": filename,
                 "error": str(e)
             }
 
-    def _extract_text_from_pdf(self, file_content: bytes) -> str:
-        """Extract text content from PDF bytes using PyMuPDF, with PyPDF2 fallback."""
-        # Primary path: PyMuPDF (fitz)
-        try:
-            import fitz  # type: ignore
 
-            doc = fitz.open(stream=file_content, filetype="pdf")
-            text_chunks: List[str] = []
-            for page in doc:
-                try:
-                    extracted = page.get_text("text") or ""
-                except Exception as fe:
-                    logger.debug("PyMuPDF failed on a page: %s", fe)
-                    extracted = ""
-                if extracted:
-                    text_chunks.append(extracted)
-            doc.close()
-            text = "\n\n".join(text_chunks)
-            if text.strip():
-                return text
-            logger.info("PyMuPDF returned no text; will try PyPDF2 fallback")
-        except Exception as fe:
-            logger.warning("PyMuPDF not available or failed; falling back to PyPDF2. Error: %s", fe)
-
-        # Fallback: PyPDF2 (pure-Python)
-        try:
-            from PyPDF2 import PdfReader  # type: ignore
-            import io
-
-            reader = PdfReader(io.BytesIO(file_content))
-            text_chunks = []
-            for page in reader.pages:
-                try:
-                    extracted = page.extract_text() or ""
-                except Exception as pe:
-                    logger.debug("PyPDF2 failed on a page: %s", pe)
-                    extracted = ""
-                if extracted:
-                    text_chunks.append(extracted)
-            text = "\n\n".join(text_chunks)
-            if not text.strip():
-                raise ValueError("Could not extract any text from PDF using available parsers")
-            return text
-        except Exception as pe:
-            logger.error("PDF text extraction failed (PyPDF2 fallback): %s", pe)
-            raise
-
-
-# Global instance
 document_processor = None
 
 def get_document_processor() -> DocumentProcessor:

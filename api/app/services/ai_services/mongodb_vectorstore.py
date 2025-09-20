@@ -10,6 +10,8 @@ from typing import Dict
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from typing import List, Optional, Callable
 import time
+from typing import List
+from uuid import uuid4
 logger = logging.getLogger(__name__)
 
 class MongoVectorStoreService:
@@ -34,18 +36,23 @@ class MongoVectorStoreService:
             embedding_key="embedding",
         )
 
-    def add_document(self, doc: Document, chunk_size: int = 500, chunk_overlap: int = 50) -> int:
+    def add_document(self, content: str, user_email: str, filename: str, chunk_size: int = 1500, chunk_overlap: int = 300) -> int:
         """
         Add a document (LangChain Document) into the vector store by splitting into chunks.
         Returns number of chunks inserted.
         """
+        upload_id = str(uuid4())
+        doc = Document(
+            page_content=content,
+            metadata={"user_email": user_email, "filename": filename, "size": len(content), "upload_id": upload_id},
+        )
+
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap
         )
 
         chunks = splitter.split_documents([doc])
-        inserted = 0
 
         for chunk in chunks:
             try:
@@ -56,28 +63,28 @@ class MongoVectorStoreService:
                     **chunk.metadata  # preserves user_email or any metadata
                 }
                 self.collection.insert_one(record)
-                inserted += 1
             except Exception as e:
                 logger.error(f"❌ Failed inserting chunk: {e}")
 
-        return inserted
-
-    def update_node(self, node_id: str, text: str):
-        """Replace node (delete + add)"""
-        self.delete_node(node_id)
-        self.add_node(node_id, text)
-
-    def delete_node(self, node_id: str):
-        """Delete by node_id"""
+        return upload_id
+    
+    def get_all_documents_by_user_email(self, user_email: str) -> List[Dict]:
         try:
-            self.collection.delete_one({"node_id": node_id})
-            logger.info(f"Deleted node '{node_id}'")
+            docs = [{"user_email": document["user_email"], "filename": document["filename"], "upload_id": str(document["upload_id"]), "size": document["size"]} for document in list(self.collection.find({"user_email": user_email}))]
+            return docs
         except Exception as e:
-            logger.error(f"Failed to delete node '{node_id}': {e}")
+            logger.error(f"❌ Failed fetching documents for {user_email}: {e}")
+            return []
 
-    from typing import List
+    def delete_document_by_upload_id(self, upload_id: str) -> bool:
+        try:
+            result = self.collection.delete_many({"upload_id": upload_id})
+            return result.deleted_count > 0
+        except Exception as e:
+            logger.error(f"❌ Failed deleting document {upload_id}: {e}")
+            return False
 
-    def search(self, query: str, user_email: str, top_k: int = 10) -> List[Dict]:
+    def search(self, query: str, user_email: str, top_k: int = 50) -> List[Dict]:
         """
         Search for similar chunks in the MongoDB vector store filtered by user_email,
         and return a list of dicts with {text, user_email, node_id}.

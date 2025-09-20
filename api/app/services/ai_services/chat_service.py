@@ -10,6 +10,8 @@ from ...config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 # from .vector_store import get_vector_store
 from app.services.ai_services.mongodb_vectorstore import get_vector_store
 from app.utils.ai.prompts import ChatPrompts
+from app.services.backend_services.db import get_db
+from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,8 @@ class ChatService:
         )
         self.vector_store = get_vector_store()
         self.graph = self._build_graph()
+        self.db = get_db()
+        self.user_collection = self.db["users"]
     
     def _build_graph(self) -> StateGraph:
         """Build the LangGraph workflow for chat"""
@@ -113,7 +117,7 @@ class ChatService:
             relevant_docs = self.vector_store.search(
                 query=state.query,
                 user_email=state.user_email,
-                top_k=10  
+                top_k=50  
             )
             print(f"🔍 [CONTEXT RETRIEVAL] Step 2: Retrieved {len(relevant_docs)} docs from vector store")
 
@@ -157,7 +161,29 @@ class ChatService:
         try:
             # Build single-step medical prompt
             print(f"💬 [RESPONSE GENERATION] Step 1: Building medical prompt...")
-            rag_prompt = ChatPrompts.get_medical_rag_prompt(state.context, state.query)
+            
+            user = await self.user_collection.find_one({"email": state.user_email})
+            if not user:
+                raise ValueError(f"User with email {state.user_email} not found")
+            
+            def calculate_age_from_dob(dob_str):
+                dob = datetime.strptime(dob_str, "%Y-%m-%d").date()
+                today = date.today()
+                return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+            # TODO: For better chat context we might need 'location' as well to suggest local doctors, hospitals, etc.
+            user_name = user.get("name")
+            date_of_birth = user.get("date_of_birth")
+            age = calculate_age_from_dob(date_of_birth) if date_of_birth else "unknown"
+            blood_type = user.get("blood_type")
+    
+            user_context = f"User's name is {user_name}. Age is {age}. Blood type is {blood_type}. Date of Birth is {date_of_birth}."
+
+            rag_prompt = ChatPrompts.get_medical_rag_prompt(
+                medical_history=state.context, 
+                query=state.query, 
+                personal_info=user_context, 
+            )
 
             print(f"💬 [RESPONSE GENERATION] Step 2: Sending prompt to LLM...")
             response = self.llm.invoke([HumanMessage(content=rag_prompt)])
@@ -237,6 +263,8 @@ class ChatService:
                 "follow_up_questions": [],
                 "error": str(e)
             }
+
+
     
     async def chat_stream(self, query: str, user_email: str):
         """Streaming chat method for real-time responses"""

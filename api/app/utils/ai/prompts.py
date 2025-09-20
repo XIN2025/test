@@ -1,7 +1,8 @@
 """
 Centralized prompts for the chat service
 """
-from typing import List
+from typing import List, Dict, Any
+
 class ChatPrompts:
     """Collection of prompts used in the chat service"""
     
@@ -20,31 +21,53 @@ class ChatPrompts:
         """
     
     @staticmethod
-    def get_medical_rag_prompt(context: List[str], query: str) -> str:
-        context_text = "\n\n".join(context) if context else "No additional documents available."
+    def get_medical_rag_prompt(
+        query: str,
+        personal_info: Dict[str, Any],
+        medical_history: List[str]
+    ) -> str:
+        """
+        Generates a prompt for a medical AI using detailed patient data.
 
+        Args:
+            query: The user's medical question.
+            personal_info: A dictionary containing the user's personal information (e.g., name, age).
+            current_health_data: A list of strings describing the user's current health status or recent metrics.
+            medical_history: A list of strings representing the user's relevant past medical history related to the query.
+
+        Returns:
+            A formatted prompt string for the language model.
+        """
+        
         return f"""
-            You are a highly qualified and experienced medical doctor. 
-            Your role is to provide accurate, professional, and compassionate medical guidance. 
+            You are a highly qualified and experienced medical assistant. 
+            Your role is to provide an accurate, professional, and compassionate medical answer. You have been provided with the patient's complete health profile to give the best possible guidance.
 
-            USER QUESTION:
+            Below is the patient's information to help you understand their health state.
+
+            PATIENT'S PERSONAL INFORMATION:
+            ---
+            {personal_info}
+            ---
+
+            PATIENT'S PREVIOUS MEDICAL HISTORY (related to the query):
+            ---
+            {medical_history}
+            ---
+
+            PATIENT'S QUESTION:
             ---
             {query}
             ---
 
-            RETRIEVED CONTEXT (may or may not be relevant):
-            ---
-            {context_text}
-            ---
-
-            TASK:
-            - Analyze the user’s question carefully.
-            - If any of the retrieved context is helpful, use it to support your reasoning.
-            - If the retrieved context is irrelevant, ignore it and rely on your own medical knowledge.
-            - Provide a clear, medically accurate, and empathetic answer or suggestion.
-            - Include actionable advice when appropriate (e.g., further tests, lifestyle adjustments, or when to consult a specialist).
-            - Do not mention the words “context” or “documents” in your answer; integrate the information naturally.
-            - Always communicate as a trusted medical doctor speaking directly to the patient.
+            YOUR TASK:
+            - Your main task is to answer the patient's question directly.
+            - To give the best possible response, carefully analyze their personal information, current health data, and previous medical history.
+            - Use this complete picture of the patient's health to inform your reasoning and tailor your answer.
+            - Address the patient by their name (if available) to make the response personal and empathetic.
+            - Provide a clear, medically accurate answer that directly addresses their question.
+            - Include actionable advice when appropriate (e.g., lifestyle changes, tests to consider, or when to see a specialist).
+            - IMPORTANT: Do not mention the data sections provided to you (e.g., "Based on your medical history..." or "I see from your current data..."). Integrate the information naturally into your response as if you are their personal physician who is already familiar with their entire case.
             """
 
     @staticmethod

@@ -7,19 +7,20 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from ...services.ai_services.document_processor import DocumentProcessor
-from ...services.backend_services.progress_tracker import ProgressTracker
+from ...services.backend_services.progress_tracker import get_progress_tracker
 from ...services.backend_services.document_manager import get_document_manager
 from ...config import MAX_FILE_SIZE
 from ...services.backend_services.db import get_db
 from ...services.miscellaneous.graph_db import get_graph_db
 from datetime import datetime
 from bson import ObjectId
+from urllib.parse import unquote
 
 logger = logging.getLogger(__name__)
 upload_router = APIRouter(prefix="/upload", tags=["upload"])
 
 # Global progress tracker
-progress_tracker = ProgressTracker()
+progress_tracker = get_progress_tracker()
 
 # Thread pool for CPU-intensive tasks to avoid blocking the event loop
 executor = ThreadPoolExecutor(max_workers=4)
@@ -31,21 +32,22 @@ async def upload_document(
 ):
     """Upload and process a document with true async processing"""
     
-    logger.info(f"Received upload request for file: {file.filename}")
-    
+    filename = unquote(file.filename)
+    logger.info(f"Received upload request for file: {filename}")
+
     # Extract file extension
-    file_extension = file.filename.split(".")[-1].lower() if "." in file.filename else "txt"
+    file_extension = filename.split(".")[-1].lower() if "." in filename else "txt"
     """Upload and process a document with true async processing"""
-    
-    logger.info(f"Received upload request for file: {file.filename}")
+
+    logger.info(f"Received upload request for file: {filename}")
     
     # Validate file type
-    if not file.filename:
+    if not filename:
         logger.error("No filename provided")
         raise HTTPException(status_code=400, detail="No file provided")
     
-    allowed_extensions = ['.txt', '.pdf', '.docx', '.doc']
-    file_extension = file.filename.lower().split('.')[-1] if '.' in file.filename else ''
+    allowed_extensions = ['.pdf', '.docx', '.doc']
+    file_extension = filename.lower().split('.')[-1] if '.' in filename else ''
     
     if f'.{file_extension}' not in allowed_extensions:
         raise HTTPException(
@@ -54,7 +56,7 @@ async def upload_document(
         )
     
     # Generate upload ID
-    upload_id = progress_tracker.create_upload_session(file.filename)
+    upload_id = progress_tracker.create_upload_session(filename)
     
     try:
         # Read file content
@@ -64,17 +66,15 @@ async def upload_document(
             progress_tracker.update_progress(upload_id, 0, "File too large", "failed")
             raise HTTPException(status_code=400, detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB")
         
-        logger.info(f"Read {len(content)} bytes from file {file.filename}")
+        print(f"Read {len(content)} bytes from file {filename}")
         
         # Create initial Mongo record immediately
         document_manager = get_document_manager()
-        document_manager.create_document_record(upload_id, file.filename, len(content), file_extension, email)
-        
-        # Start processing in a separate task to avoid blocking
-        asyncio.create_task(
-            run_document_processing_async(
-                upload_id, file.filename, content, file_extension, email
-            )
+        document_manager.add_document(
+            upload_id=upload_id,
+            content=content,
+            filename=filename,
+            user_email=email
         )
         
         # Return immediately - don't wait for processing
@@ -82,7 +82,7 @@ async def upload_document(
             "success": True,
             "upload_id": upload_id,
             "message": "Document upload started",
-            "filename": file.filename
+            "filename": filename
         }
         
     except Exception as e:
@@ -169,53 +169,22 @@ async def remove_upload_session(upload_id: str):
 @upload_router.get("/files")
 async def list_uploaded_files(email: EmailStr = Query(..., description="User email to filter files")):
     """List persisted uploaded files from MongoDB for a specific user"""
-    db = get_db()
-    col = db.get_collection("uploaded_files")
-    # Filter by user email
-    docs = list(col.find({"user_email": email}).sort("created_at", -1))
-    def serialize(doc):
-        return {
-            "id": str(doc.get("_id")),
-            "upload_id": doc.get("upload_id"),
-            "filename": doc.get("filename"),
-            "size": doc.get("size", 0),
-            "extension": doc.get("extension"),
-            "status": doc.get("status"),
-            "entities_count": len(doc.get("entities", [])),
-            "relationships_count": len(doc.get("relationships", [])),
-            "created_at": doc.get("created_at"),
-            "updated_at": doc.get("updated_at"),
-        }
-    return {"success": True, "files": [serialize(d) for d in docs]}
+    document_manager = get_document_manager()
+    documents = document_manager.get_all_documents_by_user_email(email)
+    return {
+        "success": True,
+        "files": documents,
+    }
 
-@upload_router.delete("/files/{upload_id}")
-async def delete_uploaded_file(upload_id: str):
+@upload_router.delete("/files/{document_id}")
+async def delete_uploaded_file(document_id: str):
     """Delete an uploaded file record and associated graph entities/relationships"""
-    db = get_db()
-    col = db.get_collection("uploaded_files")
-    record = col.find_one({"upload_id": upload_id})
-    if not record:
-        raise HTTPException(status_code=404, detail="File record not found")
-
-    # Delete relationships and then orphan entities in graph
-    graph = get_graph_db()
-    relationships = record.get("relationships", [])
-    entities = record.get("entities", [])
-    for rel in relationships:
-        try:
-            graph.delete_relationship(rel.get("from"), rel.get("type", "RELATED_TO"), rel.get("to"))
-        except Exception as e:
-            logger.error(f"Failed deleting relationship during file delete: {e}")
-    for ent in entities:
-        try:
-            graph.delete_entity_if_isolated(ent.get("name"))
-        except Exception as e:
-            logger.error(f"Failed deleting entity during file delete: {e}")
-
-    col.delete_one({"_id": record.get("_id")})
-    progress_tracker.remove_upload(upload_id)
-
-    return {"success": True, "message": "File and associated graph data deleted"}
+    document_manager = get_document_manager()
+    result = document_manager.delete_document_by_upload_id(document_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="File record not found or could not be deleted")
+    
+    return {"success": True, "message": "File record and associated data deleted"}
 
 @upload_router.get("/documents")
 async def get_documents(email: str = Query(..., description="User email")):
@@ -278,89 +247,3 @@ async def manual_sync():
     except Exception as e:
         logger.error(f"Error during manual sync: {e}")
         raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
-
-
-
-async def run_document_processing_async(upload_id: str, filename: str, content: bytes, file_extension: str, user_email: str):
-    """Run document processing in thread pool to avoid blocking the event loop"""
-    try:
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            executor,
-            process_document_sync,
-            upload_id, filename, content, file_extension, user_email
-        )
-    except Exception as e:
-        logger.error(f"Error in async document processing: {e}")
-        progress_tracker.update_progress(
-            upload_id, 0, f"Processing failed: {str(e)}", "failed", error_message=str(e)
-        )
-
-def process_document_sync(upload_id: str, filename: str, content: bytes, file_extension: str, user_email: str):
-    """Synchronous document processing function to run in thread pool"""
-    logger.info(f"Starting document processing for upload {upload_id} for user {user_email}")
-    
-    def progress_callback(percentage: int, message: str):
-        """Callback function to update progress"""
-        progress_tracker.update_progress(upload_id, percentage, message, "processing")
-        logger.info(f"Progress update for {upload_id}: {percentage}% - {message}")
-    
-    try:
-        # Initialize document processor
-        processor = DocumentProcessor()
-        logger.info("Document processor initialized successfully")
-
-        # Initial progress update
-        progress_tracker.update_progress(upload_id, 20, "Starting document analysis...", "processing")
-
-        # Process document based on type
-        if file_extension == 'pdf':
-            result = processor.process_pdf_file(content, filename, user_email, progress_callback)
-        elif file_extension in ['docx', 'doc']:
-            text_content = content.decode('utf-8')
-            result = processor.process_text_file(text_content, filename, user_email, progress_callback)
-        else:  # txt file
-            text_content = content.decode('utf-8')
-            result = processor.process_text_file(text_content, filename, user_email, progress_callback)
-
-        if not result.get('success'):
-            raise Exception(result.get('error', 'Unknown processing error'))
-
-        entities = result.get('entities', [])
-        relationships = result.get('relationships', [])
-        created_nodes = result.get('created_nodes', [])
-        created_relationships = result.get('created_relationships', [])
-
-        # Update MongoDB record using document manager
-        document_manager = get_document_manager()
-        document_manager.update_document_processing_result(
-            upload_id, entities, relationships, created_nodes, created_relationships
-        )
-
-        # Final progress update
-        progress_tracker.update_progress(
-            upload_id, 100,
-            f"Analysis complete! Extracted {len(entities)} entities and {len(relationships)} relationships",
-            "completed",
-            entities_count=len(entities),
-            relationships_count=len(relationships)
-        )
-
-        logger.info(f"Document processing completed for upload {upload_id}")
-
-    except Exception as e:
-        logger.error(f"Error processing document for upload {upload_id}: {e}")
-        progress_tracker.update_progress(
-            upload_id, 0, f"Processing failed: {str(e)}", "failed", error_message=str(e)
-        )
-        
-        # Update record status to failed
-        try:
-            db = get_db()
-            col = db.get_collection("uploaded_files")
-            col.update_one(
-                {"upload_id": upload_id}, 
-                {"$set": {"status": "failed", "updated_at": datetime.utcnow(), "error": str(e)}}
-            )
-        except Exception:
-            pass

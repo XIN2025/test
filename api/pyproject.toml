@@ -33,6 +33,7 @@ dependencies = [
     "pip>=25.2",
     "apscheduler>=3.11.0",
     "firebase-admin>=7.1.0",
+    "pypandoc>=1.15",
 ]
 
 [project.optional-dependencies]

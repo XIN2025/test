@@ -2,13 +2,10 @@ import uuid
 import time
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
-import logging
-
-logger = logging.getLogger(__name__)
+from pprint import pprint
 
 @dataclass
 class UploadProgress:
-    """Data class for upload progress information"""
     upload_id: str
     filename: str
     percentage: int
@@ -16,12 +13,9 @@ class UploadProgress:
     status: str  # "processing", "completed", "failed"
     start_time: float
     last_update: float
-    entities_count: int = 0
-    relationships_count: int = 0
     error_message: Optional[str] = None
 
 class ProgressTracker:
-    """Service to track upload progress for multiple sessions"""
     
     def __init__(self):
         self.uploads: Dict[str, UploadProgress] = {}
@@ -42,7 +36,7 @@ class ProgressTracker:
             last_update=current_time
         )
         
-        logger.info(f"Created upload session {upload_id} for file {filename}")
+        print(f"Created upload session {upload_id} for file {filename}")
         return upload_id
     
     def update_progress(
@@ -51,13 +45,10 @@ class ProgressTracker:
         percentage: int, 
         message: str, 
         status: str = "processing",
-        entities_count: int = 0,
-        relationships_count: int = 0,
         error_message: Optional[str] = None
     ) -> bool:
-        """Update the progress of an upload session"""
-        if upload_id not in self.uploads:
-            logger.warning(f"Attempted to update non-existent upload session {upload_id}")
+        if upload_id not in self.uploads.keys():
+            print(f"Attempted to update non-existent upload session {upload_id}")
             return False
         
         upload = self.uploads[upload_id]
@@ -65,22 +56,18 @@ class ProgressTracker:
         upload.message = message
         upload.status = status
         upload.last_update = time.time()
-        upload.entities_count = entities_count
-        upload.relationships_count = relationships_count
         upload.error_message = error_message
         
-        logger.info(f"Updated progress for {upload_id}: {percentage}% - {message}")
+        print(f"Updated progress for {upload_id}: {percentage}% - {message}")
         return True
     
     def get_progress(self, upload_id: str) -> Optional[Dict[str, Any]]:
-        """Get the current progress of an upload session"""
         if upload_id not in self.uploads:
             return None
         
         upload = self.uploads[upload_id]
         current_time = time.time()
         
-        # Calculate elapsed time
         elapsed_time = current_time - upload.start_time
         
         return {
@@ -90,8 +77,6 @@ class ProgressTracker:
             "message": upload.message,
             "status": upload.status,
             "elapsed_time": round(elapsed_time, 2),
-            "entities_count": upload.entities_count,
-            "relationships_count": upload.relationships_count,
             "error_message": upload.error_message,
             "last_update": upload.last_update
         }
@@ -107,7 +92,7 @@ class ProgressTracker:
         """Remove an upload session"""
         if upload_id in self.uploads:
             del self.uploads[upload_id]
-            logger.info(f"Removed upload session {upload_id}")
+            print(f"Removed upload session {upload_id}")
             return True
         return False
     
@@ -125,7 +110,7 @@ class ProgressTracker:
             self.remove_upload(upload_id)
         
         if uploads_to_remove:
-            logger.info(f"Cleaned up {len(uploads_to_remove)} old upload sessions")
+            print(f"Cleaned up {len(uploads_to_remove)} old upload sessions")
     
     def get_stats(self) -> Dict[str, Any]:
         """Get statistics about upload sessions"""
