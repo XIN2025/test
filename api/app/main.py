@@ -17,7 +17,7 @@ from app.routers.ai.goals import goals_router
 from app.routers.ai.lab_report import lab_report_router
 from app.routers.backend.preferences import preferences_router
 from app.routers.backend.nudge import nudge_router
-from app.routers.backend.health_alert import health_insights_router
+from app.routers.backend.health_alert import health_alert_router
 from app.exceptions import AppException, custom_exception_handler, generic_exception_handler
 from motor.motor_asyncio import AsyncIOMotorClient
 from .config import MONGODB_URI
@@ -130,7 +130,7 @@ app.include_router(goals_router, tags=["goals"])
 app.include_router(lab_report_router, tags=["lab-reports"])
 app.include_router(preferences_router, tags=["preferences"])
 app.include_router(nudge_router, prefix="/api", tags=["nudge"])
-app.include_router(health_insights_router, prefix="/api/health-alert", tags=["health-alert"])
+app.include_router(health_alert_router, prefix="/api/health-alert", tags=["health-alert"])
 
 @app.get("/")
 async def root():
