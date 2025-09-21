@@ -2,6 +2,7 @@
 Centralized prompts for the chat service
 """
 from typing import List, Dict, Any
+import json
 
 class ChatPrompts:
     """Collection of prompts used in the chat service"""
@@ -121,3 +122,46 @@ class ChatPrompts:
         
         Return only the questions, one per line, without numbering or formatting.
         """
+
+    @staticmethod
+    def get_health_alerts_prompt(health_data: dict, previous_health_alerts: list) -> str:
+        """
+        Generate the prompt for health alerts analysis based on the dynamic health data and previous alerts.
+        
+        Args:
+            health_data (dict): Dictionary containing keys like 'health_data_id', 'date', 'latest_hourly_data', 'aggregated_summary'.
+            previous_health_alerts (list): List of previous alert dicts.
+        
+        Returns:
+            str: The formatted prompt string.
+        """
+        latest_hourly = health_data.get('latest_hourly_data', {})
+        aggregated_summary = health_data.get('aggregated_summary', {})
+
+        prompt = f"""
+            You are a health monitoring AI assistant. Analyze the provided health data, including hourly and aggregated metrics, and identify only significant new alerts to generate.
+            - Analyze resting heart rate, blood glucose, oxygen saturation, sleep, activity.
+            - Only generate alerts if a metric crosses meaningful thresholds or new important changes are detected compared to previous alerts.
+            - Avoid generating alerts for each metric if there is no significant information or if it is a duplicate of an earlier alert.
+            - Classify alert severity as 'high' (critical), 'medium' (warning), or 'low' (informational).
+            CURRENT HEALTH DATA:
+            Health Data ID: {health_data.get('health_data_id', '')}
+            Date: {health_data.get('date', '')}
+            Latest Hourly Data: {json.dumps(latest_hourly, indent=2, default=str)}
+            Aggregated Summary: {json.dumps(aggregated_summary, indent=2, default=str)}
+            PREVIOUS ALERTS:
+            {json.dumps(previous_health_alerts, indent=2, default=str)}
+            RESPONSE FORMAT:
+            - Set should_generate_alert=true only if new important alerts exist and the metric should not be dataQuality.
+            - Provide alerts in an array with each entry including:
+            - metric, title, key_point, message, severity ('high', 'medium', 'low').
+            Examples:
+            - High: Resting HR above 100 bpm or below 40 bpm.
+            - Medium: Resting HR above 85 bpm sustained for multiple hours.
+            - Low: Slight variation in activity, no immediate concern.
+            Be concise, clear, and precise in your output.
+            """
+        return prompt
+
+def get_prompts():
+    return ChatPrompts()

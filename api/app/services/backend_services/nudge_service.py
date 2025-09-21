@@ -168,3 +168,6 @@ class NudgeService:
                 created_nudges.append(final_nudge)
         
         return created_nudges
+
+def get_nudge_service():
+    return NudgeService()
