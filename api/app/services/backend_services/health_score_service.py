@@ -24,7 +24,6 @@ class HealthScoreService:
         )
         lab_reports = []
         for report in lab_report_responses:
-            print("hi")
             lab_report_response = await self.lab_report_service.get_lab_report_by_id(
                 report.id, user_email
             )
@@ -47,8 +46,10 @@ class HealthScoreService:
             lab_reports.append(lab_report)
 
         lab_overall_score = 40
+        lab_report_scores = []
         for report in lab_reports:
-            lab_score = self.lab_report_service.score_lab_report(report)
+            lab_score = await self.lab_report_service.score_lab_report(report)
+            lab_report_scores.append(lab_score)
             if lab_score == LabReportScoreType.NOT_GOOD:
                 if report.test_title.lower() in self.WEIGHTED_LABS:
                     lab_overall_score -= 10
@@ -61,7 +62,7 @@ class HealthScoreService:
                 user_email
             )
         )
-        health_data_score = self.health_alert_service.score_health_data(health_data) if health_data else None
+        health_data_score = await self.health_alert_service.score_health_data(health_data) if health_data else None
         weighted_data_score = (health_data_score.score / 100) * 25 if health_data_score else 0
         weighted_streak_score = (streak_score.score / 25) * 25
         weighted_lab_score = (lab_overall_score / 40) * 50
@@ -73,7 +74,7 @@ class HealthScoreService:
             score=round(total_health_score, 2),
             health_data_score=health_data_score,
             streak_score=streak_score,
-            lab_report_score=lab_reports
+            lab_report_score=lab_report_scores,
         )
 
     async def _background_recalculate_health_score(self, user_email: str):
@@ -84,6 +85,8 @@ class HealthScoreService:
 
     async def get_health_score(self, user_email: str) -> Optional[HealthScore]:
         user = await self.user_collection.find_one({"email": user_email})
+        if not user:
+            raise ValueError("User not found.")
         health_score = user.get("health_score")
         if not health_score:
             health_score = await self.calculate_health_score(user_email)
