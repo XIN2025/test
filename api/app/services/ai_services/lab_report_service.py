@@ -7,50 +7,33 @@ from bson import ObjectId
 
 from app.config import OPENAI_API_KEY, LLM_MODEL
 from app.services.backend_services.db import get_db
-from app.schemas.ai.lab_report import LabTestProperty, LabReportCreate, LabReportResponse, LabReportSummary
+from app.schemas.ai.lab_report import LabTestProperty, LabReportCreate, LabReportResponse, LabReportSummary, LabReportScore, LabReportScoreGenerate
 from app.services.ai_services.document_processor import get_document_processor
 from langchain_openai import ChatOpenAI
 from app.config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
+from app.utils.ai.prompts import get_prompts
+from app.schemas.ai.lab_report import LabReport, LabTestPropertyForLLM
 
 logger = logging.getLogger(__name__)
-
-class LabTestPropertyForLLM(BaseModel):
-    property_name: str
-    value: str
-    unit: Optional[str] = None
-    reference_range: Optional[str] = None
-    status: Optional[str] = None
-    property_description: Optional[str] = None
-    
-    class Config:
-        extra = "forbid"  # This sets additionalProperties to false
-
-class LabReport(BaseModel): 
-    test_description: str
-    test_title: str
-    properties: List[LabTestPropertyForLLM]
-    test_date: Optional[str] = None  # Keep as string for parsing
-    lab_name: Optional[str] = None
-    doctor_name: Optional[str] = None
-    
-    class Config:
-        extra = "forbid"  # This sets additionalProperties to false
-
 
 class LabReportService:
     def __init__(self):
         if not OPENAI_API_KEY:
             raise ValueError("OpenAI API key not found in environment variables")
         
+        # TODO: Create a separate instance file for LLM initialization
+        MAX_RETRIES = 3
         self.llm = ChatOpenAI(
             model=LLM_MODEL,
             openai_api_key=OPENAI_API_KEY,
-            temperature=1
+            temperature=LLM_TEMPERATURE,
+            max_retries=MAX_RETRIES,
         )
         self.model = LLM_MODEL
         self.document_processor = get_document_processor()
         self.db = get_db()
         self.collection = self.db["lab_reports"]
+        self.prompts = get_prompts()
 
     async def _extract_lab_data_with_ai(self, base64_pdf: str) -> Dict[str, Any]:
         """Extract structured lab data from text using OpenAI"""
@@ -280,6 +263,7 @@ Extract ALL test results with precise values and units. Use original test names 
             logger.error(f"Error saving lab report: {str(e)}")
             raise
 
+    # TODO: Instead of returning a list of LabReportSummary, I think it would be better a list of LabReport 
     async def get_lab_reports_by_user(self, user_email: str) -> List[LabReportSummary]:
         """Get all lab reports for a user (summary view)"""
         try:
@@ -313,6 +297,7 @@ Extract ALL test results with precise values and units. Use original test names 
             logger.error(f"Error fetching lab reports: {str(e)}")
             raise
 
+    # TODO: Instead of returning LabReportResponse, I think it would be better to return LabReport
     async def get_lab_report_by_id(self, report_id: str, user_email: str) -> Optional[LabReportResponse]:
         """Get detailed lab report by ID"""
         try:
@@ -349,6 +334,18 @@ Extract ALL test results with precise values and units. Use original test names 
         except Exception as e:
             logger.error(f"Error fetching lab report by ID: {str(e)}")
             raise
+    
+    async def score_lab_report(self, lab_report: LabReport) -> LabReportScore:
+        prompt = self.prompts.get_lab_report_score_prompt(lab_report)
+        structured_llm = self.llm.with_structured_output(LabReportScoreGenerate)
+        response = await structured_llm.ainvoke([{"role": "user", "content": prompt}])
+        lab_report_score = LabReportScore(
+            # TODO: Clearly a schema issue that needs to be fixed in lab reports
+            lab_report_id="",  
+            score=response.score,
+            reasons=response.reasons
+        )
+        return lab_report_score
 
 # Global instance
 _lab_report_service = None

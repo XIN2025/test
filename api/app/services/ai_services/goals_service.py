@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, time, date, timezone
 from pprint import pprint
 from typing import List, Optional, Dict, Any, Tuple
 from bson import ObjectId
-from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflectionCreate, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem, ActionItemCreate, ActionPriority, WeeklyActionSchedule, DailySchedule
+from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflectionCreate, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem, ActionItemCreate, ActionPriority, WeeklyActionSchedule, DailySchedule, StreakScore
 from ...schemas.backend.preferences import PillarTimePreferences
 from ...schemas.backend.action_completions import (
     ActionItemCompletion, ActionItemCompletionCreate, ActionItemCompletionUpdate,
@@ -166,6 +166,27 @@ class GoalsService:
             else:
                 break
         return streak
+    
+    # TODO: Logic for missing streak is not integrated yet, _calculate_weekly_streak needs to be updated to return missed days too
+    async def get_streak_score(self, user_email: str) -> StreakScore:
+        weekly_streak = await self._calculate_weekly_streak(user_email)
+        score = 0.0
+        if weekly_streak == 0:
+            score = 0.0
+        elif weekly_streak == 1:
+            score = 10.0
+        elif weekly_streak == 2:
+            score = 11.0
+        elif weekly_streak == 3:
+            score = 12.0
+        elif 4 <= weekly_streak <= 25:
+            score = 12.0 + 0.5 * (weekly_streak - 3)
+        else:
+            score = 25.0
+
+        score = min(score, 25.0)
+
+        return StreakScore(week=weekly_streak, score=score)
     
     async def _calculate_monthly_average_rating(self, user_email: str) -> Optional[float]:
         start_date = datetime.now(timezone.utc) - timedelta(weeks=4)
@@ -434,3 +455,7 @@ class GoalsService:
         pprint(action_item)
         action_item["weekly_schedule"] = WeeklyActionSchedule(**weekly_schedule)
         return ActionItem(**action_item)
+
+
+def get_goals_service() -> GoalsService:
+    return GoalsService()

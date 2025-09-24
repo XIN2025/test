@@ -3,6 +3,8 @@ Centralized prompts for the chat service
 """
 from typing import List, Dict, Any
 import json
+from app.schemas.ai.lab_report import LabReport
+from app.schemas.backend.health_alert import HealthData
 
 class ChatPrompts:
     """Collection of prompts used in the chat service"""
@@ -162,6 +164,28 @@ class ChatPrompts:
             Be concise, clear, and precise in your output.
             """
         return prompt
+
+    @staticmethod
+    def get_lab_report_score_prompt(lab_report: LabReport) -> str:
+        """Get the prompt for scoring a lab report"""
+        lab_report_json = lab_report.model_dump()
+        return f"""
+        You are a medical AI. Given this lab report, 
+        analyze if the report is overall healthy. 
+        Return a JSON with keys: score ('Good' or 'Not Good'), and reasons (list of strings). 
+        Lab report: {lab_report_json}
+        """
+
+    @staticmethod
+    def get_health_data_score_prompt(health_data: HealthData) -> str:
+        """Get the prompt for scoring health data"""
+        health_data_json = health_data.model_dump()
+        return f"""
+        You are a medical AI. Given this health data, 
+        analyze if the data is overall healthy. 
+        Return a JSON with keys: score (0-100), and reasons (list of strings). 
+        Health data: {health_data_json}
+        """
 
 def get_prompts():
     return ChatPrompts()

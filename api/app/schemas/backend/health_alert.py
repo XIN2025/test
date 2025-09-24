@@ -126,6 +126,12 @@ class HealthDataCreate(BaseModel):
 class HealthData(HealthDataCreate):
     id: str
 
+class HealthDataScoreGenerate(BaseModel):
+    score: float = Field(..., ge=0, le=100, description="Health score between 0 and 100")
+    reasons: List[str] = Field(..., description="List of reasons impacting the health score")
+
+class HealthDataScore(HealthDataScoreGenerate):
+    health_data_id: str
 
 # TODO: Make it read and unread
 class AlertStatus(str, Enum):

@@ -2,7 +2,7 @@
 # - Do a proper error handling for each of the functions
 
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from app.services.backend_services.db import get_db
 from app.schemas.backend.health_alert import (
     HealthAlertCreate,
@@ -24,6 +24,8 @@ from app.schemas.backend.health_alert import (
     HealthAlertGenerationResponse,
     HealthAlertSeverity,
     AlertStatus,
+    HealthDataScoreGenerate,
+    HealthDataScore,
 )
 from bson import ObjectId
 from app.utils.ai.prompts import get_prompts
@@ -140,6 +142,33 @@ class HealthAlertService:
         }
         return AggregatedHealthSummary(**aggregated_summary_dict)
 
+    async def get_latest_health_data_by_user_email(self, user_email: str) -> Optional[HealthData]:
+        now_utc = datetime.now(timezone.utc)
+        start_of_day = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_day = now_utc.replace(hour=23, minute=59, second=59, microsecond=999999)
+        health_data_dict = await self.health_data_collection.find_one(
+            {
+                "user_email": user_email,
+                "created_at": {"$gte": start_of_day, "$lte": end_of_day},
+            }
+        )
+        if not health_data_dict:
+            return None
+        health_data = HealthData(
+            id=str(health_data_dict["_id"]),
+            created_at=health_data_dict["created_at"],
+            user_email=health_data_dict["user_email"],
+            hourly_data=[
+                HealthMetricHourlyData(**item)
+                for item in health_data_dict.get("hourly_data", [])
+            ],
+            aggregated_summary=AggregatedHealthSummary(
+                **health_data_dict.get("aggregated_summary", {})
+            ),
+        )
+        return health_data
+
+    # TODO: Use get_latest_health_data_by_user_email instead of manually querying the DB
     async def store_hourly_health_data(
         self, user_email: str, data: HealthMetricData
     ) -> HealthMetricHourlyData:
@@ -277,6 +306,17 @@ class HealthAlertService:
             {"$set": {"status": AlertStatus.RESOLVED}},
         )  
         return alerts
+    
+    async def score_health_data(self, health_data: HealthData) -> HealthDataScore:
+        prompt = self.prompts.get_health_data_score_prompt(health_data)
+        structured_llm = self.llm.with_structured_output(HealthDataScoreGenerate)
+        response = await structured_llm.ainvoke([{"role": "user", "content": prompt}])
+        health_data_score = HealthDataScore(
+            health_data_id=health_data.id,
+            score=response.score,
+            reasons=response.reasons
+        )
+        return health_data_score
 
 
 def get_health_alert_service():

@@ -127,3 +127,7 @@ class ActionItem(ActionItemCreate):
 
 class GoalWithActionItems(Goal):
     action_items: List[ActionItem] = []
+
+class StreakScore(BaseModel):
+    score: float
+    week: int
