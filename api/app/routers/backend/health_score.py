@@ -13,4 +13,6 @@ async def get_health_score(user_email: str):
         score = await health_score_service.get_health_score(user_email)
         return HttpResponse(success=True, data={"health_score": score}, message="Health score fetched successfully")
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        # TODO: If user is not found and I keep it as Internal Server Error, the message doesn't get passed to the client
+        # And if I do then there is a security concern, look into thi
+        raise HTTPException(status_code=500, detail=str(e))
