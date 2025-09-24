@@ -5,6 +5,7 @@ from app.schemas.ai.lab_report import LabReport, LabReportScore, LabReportScoreT
 from app.services.backend_services.db import get_db
 from app.schemas.backend.health_score import HealthScore
 from typing import Optional
+import asyncio
 
 
 class HealthScoreService:
@@ -50,7 +51,8 @@ class HealthScoreService:
         for report in lab_reports:
             lab_score = await self.lab_report_service.score_lab_report(report)
             lab_report_scores.append(lab_score)
-            if lab_score == LabReportScoreType.NOT_GOOD:
+            if lab_score.score == LabReportScoreType.NOT_GOOD:
+                # TODO: Report doesn't have test title, need to look into schema
                 if report.test_title.lower() in self.WEIGHTED_LABS:
                     lab_overall_score -= 10
                 else:
@@ -99,7 +101,7 @@ class HealthScoreService:
             return health_score
         else:
             health_score = HealthScore(**health_score)
-            self._background_recalculate_health_score(user_email)
+            asyncio.create_task(self._background_recalculate_health_score(user_email))
             return health_score
 
 def get_health_score_service():
