@@ -297,7 +297,7 @@ class HealthAlertService:
 
     async def get_active_health_alerts(self, user_email: str) -> List[HealthAlert]:
         active_alerts = await self.health_alert_collection.find(
-            {"user_email": user_email, "status": AlertStatus.ACTIVE}
+            {"user_email": user_email, "status": AlertStatus.ACTIVE.value}
         ).to_list(length=None)
         for alert in active_alerts:
             alert["id"] = str(alert["_id"])
