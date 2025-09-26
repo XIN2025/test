@@ -35,3 +35,13 @@ async def get_active_health_alerts(user_email: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching active alerts")
+
+@health_alert_router.post("/{health_alert_id}/resolve", response_model=HttpResponse)
+async def resolve_health_alert(health_alert_id: str):
+    try:
+        success = await health_alert_service.mark_health_alert_resolve(health_alert_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Health alert not found or already resolved")
+        return HttpResponse(success=True, message="Health alert resolved successfully")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to resolve health alert")

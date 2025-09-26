@@ -141,27 +141,36 @@ class ChatPrompts:
         aggregated_summary = health_data.get('aggregated_summary', {})
 
         prompt = f"""
-            You are a health monitoring AI assistant. Analyze the provided health data, including hourly and aggregated metrics, and identify only significant new alerts to generate.
-            - Analyze resting heart rate, blood glucose, oxygen saturation, sleep, activity.
-            - Only generate alerts if a metric crosses meaningful thresholds or new important changes are detected compared to previous alerts.
-            - Avoid generating alerts for each metric if there is no significant information or if it is a duplicate of an earlier alert.
-            - Classify alert severity as 'high' (critical), 'medium' (warning), or 'low' (informational).
-            CURRENT HEALTH DATA:
+            **CRITICAL RULES FOR ALERT GENERATION:**
+            1.  **Check for Existing Alerts First:** Before generating any new alert, you MUST review the `PREVIOUS ALERTS` list.
+            2.  **Do NOT Repeat Active Alerts:** If a condition is already flagged in `PREVIOUS ALERTS`, do NOT create a new alert for the same condition unless its severity has significantly increased (e.g., a 'medium' risk has become 'high').
+            3.  **Generate Alerts ONLY For:**
+                - A **brand new condition** that has not been previously alerted.
+                - An **escalation of a previous condition** (e.g., Resting HR was a 'medium' alert at 88 bpm, but is now a 'high' alert at 105 bpm).
+                - A **significant change** in an existing condition's pattern.
+
+            **Example of what NOT to do:** If a 'medium' alert for "Sustained Elevated Heart Rate" at 88 bpm exists in `PREVIOUS ALERTS`, do NOT generate another 'medium' alert if the new data shows a heart rate of 89 bpm. This is an ongoing issue, not a new one.
+
+            ---
+            **CURRENT HEALTH DATA:**
             Health Data ID: {health_data.get('health_data_id', '')}
             Date: {health_data.get('date', '')}
             Latest Hourly Data: {json.dumps(latest_hourly, indent=2, default=str)}
             Aggregated Summary: {json.dumps(aggregated_summary, indent=2, default=str)}
-            PREVIOUS ALERTS:
+
+            ---
+            **PREVIOUS ALERTS (These are active alerts. Do not generate them again unless the condition has significantly worsened.):**
             {json.dumps(previous_health_alerts, indent=2, default=str)}
-            RESPONSE FORMAT:
-            - Set should_generate_alert=true only if new important alerts exist and the metric should not be dataQuality.
+
+            ---
+            **RESPONSE FORMAT:**
+            - Set `should_generate_alert=true` ONLY if you have identified new or escalating conditions according to the critical rules above.
             - Provide alerts in an array with each entry including:
-            - metric, title, key_point, message, severity ('high', 'medium', 'low').
-            Examples:
-            - High: Resting HR above 100 bpm or below 40 bpm.
-            - Medium: Resting HR above 85 bpm sustained for multiple hours.
-            - Low: Slight variation in activity, no immediate concern.
-            Be concise, clear, and precise in your output.
+            - `metric`: The specific metric, e.g., 'resting_heart_rate'.
+            - `title`: A short, descriptive title, e.g., 'High Resting Heart Rate'.
+            - `key_point`: The most critical data point, e.g., 'Peaked at 105 bpm'.
+            - `message`: A concise explanation of the alert.
+            - `severity`: 'high' (critical), 'medium' (warning), or 'low' (informational).
             """
         return prompt
 

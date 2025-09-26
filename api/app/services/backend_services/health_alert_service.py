@@ -169,6 +169,7 @@ class HealthAlertService:
         return health_data
 
     # TODO: Use get_latest_health_data_by_user_email instead of manually querying the DB
+    # TODO: Update updated_at field in the health data document
     async def store_hourly_health_data(
         self, user_email: str, data: HealthMetricData
     ) -> HealthMetricHourlyData:
@@ -255,7 +256,7 @@ class HealthAlertService:
 
             if alert.severity == HealthAlertSeverity.HIGH:
                 await self.nudge_service.send_fcm_notification(
-                    user_email=user_email,
+                    email=user_email,
                     title=alert.title,
                     body=alert.message,
                 )
@@ -266,7 +267,7 @@ class HealthAlertService:
         self, health_data_id: str
     ) -> List[HealthAlert]:
         previous_alerts = await self.health_alert_collection.find(
-            {"health_data_id": ObjectId(health_data_id)}
+            {"health_data_id": ObjectId(health_data_id), "status": AlertStatus.ACTIVE.value}
         ).to_list(length=None)
         for alert in previous_alerts:
             alert["id"] = str(alert["_id"])
@@ -276,6 +277,7 @@ class HealthAlertService:
     async def _generate_health_alerts(
         self, health_data: HealthData
     ) -> List[HealthAlertGenerate]:
+        # TODO: Handle duplicate alerts based on previous active health alerts
         health_data_id = health_data.id
         previous_health_alerts = await self._get_previous_health_alerts(health_data_id)
         prompt = self.prompts.get_health_alerts_prompt(
@@ -301,10 +303,6 @@ class HealthAlertService:
             alert["id"] = str(alert["_id"])
             del alert["_id"]
         alerts = [HealthAlert(**alert) for alert in active_alerts]
-        await self.health_alert_collection.update_many(
-            {"_id": {"$in": [ObjectId(alert.id) for alert in alerts]}},
-            {"$set": {"status": AlertStatus.RESOLVED}},
-        )  
         return alerts
     
     async def score_health_data(self, health_data: HealthData) -> HealthDataScore:
@@ -317,6 +315,13 @@ class HealthAlertService:
             reasons=response.reasons
         )
         return health_data_score
+
+    async def mark_health_alert_resolve(self, health_alert_id: str) -> bool:
+        result = await self.health_alert_collection.update_one(
+            {"_id": ObjectId(health_alert_id)},
+            {"$set": {"status": AlertStatus.RESOLVED.value}},
+        )
+        return result.modified_count > 0
 
 
 def get_health_alert_service():
