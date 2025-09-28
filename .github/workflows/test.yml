@@ -24,4 +24,4 @@ jobs:
         run: cd api && uv sync
 
       - name: Run tests
-        run: cd api && uv run pytest --import-mode=importlib
+        run: cd api && uv run pytest
