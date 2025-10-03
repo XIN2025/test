@@ -46,15 +46,15 @@ class GoalsService:
 
     # TODO: Complete the schema for daily completion and daily completion response
     # TODO: Add user_email in action_items schema because it is needed here to filter action items by user
-    async def get_daily_completion(self, user_email: str, month: int, year: int) -> Dict[str, int]:
+    async def get_current_daily_completion(self, user_email: str, month: int, year: int) -> Dict[str, int]:
         start_date = datetime(year, month, 1, tzinfo=timezone.utc)
         last_day = monthrange(year, month)[1]
         end_date = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
-        action_items = self.action_items_collection.find({
+        action_items = await self.action_items_collection.find({
             "user_email": user_email
-        })
+        }).to_list(None)
         daily_counts = {}
-        async for item in action_items:
+        for item in action_items:
             weekly_schedule = item.get("weekly_schedule", {})
             if not weekly_schedule:
                 continue
@@ -64,6 +64,27 @@ class GoalsService:
                 completed = daily_schedule.get("complete", False)
                 action_item_date = datetime.strptime(daily_schedule.get("date"), "%Y-%m-%d").replace(tzinfo=timezone.utc)
                 if completed and start_date <= action_item_date <= end_date:
+                    day_str = action_item_date.strftime("%Y-%m-%d")
+                    daily_counts[day_str] = daily_counts.get(day_str, 0) + 1
+        return daily_counts
+
+    # TODO: This function can actually replace get_current_daily_completion because it is more generic
+    async def get_all_daily_completions(self, user_email: str) -> Dict[str, int]:
+        action_items = await self.action_items_collection.find({
+            "user_email": user_email
+        }).to_list(None)
+
+        daily_counts = {}
+        for item in action_items:
+            weekly_schedule = item.get("weekly_schedule", {})
+            if not weekly_schedule:
+                continue
+            for daily_schedule in weekly_schedule.values():
+                if not daily_schedule:
+                    continue
+                completed = daily_schedule.get("complete", False)
+                action_item_date = datetime.strptime(daily_schedule.get("date"), "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                if completed:
                     day_str = action_item_date.strftime("%Y-%m-%d")
                     daily_counts[day_str] = daily_counts.get(day_str, 0) + 1
         return daily_counts
@@ -109,8 +130,13 @@ class GoalsService:
         return Goal(**goal)
 
     async def delete_goal(self, goal_id: str, user_email: str) -> bool:
-        result = await self.goals_collection.delete_one({"_id": ObjectId(goal_id), "user_email": user_email})
-        return result.deleted_count > 0
+        try:
+            obj_id = ObjectId(goal_id)
+        except Exception:
+            return False
+        goals_deleted = await self.goals_collection.delete_one({"_id": obj_id, "user_email": user_email})
+        await self.action_items_collection.delete_many({"goal_id": goal_id, "user_email": user_email})
+        return goals_deleted.deleted_count > 0
 
     async def save_weekly_reflection(self, reflection_create: WeeklyReflectionCreate) -> WeeklyReflection:
         reflection_dict = reflection_create.model_dump()
@@ -118,7 +144,7 @@ class GoalsService:
         result = await self.reflections_collection.insert_one(reflection_dict)
         return WeeklyReflection(**reflection_dict, id=str(result.inserted_id))
 
-    async def get_goal_stats(self, user_email: str, weeks: int = 4) -> GoalStats:
+    async def get_goal_stats(self, user_email: str) -> GoalStats:
         goals = await self.goals_collection.find({
             "user_email": user_email,
         }).to_list(None)
@@ -128,26 +154,29 @@ class GoalsService:
                 completed_goals=0,
                 completion_rate=0.0,
                 average_rating=None,
-                weekly_streak=0
+                weekly_streak=0,
+                total_weekly_streak_count=0
             )
         total_goals = len(goals)
         completed_goals = await self._calculate_completed_goals(user_email)
         completion_rate = await self._calculate_monthly_completion_rate(user_email)
         average_rating = await self._calculate_monthly_average_rating(user_email)
-        weekly_streak = await self._calculate_weekly_streak(user_email)
+        weekly_streak = await self._calculate_current_weekly_streak(user_email)
+        total_weekly_streak_count = await self._calculate_total_weekly_streak_count(user_email)
         # weekly_streak = 0
         return GoalStats(
             total_goals=total_goals,
             completed_goals=completed_goals,
             completion_rate=completion_rate,
             average_rating=average_rating,
-            weekly_streak=weekly_streak
+            weekly_streak=weekly_streak,
+            total_weekly_streak_count=total_weekly_streak_count
         )
 
-    # TODO: Work on weekly streak logic because get_daily_completion is working on monthly basis so it might break in the end of the month
+    # TODO: Work on weekly streak logic because get_current_daily_completion is working on monthly basis so it might break in the end of the month
     # TODO: You can another stat for maximum stream ever or maximum monthly streak
-    async def _calculate_weekly_streak(self, user_email: str) -> int:
-        daily_completions = await self.get_daily_completion(user_email, datetime.now(timezone.utc).month, datetime.now(timezone.utc).year)
+    async def _calculate_current_weekly_streak(self, user_email: str) -> int:
+        daily_completions = await self.get_current_daily_completion(user_email, datetime.now(timezone.utc).month, datetime.now(timezone.utc).year)
         if not daily_completions:
             return 0
         dates = sorted(
@@ -167,9 +196,31 @@ class GoalsService:
                 break
         return streak
     
-    # TODO: Logic for missing streak is not integrated yet, _calculate_weekly_streak needs to be updated to return missed days too
+    async def _calculate_total_weekly_streak_count(self, user_email: str) -> int:
+        daily_completions = await self.get_all_daily_completions(user_email)
+        if not daily_completions:
+            return 0
+        dates = sorted(
+            [datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc) for date_str in daily_completions.keys()],
+            reverse=True
+        )
+        if not dates:
+            return 0
+        current_date = dates[0]
+        end_date = min(dates)
+        total_weeks = 0
+        while current_date >= end_date:
+            week_dates = {current_date - timedelta(days=i) for i in range(7)}
+            is_week_complete = any(date in week_dates and daily_completions.get(date.strftime("%Y-%m-%d"), 0) > 0 for date in dates)
+            if is_week_complete:
+                total_weeks += 1
+            current_date -= timedelta(weeks=1)
+        return total_weeks
+
+    # TODO: Logic for missing streak is not integrated yet, _calculate_current_weekly_streak needs to be updated to return missed days too
+    # TODO: _calculate_current_weekly_streak is returning the latest daily streak and where we are considering it week wise
     async def get_streak_score(self, user_email: str) -> StreakScore:
-        weekly_streak = await self._calculate_weekly_streak(user_email)
+        weekly_streak = await self._calculate_current_weekly_streak(user_email)
         score = 0.0
         if weekly_streak == 0:
             score = 0.0

@@ -30,8 +30,7 @@ async def get_daily_completion(
 ):
     """Return a mapping of YYYY-MM-DD to number of completed action items for the user in the given month/year."""
     try:
-        # This method should be implemented in your GoalsService
-        daily_completion = await goals_service.get_daily_completion(user_email, month, year)
+        daily_completion = await goals_service.get_current_daily_completion(user_email, month, year)
         return GoalResponse(
             success=True,
             message="Daily completion retrieved successfully",

@@ -83,6 +83,7 @@ class GoalStats(BaseModel):
     completion_rate: float
     average_rating: Optional[float] = None
     weekly_streak: int = 0
+    total_weekly_streak_count: int = 0
 
 class GoalResponse(BaseModel):
     success: bool

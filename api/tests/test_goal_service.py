@@ -1,4 +1,3 @@
-
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from app.services.ai_services.goals_service import GoalsService
@@ -64,11 +63,21 @@ async def test_get_goal_by_id(goals_service):
 
 @pytest.mark.asyncio
 async def test_delete_goal(goals_service):
-	goal_id = ObjectId()
-	mock_delete = MagicMock(deleted_count=1)
-	goals_service.goals_collection.delete_one = AsyncMock(return_value=mock_delete)
-	result = await goals_service.delete_goal(str(goal_id), "test@example.com")
-	assert result is True
+    goal_id = ObjectId()
+    mock_goal_delete = MagicMock(deleted_count=1)
+    mock_action_items_delete = MagicMock(deleted_count=2) 
+    goals_service.goals_collection.delete_one = AsyncMock(return_value=mock_goal_delete)
+    goals_service.action_items_collection.delete_many = AsyncMock(return_value=mock_action_items_delete)
+    result = await goals_service.delete_goal(str(goal_id), "test@example.com")
+    assert result is True
+    goals_service.goals_collection.delete_one.assert_called_once_with({
+        "_id": ObjectId(str(goal_id)), 
+        "user_email": "test@example.com"
+    })
+    goals_service.action_items_collection.delete_many.assert_called_once_with({
+        "goal_id": str(goal_id), 
+        "user_email": "test@example.com"
+    })
 
 @pytest.mark.asyncio
 async def test_save_weekly_reflection(goals_service):
