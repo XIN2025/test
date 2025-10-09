@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 from bson import ObjectId
 from enum import Enum
+from app.schemas.backend.encrypt import EncryptedField
 
 class LabTestProperty(BaseModel):
     """Individual lab test property with value and unit"""
@@ -81,23 +82,23 @@ class LabReportScore(LabReportScoreGenerate):
     lab_report_id: str
 
 class LabTestPropertyForLLM(BaseModel):
-    property_name: str
-    value: str
-    unit: Optional[str] = None
-    reference_range: Optional[str] = None
-    status: Optional[str] = None
-    property_description: Optional[str] = None
+    property_name: str = EncryptedField(...)
+    value: str = EncryptedField(...)
+    unit: Optional[str] = EncryptedField(None)
+    reference_range: Optional[str] = EncryptedField(None)
+    status: Optional[str] = EncryptedField(None)
+    property_description: Optional[str] = EncryptedField(None)
     
     class Config:
         extra = "forbid"  # This sets additionalProperties to false
 
 class LabReport(BaseModel): 
-    test_description: str
-    test_title: str
+    test_description: str = EncryptedField(...)
+    test_title: str = EncryptedField(...)
     properties: List[LabTestPropertyForLLM]
-    test_date: Optional[str] = None  # Keep as string for parsing
-    lab_name: Optional[str] = None
-    doctor_name: Optional[str] = None
-    
+    test_date: Optional[str] = EncryptedField(None)
+    lab_name: Optional[str] = EncryptedField(None)
+    doctor_name: Optional[str] = EncryptedField(None)
+
     class Config:
         extra = "forbid"  # This sets additionalProperties to false

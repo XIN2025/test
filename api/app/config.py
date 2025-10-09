@@ -9,6 +9,8 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 VECTOR_STORE_DB_URI = os.getenv("VECTOR_STORE_DB_URI")
 VECTOR_COLLECTION_NAME=os.getenv("VECTOR_COLLECTION_NAME")
 VECTOR_DB_NAME=os.getenv("VECTOR_DB_NAME")
+SECRET_KEY = os.getenv("SECRET_KEY", "secret")
+
 # SMTP/Email Configuration
 SMTP_HOST = os.getenv("SMTP_HOST")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))

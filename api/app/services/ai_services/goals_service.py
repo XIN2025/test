@@ -22,6 +22,7 @@ from langchain.prompts import ChatPromptTemplate
 from app.config import OPENAI_API_KEY, LLM_MODEL
 from app.services.backend_services.nudge_service import NudgeService
 from calendar import monthrange
+from app.services.backend_services.encryption_service import get_encryption_service
 
 class GoalsService:
     def __init__(self):
@@ -29,6 +30,7 @@ class GoalsService:
         self.goals_collection = self.db["goals"]
         self.action_items_collection = self.db["action_items"]
         self.reflections_collection = self.db["weekly_reflections"]
+        self.encryption_service = get_encryption_service()
         self.vector_store = get_vector_store()
         self.nudge_service = NudgeService()
 
@@ -53,6 +55,7 @@ class GoalsService:
         action_items = await self.action_items_collection.find({
             "user_email": user_email
         }).to_list(None)
+        action_items = [self.encryption_service.decrypt_document(item, ActionItem) for item in action_items]
         daily_counts = {}
         for item in action_items:
             weekly_schedule = item.get("weekly_schedule", {})
@@ -73,6 +76,7 @@ class GoalsService:
         action_items = await self.action_items_collection.find({
             "user_email": user_email
         }).to_list(None)
+        action_items = [self.encryption_service.decrypt_document(item, ActionItem) for item in action_items]
 
         daily_counts = {}
         for item in action_items:
@@ -102,6 +106,7 @@ class GoalsService:
         goals = await self.goals_collection.find({
             "user_email": user_email
         }).to_list(None)
+        goals = [self.encryption_service.decrypt_document(item, Goal) for item in goals]
 
         goals_with_action_items = []
         for goal in goals:
@@ -110,6 +115,7 @@ class GoalsService:
             action_items = await self.action_items_collection.find({
                 "goal_id": goal["id"]
             }).to_list(None)
+            action_items = [self.encryption_service.decrypt_document(item, ActionItem) for item in action_items]
             for action_item in action_items:
                 action_item["id"] = str(action_item["_id"])
                 del action_item["_id"]
@@ -122,9 +128,9 @@ class GoalsService:
 
     async def get_goal_by_id(self, goal_id: str, user_email: str) -> Optional[Goal]:
         goal = await self.goals_collection.find_one({"_id": ObjectId(goal_id), "user_email": user_email})
+        goal = self.encryption_service.decrypt_document(goal, Goal)
         if not goal:
             return None
-        print(goal)
         goal["id"] = str(goal["_id"])
         del goal["_id"]
         return Goal(**goal)
@@ -148,6 +154,7 @@ class GoalsService:
         goals = await self.goals_collection.find({
             "user_email": user_email,
         }).to_list(None)
+        goals = [self.encryption_service.decrypt_document(item, Goal) for item in goals]
         if not goals:
             return GoalStats(
                 total_goals=0,
@@ -402,6 +409,7 @@ class GoalsService:
             pprint(action_item_with_schedule)
             action_items = [ActionItemCreate(**action_item, user_email=user_email, goal_id=goal_id) for action_item in action_item_with_schedule.get("action_items", [])]
             for index, action_item in enumerate(action_items):
+                action_item = self.encryption_service.encrypt_document(action_item, ActionItemCreate)
                 insert = await self.action_items_collection.insert_one(action_item.model_dump())
                 action_item = ActionItem(
                     id=str(insert.inserted_id),
@@ -477,12 +485,14 @@ class GoalsService:
     # TODO: You can create a get action_item by id function here 
     async def mark_action_item_complete(self, action_item_id: str, weekday_index: int) -> ActionItem:
         action_item = await self.action_items_collection.find_one({ "_id": ObjectId(action_item_id) })
+        action_item = self.encryption_service.decrypt_document(action_item, ActionItem)
         weekday = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"][weekday_index]
         weekly_schedule = action_item["weekly_schedule"]
         weekly_schedule[weekday]["complete"] = True
+        action_item = self.encryption_service.encrypt_document(action_item, ActionItem)
         await self.action_items_collection.update_one(
             { "_id": action_item["_id"]},
-            { "$set": { "weekly_schedule": weekly_schedule } }
+            { "$set": { "weekly_schedule": action_item["weekly_schedule"] } }
         )
         action_item["id"] = str(action_item["_id"])
         del action_item["_id"]
@@ -493,12 +503,14 @@ class GoalsService:
     
     async def mark_action_item_incomplete(self, action_item_id: str, weekday_index: int) -> ActionItem:
         action_item = await self.action_items_collection.find_one({ "_id": ObjectId(action_item_id) })
+        action_item = self.encryption_service.decrypt_document(action_item, ActionItem)
         weekday = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"][weekday_index]
         weekly_schedule = action_item["weekly_schedule"]
         weekly_schedule[weekday]["complete"] = False
+        action_item = self.encryption_service.encrypt_document(action_item, ActionItem)
         await self.action_items_collection.update_one(
             { "_id": action_item["_id"]},
-            { "$set": { "weekly_schedule": weekly_schedule } }
+            { "$set": { "weekly_schedule": action_item["weekly_schedule"] } }
         )
         action_item["id"] = str(action_item["_id"])
         del action_item["_id"]

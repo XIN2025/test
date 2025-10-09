@@ -4,6 +4,7 @@ from enum import Enum
 from datetime import datetime
 from typing import Optional
 from enum import Enum
+from app.schemas.backend.encrypt import EncryptedField
 
 class NudgeType(str, Enum):
     REMINDER = "reminder"
@@ -19,8 +20,8 @@ class Nudge(BaseModel):
     id: Optional[str] = None
     user_email: EmailStr
     scheduled_time: datetime
-    title: str = Field(..., min_length=1, max_length=200)
-    body: str = Field(..., min_length=1, max_length=500)
+    title: str = EncryptedField(..., min_length=1, max_length=200)
+    body: str = EncryptedField(..., min_length=1, max_length=500)
     status: NudgeStatus = NudgeStatus.PENDING
     created_at: Optional[datetime] = None
 

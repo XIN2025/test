@@ -26,3 +26,13 @@ def global_mocks(monkeypatch):
     monkeypatch.setattr("app.utils.ai.prompts.ChatPrompts.get_query_classification_prompt", lambda query: "classification prompt")
     monkeypatch.setattr("app.utils.ai.prompts.ChatPrompts.get_medical_rag_prompt", lambda medical_history, query, personal_info: "medical rag prompt")
     monkeypatch.setattr("app.utils.ai.prompts.ChatPrompts.get_follow_up_questions_prompt", lambda query, response: "follow up prompt")
+    monkeypatch.setattr(
+        "app.services.backend_services.encryption_service.get_encryption_service",
+        lambda: MagicMock(
+            encrypt_document=lambda doc, schema: doc,
+            decrypt_document=lambda doc, schema: doc,
+            encrypt_documents_bulk=lambda docs, schema: docs,
+            decrypt_documents_bulk=lambda docs, schema: docs,
+            get_encryption_info=lambda schema: {},
+        ),
+    )

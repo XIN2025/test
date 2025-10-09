@@ -229,6 +229,7 @@ Extract ALL test results with precise values and units. Use original test names 
     async def save_lab_report(self, lab_report: LabReportCreate, filename: str) -> LabReportResponse:
         """Save lab report to database"""
         try:
+            lab_report = self.encryption_service.encrypt_document(lab_report, LabReportCreate)
             # Prepare document for MongoDB
             doc = {
                 "user_email": lab_report.user_email,
@@ -290,7 +291,9 @@ Extract ALL test results with precise values and units. Use original test names 
                     filename=doc.get("filename", ""),
                     created_at=doc.get("created_at", datetime.utcnow())
                 ))
-            
+
+            reports = self.encryption_service.decrypt_document(reports, LabReportSummary)
+
             return reports
             
         except Exception as e:
@@ -317,6 +320,8 @@ Extract ALL test results with precise values and units. Use original test names 
             properties = []
             for prop_data in doc.get("properties", []):
                 properties.append(LabTestProperty(**prop_data))
+            
+            properties = [self.encryption_service.decrypt_document(prop, LabTestProperty) for prop in properties]
             
             return LabReportResponse(
                 id=str(doc["_id"]),

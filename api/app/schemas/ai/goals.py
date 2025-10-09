@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 from datetime import datetime
 from enum import Enum
+from app.schemas.backend.encrypt import EncryptedField
 
 class GoalPriority(str, Enum):
     HIGH = "high"
@@ -34,8 +35,8 @@ class GoalPriority(str, Enum):
 # TODO: Covert user email to user_id
 class GoalCreate(BaseModel):
     user_email: EmailStr
-    title: str
-    description: Optional[str] = None
+    title: str = EncryptedField(...) 
+    description: Optional[str] = EncryptedField(None)
     priority: GoalPriority
     category: GoalCategory
 
@@ -102,7 +103,7 @@ class DailySchedule(BaseModel):
     date: str
     start_time: str
     end_time: str
-    notes: Optional[str] = None
+    notes: Optional[str] = EncryptedField(None)
     complete: bool = False
 
 class WeeklyActionSchedule(BaseModel):
@@ -118,8 +119,8 @@ class WeeklyActionSchedule(BaseModel):
 class ActionItemCreate(BaseModel):
     goal_id: str
     user_email: EmailStr
-    title: str
-    description: str
+    title: str = EncryptedField(...)
+    description: str = EncryptedField(...)
     priority: ActionPriority
     weekly_schedule: WeeklyActionSchedule
 

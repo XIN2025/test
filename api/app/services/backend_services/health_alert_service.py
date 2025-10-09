@@ -33,6 +33,7 @@ from app.services.backend_services.nudge_service import get_nudge_service
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from app.config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
+from app.services.backend_services.encryption_service import get_encryption_service
 
 
 class HealthAlertService:
@@ -42,6 +43,7 @@ class HealthAlertService:
         self.health_alert_collection = self.db["health_alerts"]
         self.nudge_service = get_nudge_service()
         self.prompts = get_prompts()
+        self.encryption_service = get_encryption_service()
         # TODO: Create a central instance to use ChatOpenAI service
         MAX_RETRIES = 5
         self.llm = ChatOpenAI(
@@ -166,6 +168,7 @@ class HealthAlertService:
                 **health_data_dict.get("aggregated_summary", {})
             ),
         )
+        health_data = self.encryption_service.decrypt_document(health_data, HealthData)
         return health_data
 
     # TODO: Use get_latest_health_data_by_user_email instead of manually querying the DB
@@ -206,6 +209,7 @@ class HealthAlertService:
                 hourly_data=health_data_create.hourly_data,
                 aggregated_summary=health_data_create.aggregated_summary,
             )
+            health_data = self.encryption_service.encrypt_document(health_data, HealthData)
         else:
             health_data_dict["id"] = str(health_data_dict["_id"])
             del health_data_dict["_id"]
@@ -234,6 +238,7 @@ class HealthAlertService:
                 hourly_data=health_metric_hourly_data_list,
                 aggregated_summary=aggregated_summary,
             )
+            health_data = self.encryption_service.encrypt_document(health_data, HealthData)
 
             await self.health_data_collection.update_one(
                 {"user_email": user_email},
@@ -252,6 +257,7 @@ class HealthAlertService:
                 status=AlertStatus.ACTIVE,
                 created_at=datetime.now(timezone.utc),
             )
+            alert = self.encryption_service.encrypt_document(alert, HealthAlertCreate)
             await self.health_alert_collection.insert_one(alert.model_dump())
 
             if alert.severity == HealthAlertSeverity.HIGH:
@@ -272,7 +278,12 @@ class HealthAlertService:
         for alert in previous_alerts:
             alert["id"] = str(alert["_id"])
             del alert["_id"]
-        return [HealthAlert(**alert) for alert in previous_alerts]
+        previous_alerts = [HealthAlert(**alert) for alert in previous_alerts]
+        previous_alerts = [
+            self.encryption_service.decrypt_document(alert, HealthAlert)
+            for alert in previous_alerts
+        ]
+        return previous_alerts
 
     async def _generate_health_alerts(
         self, health_data: HealthData
@@ -303,6 +314,10 @@ class HealthAlertService:
             alert["id"] = str(alert["_id"])
             del alert["_id"]
         alerts = [HealthAlert(**alert) for alert in active_alerts]
+        alerts = [
+            self.encryption_service.decrypt_document(alert, HealthAlert)
+            for alert in alerts
+        ]
         return alerts
     
     async def score_health_data(self, health_data: HealthData) -> HealthDataScore:

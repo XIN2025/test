@@ -2,10 +2,11 @@ from pydantic import BaseModel, Field
 from typing import Union, List
 from datetime import datetime
 from enum import Enum
+from app.schemas.backend.encrypt import EncryptedField
 
 
 class HealthMetric(BaseModel):
-    value: Union[int, float]
+    value: Union[int, float] = EncryptedField(...)
     unit: str
     isAvailable: bool
     error: str
@@ -28,43 +29,43 @@ class HealthMetricHourlyData(BaseModel):
 
 
 class StepSummary(BaseModel):
-    total: int
+    total: int = EncryptedField(...)
 
 
 class HeartRateSummary(BaseModel):
-    average: int
-    min: int
-    max: int
+    average: int = EncryptedField(...)
+    min: int = EncryptedField(...)  
+    max: int = EncryptedField(...)
 
 
 class ActiveEnergySummary(BaseModel):
-    total: int
+    total: int = EncryptedField(...)
 
 
 class SleepSummary(BaseModel):
-    totalHours: float
+    totalHours: float = EncryptedField(...)
 
 
 class WeightSummary(BaseModel):
-    value: float
-    unit: str
+    value: float = EncryptedField(...)
+    unit: str 
 
 
 class BodyFatSummary(BaseModel):
-    value: float
-    unit: str
+    value: float = EncryptedField(...)
+    unit: str 
 
 
 class BloodGlucoseSummary(BaseModel):
-    average: float
-    max: float
-    min: float
+    average: float = EncryptedField(...)
+    max: float = EncryptedField(...)
+    min: float = EncryptedField(...)
 
 
 class OxygenSaturationSummary(BaseModel):
-    average: float
-    max: float
-    min: float
+    average: float = EncryptedField(...)
+    max: float = EncryptedField(...)
+    min: float = EncryptedField(...)
 
 
 class AggregatedHealthSummary(BaseModel):

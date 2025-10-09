@@ -14,6 +14,7 @@ from typing import List
 import firebase_admin
 from firebase_admin import credentials, messaging
 import os
+from app.services.backend_services.encryption_service import get_encryption_service
 
 class NudgeService:
     def __init__(self):
@@ -21,6 +22,7 @@ class NudgeService:
         self.users_collection = self.db["users"]
         self.goals_collection = self.db["goals"]
         self.nudges_collection = self.db["nudges"]
+        self.encryption_service = get_encryption_service()
         self._initialize_firebase()
     
     def _initialize_firebase(self):
@@ -164,6 +166,7 @@ class NudgeService:
                 nudge_data["created_at"] = nudge_dict["created_at"]
                 
                 final_nudge = Nudge(**nudge_data)
+                nudge_data = self.encryption_service.encrypt_document(nudge_data, Nudge)
                 
                 created_nudges.append(final_nudge)
         
