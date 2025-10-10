@@ -6,16 +6,18 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import Request
 from ...schemas.ai.goals import (
-    GoalUpdate, Goal, GoalProgressUpdate, GoalNote,
+    ActionItemCreate, GoalUpdate, Goal, GoalProgressUpdate, GoalNote,
     WeeklyReflection, GoalStats, GoalResponse, GoalCreate, GoalResponse, WeeklyReflectionCreate
 )
 from ...schemas.backend.preferences import PillarTimePreferences
 from ...schemas.backend.action_completions import ActionItemCompletionCreateRequest, ActionItemCompletionUpdate, ActionItemCompletionCreate
 from ...services.ai_services.goals_service import GoalsService
 from pydantic import EmailStr
+from app.services.backend_services.encryption_service import get_encryption_service
 
 goals_router = APIRouter()
 goals_service = GoalsService()
+encryption_service = get_encryption_service()
 
 
 # Thread pool for CPU-intensive tasks
@@ -150,6 +152,7 @@ async def mark_action_item_incomplete(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# TODO: Move the logic for this into goal services
 @goals_router.get("/api/goals/{goal_id}/action-items", response_model=GoalResponse)
 async def get_goal_action_items(
     goal_id: str,
@@ -158,6 +161,7 @@ async def get_goal_action_items(
         action_items = await goals_service.action_items_collection.find({
             "goal_id": goal_id,
         }).to_list(None)
+        action_items = encryption_service.decrypt_documents_bulk(action_items, schema_class=ActionItemCreate)
 
         if not action_items:
             raise HTTPException(status_code=404, detail="Action items not found")

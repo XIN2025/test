@@ -13,6 +13,7 @@ from langchain_openai import ChatOpenAI
 from app.config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 from app.utils.ai.prompts import get_prompts
 from app.schemas.ai.lab_report import LabReport, LabTestPropertyForLLM
+from app.services.backend_services.encryption_service import get_encryption_service
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class LabReportService:
         self.db = get_db()
         self.collection = self.db["lab_reports"]
         self.prompts = get_prompts()
+        self.encryption_service = get_encryption_service()
 
     async def _extract_lab_data_with_ai(self, base64_pdf: str) -> Dict[str, Any]:
         """Extract structured lab data from text using OpenAI"""

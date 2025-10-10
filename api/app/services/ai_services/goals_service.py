@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, time, date, timezone
 from pprint import pprint
 from typing import List, Optional, Dict, Any, Tuple
 from bson import ObjectId
-from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflectionCreate, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem, ActionItemCreate, ActionPriority, WeeklyActionSchedule, DailySchedule, StreakScore
+from ...schemas.ai.goals import GoalUpdate, Goal, WeeklyReflectionCreate, WeeklyReflection, GoalStats, GoalWithActionItems, ActionItem, ActionItemCreate, ActionPriority, WeeklyActionSchedule, DailySchedule, StreakScore, GoalCreate
 from ...schemas.backend.preferences import PillarTimePreferences
 from ...schemas.backend.action_completions import (
     ActionItemCompletion, ActionItemCompletionCreate, ActionItemCompletionUpdate,
@@ -93,7 +93,8 @@ class GoalsService:
                     daily_counts[day_str] = daily_counts.get(day_str, 0) + 1
         return daily_counts
 
-    async def create_goal(self, goal_data: Goal) -> Goal:
+    async def create_goal(self, goal_data: GoalCreate) -> Goal:
+        goal_data = self.encryption_service.encrypt_document(goal_data, GoalCreate)
         goal_dict = goal_data.model_dump()
         goal_dict["_id"] = ObjectId()
         goal_dict["created_at"] = datetime.now(timezone.utc)
@@ -145,6 +146,7 @@ class GoalsService:
         return goals_deleted.deleted_count > 0
 
     async def save_weekly_reflection(self, reflection_create: WeeklyReflectionCreate) -> WeeklyReflection:
+        reflection_create = self.encryption_service.encrypt_document(reflection_create, WeeklyReflectionCreate)
         reflection_dict = reflection_create.model_dump()
         reflection_dict["created_at"] = datetime.now(timezone.utc)
         result = await self.reflections_collection.insert_one(reflection_dict)

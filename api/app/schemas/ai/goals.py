@@ -54,10 +54,11 @@ class GoalNote(BaseModel):
     note: str = Field(..., min_length=1, max_length=500)
 
 # TODO: Change user_email to user_id
+# TODO: Unable to encrypt integer fields
 class WeeklyReflectionCreate(BaseModel):
     user_email: EmailStr
     rating: int = Field(..., ge=1, le=5)
-    reflection: Optional[str] = Field(None, max_length=2000)
+    reflection: Optional[str] = EncryptedField(None, max_length=2000)
 
 class WeeklyReflection(WeeklyReflectionCreate):
     id: str
@@ -99,6 +100,7 @@ class ActionPriority(str, Enum):
     LOW = "low"
 
 # TODO: Change date, start_time, end_time to datetime format
+# TODO: Notes field is not getting encrypted in Generate Plan flow
 class DailySchedule(BaseModel):
     date: str
     start_time: str
