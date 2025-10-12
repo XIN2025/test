@@ -1,3 +1,5 @@
+# TODO: Can we use encrypt_bulk_documents or decrypt_bulk_documents instead of iterating an array of documents
+
 from datetime import datetime, timedelta, time, date, timezone
 from pprint import pprint
 from typing import List, Optional, Dict, Any, Tuple
@@ -23,6 +25,7 @@ from app.config import OPENAI_API_KEY, LLM_MODEL
 from app.services.backend_services.nudge_service import NudgeService
 from calendar import monthrange
 from app.services.backend_services.encryption_service import get_encryption_service
+from pprint import pprint
 
 class GoalsService:
     def __init__(self):
@@ -412,6 +415,7 @@ class GoalsService:
             action_items = [ActionItemCreate(**action_item, user_email=user_email, goal_id=goal_id) for action_item in action_item_with_schedule.get("action_items", [])]
             for index, action_item in enumerate(action_items):
                 action_item = self.encryption_service.encrypt_document(action_item, ActionItemCreate)
+                print(action_item)
                 insert = await self.action_items_collection.insert_one(action_item.model_dump())
                 action_item = ActionItem(
                     id=str(insert.inserted_id),
@@ -421,6 +425,7 @@ class GoalsService:
 
             await self.nudge_service.create_nudges_from_goal(goal_id)
 
+            goal = self.encryption_service.encrypt_document(goal, Goal)
             goal_dict = goal.model_dump()
             goal_dict = self._convert_time_objects_to_str(goal_dict)
 
