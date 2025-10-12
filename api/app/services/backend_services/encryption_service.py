@@ -1,5 +1,5 @@
 import base64
-from typing import Dict, Any, Type, List
+from typing import Dict, Any, Type, List, Union
 from cryptography.fernet import Fernet
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
@@ -60,6 +60,38 @@ class EncryptionService:
         except Exception as e:
             raise ValueError(f"Decryption failed: {str(e)}")
 
+    def _extract_inner_model(self, field_type: Any):
+        """
+        Return (model_type, is_list) if field_type wraps a BaseModel (directly,
+        Optional/Union or List[...] of a BaseModel). Otherwise (None, False).
+        """
+        if isinstance(field_type, type) and issubclass(field_type, BaseModel):
+            return field_type, False
+
+        origin = getattr(field_type, "__origin__", None)
+        args = getattr(field_type, "__args__", ())
+
+        # List[Model] or List[Optional[Model]]
+        if origin in (list, List) and args:
+            inner = args[0]
+            # handle Optional inside list
+            inner_origin = getattr(inner, "__origin__", None)
+            inner_args = getattr(inner, "__args__", ())
+            if inner_origin is Union and inner_args:
+                for a in inner_args:
+                    if isinstance(a, type) and issubclass(a, BaseModel):
+                        return a, True
+            if isinstance(inner, type) and issubclass(inner, BaseModel):
+                return inner, True
+
+        # Optional[Model] (i.e. Union[Model, NoneType]) or other Union
+        if origin is Union and args:
+            for a in args:
+                if isinstance(a, type) and issubclass(a, BaseModel):
+                    return a, False
+
+        return None, False
+
     def encrypt_document(
       self, document: Dict[str, Any], schema_class: Type[BaseModel]
     ) -> Dict[str, Any]:
@@ -81,20 +113,27 @@ class EncryptionService:
         if value is None:
           continue
 
-        if isinstance(field_type, type) and issubclass(field_type, BaseModel):
-          if isinstance(value, (BaseModel, dict)):
-            doc_dict[field_name] = self.encrypt_document(value, field_type)
-        else:
-          origin = getattr(field_type, "__origin__", None)
-          args = getattr(field_type, "__args__", ())
-          if origin in (list, List) and args:
-            inner = args[0]
-            if isinstance(inner, type) and issubclass(inner, BaseModel) and isinstance(value, list):
-              doc_dict[field_name] = [self.encrypt_document(v, inner) for v in value]
-            elif field_name in encrypted_fields:
-              doc_dict[field_name] = self._encrypt_value(value)
+        # handle nested BaseModel, Optional[BaseModel], List[BaseModel], List[Optional[BaseModel]], etc.
+        model_inner, is_list = self._extract_inner_model(field_type)
+        if model_inner:
+          if is_list and isinstance(value, list):
+            doc_dict[field_name] = [self.encrypt_document(v, model_inner) for v in value]
+          elif isinstance(value, (BaseModel, dict)):
+            doc_dict[field_name] = self.encrypt_document(value, model_inner)
+          continue
+
+        # fallback: primitive / encrypted field handling
+        origin = getattr(field_type, "__origin__", None)
+        args = getattr(field_type, "__args__", ())
+
+        if origin in (list, List) and args:
+          inner = args[0]
+          if isinstance(inner, type) and issubclass(inner, BaseModel) and isinstance(value, list):
+            doc_dict[field_name] = [self.encrypt_document(v, inner) for v in value]
           elif field_name in encrypted_fields:
             doc_dict[field_name] = self._encrypt_value(value)
+        elif field_name in encrypted_fields:
+          doc_dict[field_name] = self._encrypt_value(value)
 
       return schema_class(**doc_dict) if input_is_model else doc_dict
 
@@ -120,20 +159,25 @@ class EncryptionService:
         if value is None:
           continue
 
-        if isinstance(field_type, type) and issubclass(field_type, BaseModel):
-          if isinstance(value, (BaseModel, dict)):
-            doc_dict[field_name] = self.decrypt_document(value, field_type)
-        else:
-          origin = getattr(field_type, "__origin__", None)
-          args = getattr(field_type, "__args__", ())
-          if origin in (list, List) and args:
-            inner = args[0]
-            if isinstance(inner, type) and issubclass(inner, BaseModel) and isinstance(value, list):
-              doc_dict[field_name] = [self.decrypt_document(v, inner) for v in value]
-            elif field_name in encrypted_fields:
-              doc_dict[field_name] = self._decrypt_value(value)
+        model_inner, is_list = self._extract_inner_model(field_type)
+        if model_inner:
+          if is_list and isinstance(value, list):
+            doc_dict[field_name] = [self.decrypt_document(v, model_inner) for v in value]
+          elif isinstance(value, (BaseModel, dict)):
+            doc_dict[field_name] = self.decrypt_document(value, model_inner)
+          continue
+
+        origin = getattr(field_type, "__origin__", None)
+        args = getattr(field_type, "__args__", ())
+
+        if origin in (list, List) and args:
+          inner = args[0]
+          if isinstance(inner, type) and issubclass(inner, BaseModel) and isinstance(value, list):
+            doc_dict[field_name] = [self.decrypt_document(v, inner) for v in value]
           elif field_name in encrypted_fields:
             doc_dict[field_name] = self._decrypt_value(value)
+        elif field_name in encrypted_fields:
+          doc_dict[field_name] = self._decrypt_value(value)
 
       return schema_class(**doc_dict) if input_is_model else doc_dict
 
