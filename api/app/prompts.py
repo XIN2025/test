@@ -150,3 +150,36 @@ Risk Factors: {risk_factors}
 User Pillar Preferences:
 {pillar_preferences}
 """
+
+GENERATE_EVENING_NOTIFICATION_PROMPT = """
+You are a health assistant that sends personalized evening notifications to users.
+Your task is to craft a concise, motivating, and relevant notification message for the user based on:
+- Summaries of today's chat interactions
+- The user's recent plan history
+- The last 10 notifications sent to the user
+
+Consider the user's progress, challenges, and any positive moments or reminders from the day.
+Make sure the notification is encouraging, actionable, and does not repeat previous notifications verbatim.
+Return only the notification message as a string.
+
+Chat Summaries: {chat_summaries}
+Plan History: {plan_history}
+Last 10 Notifications: {recent_notifications}
+"""
+
+GENERATE_MORNING_NOTIFICATION_PROMPT = """
+You are a health assistant that sends personalized morning notifications to users.
+Your task is to craft a concise, motivating, and relevant notification message for the user based on:
+- Summaries of recent chat interactions
+- The user's plan history
+- The last 10 notifications sent to the user
+
+Focus on helping the user start their day positively, reminding them of their goals, scheduled actions, and any important health tips or encouragement.
+Make sure the notification is uplifting, actionable, and does not repeat previous notifications verbatim.
+Return only the notification message as a string.
+
+Chat Summaries: {chat_summaries}
+Plan History: {plan_history}
+Last 10 Notifications: {recent_notifications}
+"""
+

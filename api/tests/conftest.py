@@ -16,6 +16,8 @@ def pytest_configure(config):
 
 @pytest.fixture(autouse=True)
 def global_mocks(monkeypatch):
+    monkeypatch.setattr("apscheduler.schedulers.asyncio.AsyncIOScheduler.__init__", lambda self, *args, **kwargs: None)
+    monkeypatch.setattr("apscheduler.schedulers.asyncio.AsyncIOScheduler.start", lambda self: None)
     monkeypatch.setattr("app.services.ai_services.goals_service.get_db", lambda: {"goals": MagicMock(), "action_items": MagicMock(), "weekly_reflections": MagicMock()})
     monkeypatch.setattr("app.services.ai_services.chat_service.get_db", lambda: {"users": MagicMock()})
     monkeypatch.setattr("app.services.ai_services.goals_service.get_vector_store", lambda: MagicMock())

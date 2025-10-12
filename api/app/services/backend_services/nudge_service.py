@@ -10,11 +10,20 @@ from app.exceptions import (
     TokenNotFoundError,
     NotificationDisabledError,
 )
-from typing import List
+from typing import List, Dict
 import firebase_admin
 from firebase_admin import credentials, messaging
 import os
 from app.services.backend_services.encryption_service import get_encryption_service
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.jobstores.mongodb import MongoDBJobStore
+from dotenv import load_dotenv
+from app.prompts import GENERATE_MORNING_NOTIFICATION_PROMPT, GENERATE_EVENING_NOTIFICATION_PROMPT
+from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from app.schemas.ai.goals import Goal
+from app.config import OPENAI_API_KEY, LLM_MODEL, MONGODB_URI, DB_NAME, NUDGE_SCHEDULED_COLLECTION
+load_dotenv()
 
 class NudgeService:
     def __init__(self):
@@ -24,7 +33,33 @@ class NudgeService:
         self.nudges_collection = self.db["nudges"]
         self.encryption_service = get_encryption_service()
         self._initialize_firebase()
-    
+
+        jobstores = {
+            'default': MongoDBJobStore(
+                database=DB_NAME,
+                collection=NUDGE_SCHEDULED_COLLECTION,
+                host=MONGODB_URI
+            )
+        }
+        jobdefaults = {'misfire_grace_time': 15 * 60}
+        self.scheduler = AsyncIOScheduler(jobstores=jobstores, jobdefaults=jobdefaults)
+
+    def start_scheduler(self):
+        self.scheduler.start()
+
+    async def _invoke_structured_llm(
+        self, schema: dict, system_prompt: str, user_prompt: str, input_vars: dict
+    ) -> dict:
+        llm = ChatOpenAI(
+            model=LLM_MODEL,
+            openai_api_key=OPENAI_API_KEY
+        ).with_structured_output(schema)
+        prompt = ChatPromptTemplate.from_messages(
+            [("system", system_prompt), ("user", user_prompt)]
+        )
+        chain = prompt | llm
+        return await chain.ainvoke(input_vars)
+
     def _initialize_firebase(self):
         if not firebase_admin._apps:
             firebase_service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
@@ -140,7 +175,6 @@ class NudgeService:
                 full_datetime_str = f"{date_part}T{start_time}"
                 
                 scheduled_time = datetime.fromisoformat(full_datetime_str)
-                
                 reminder_time = scheduled_time - timedelta(minutes=10)
                 
                 nudge = Nudge(
@@ -169,8 +203,166 @@ class NudgeService:
                 nudge_data = self.encryption_service.encrypt_document(nudge_data, Nudge)
                 
                 created_nudges.append(final_nudge)
-        
+
+                self.schedule_notification(
+                    email=user_email,
+                    title=f"Reminder: {action_item_title}",
+                    body=f"You have '{action_item_title}' scheduled in 10 minutes for your goal: {goal_title}",
+                    run_datetime=reminder_time
+                )
+    
         return created_nudges
 
+    def schedule_notification(self, email: str, title: str, body: str, run_datetime: datetime):
+        job_id = f"nudge_{email}_{run_datetime.isoformat()}"
+        self.scheduler.add_job(
+            self.send_fcm_notification,
+            trigger='date',
+            run_date=run_datetime,
+            args=[email, title, body],
+            id=job_id,
+            replace_existing=True,
+            coalesce=True,
+        )
+        print(f"Scheduled notification for {email} at {run_datetime}")
+    
+    async def get_goals_summary(self, user_email: str) -> str:
+        goals = await self.goals_collection.find({"user_email": user_email}).to_list(None)
+        goals = [self.encryption_service.decrypt_document(item, Goal) for item in goals]
+        if not goals:
+            return "No goals found for this user."
+
+        summary_lines = []
+        for goal in goals:
+            title = goal.get("title", "Untitled Goal")
+            description = goal.get("description", "")
+            status = "Completed" if goal.get("completed", False) else "In Progress"
+            summary_lines.append(f"- {title}: {description} [{status}]")
+
+        summary = "\n".join(summary_lines)
+        return summary
+
+    async def send_morning_notification(self, email: str):
+        # TODO: Currently we don't have a system to store chat history of the user
+        chat_summaries = "..."
+        plan_history = await self.get_goals_summary(email)
+        recent_notifications = self.get_recent_notification_jobs(email=email, limit=10)
+
+        input_vars = {
+            "chat_summaries": chat_summaries,
+            "plan_history": plan_history,
+            "recent_notifications": recent_notifications
+        }
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "notification": {"type": "string"}
+            },
+            "required": ["notification"]
+        }
+
+        system_prompt = "You are a health assistant that sends personalized morning notifications to users."
+        user_prompt = GENERATE_MORNING_NOTIFICATION_PROMPT
+
+        llm_result = await self._invoke_structured_llm(
+            schema=schema,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            input_vars=input_vars
+        )
+        title = "Good Morning!"
+        body = llm_result.get("notification", "Start your day with positivity!")
+        await self.send_fcm_notification(email, title, body)
+
+    async def send_evening_notification(self, email: str):
+        # TODO: Currently we don't have a system to store chat history of the user
+        chat_summaries = "..."
+        plan_history = await self.get_goals_summary(email)
+        recent_notifications = self.get_recent_notification_jobs(email=email, limit=10)
+
+        input_vars = {
+            "chat_summaries": chat_summaries,
+            "plan_history": plan_history,
+            "recent_notifications": recent_notifications
+        }
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "notification": {"type": "string"}
+            },
+            "required": ["notification"]
+        }
+
+        system_prompt = "You are a health assistant that sends personalized evening notifications to users."
+        user_prompt = GENERATE_EVENING_NOTIFICATION_PROMPT
+
+        llm_result = await self._invoke_structured_llm(
+            schema=schema,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            input_vars=input_vars
+        )
+        title = "Good Evening!"
+        body = llm_result.get("notification", "Reflect on your progress today!")
+        await self.send_fcm_notification(email, title, body)
+
+    def schedule_daily_notifications(self):
+        users = self.users_collection.find({"notifications_enabled": True})
+        for user in users:
+            email = user["email"]
+            morning_time = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0)
+            if morning_time < datetime.now():
+                morning_time += timedelta(days=1)
+            self.scheduler.add_job(
+                self.send_morning_notification,
+                trigger='cron',
+                hour=8,
+                minute=0,
+                args=[email],
+                id=f"morning_{email}",
+                replace_existing=True,
+                coalesce=True,
+            )
+            evening_time = datetime.now().replace(hour=20, minute=0, second=0, microsecond=0)
+            if evening_time < datetime.now():
+                evening_time += timedelta(days=1)
+            self.scheduler.add_job(
+                self.send_evening_notification,
+                trigger='cron',
+                hour=20,
+                minute=0,
+                args=[email],
+                id=f"evening_{email}",
+                replace_existing=True,
+                coalesce=True,
+            )
+
+    def get_recent_notification_jobs(self, email: str, limit: int = 10) -> List[Dict]:
+        jobs = self.scheduler.get_jobs()
+        user_jobs = [
+            job for job in jobs
+            if job.args and len(job.args) > 0 and job.args[0] == email
+        ]
+        user_jobs.sort(key=lambda job: job.next_run_time or datetime.min, reverse=True)
+        return [
+            {
+                "id": job.id,
+                "next_run_time": job.next_run_time,
+                "func": str(job.func),
+                "args": job.args,
+                "kwargs": job.kwargs,
+            }
+            for job in user_jobs[:limit]
+        ]
+
+
+_nudge_service_instance = None
+
 def get_nudge_service():
-    return NudgeService()
+    global _nudge_service_instance
+    if _nudge_service_instance is None:
+        _nudge_service_instance = NudgeService()
+        _nudge_service_instance.start_scheduler()
+    return _nudge_service_instance

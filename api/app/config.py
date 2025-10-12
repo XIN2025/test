@@ -6,10 +6,12 @@ load_dotenv()
 
 # MongoDB Configuration
 MONGODB_URI = os.getenv("MONGODB_URI")
+DB_NAME = os.getenv("MONGODB_DB_NAME", "evra")
 VECTOR_STORE_DB_URI = os.getenv("VECTOR_STORE_DB_URI")
 VECTOR_COLLECTION_NAME=os.getenv("VECTOR_COLLECTION_NAME")
 VECTOR_DB_NAME=os.getenv("VECTOR_DB_NAME")
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")
+NUDGE_SCHEDULED_COLLECTION = os.getenv("NUDGE_SCHEDULED_COLLECTION", "nudge_scheduled_jobs")
 
 # SMTP/Email Configuration
 SMTP_HOST = os.getenv("SMTP_HOST")
