@@ -260,6 +260,8 @@ class NudgeService:
         }
 
         schema = {
+            "title": "GenerateMorningNotification",
+            "description": "Generate a personalized morning notification for the user.",
             "type": "object",
             "properties": {
                 "notification": {"type": "string"}
@@ -293,6 +295,8 @@ class NudgeService:
         }
 
         schema = {
+            "title": "GenerateEveningNotification",
+            "description": "Generate a personalized evening notification for the user.",
             "type": "object",
             "properties": {
                 "notification": {"type": "string"}
