@@ -18,7 +18,8 @@ async def register(user: UserRegister):
         "name": user.name,
         "email": user.email,
         "otp": otp,
-        "verified": False
+        "verified": False,
+        "daily_notifications": False,
     }
     send_otp = False
     if existing_user:

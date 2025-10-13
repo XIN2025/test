@@ -33,6 +33,7 @@ def stop_scheduler(scheduler):
 async def lifespan(app: FastAPI):
     get_db()
     nudge_service = get_nudge_service()
+    await nudge_service.schedule_daily_notifications()
     nudge_service.start_scheduler()
     print("🚀 Nudge scheduler started")
     yield

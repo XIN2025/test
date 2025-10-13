@@ -24,11 +24,26 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from app.schemas.ai.goals import Goal, ActionItem, GoalWithActionItems
 from app.config import OPENAI_API_KEY, LLM_MODEL, MONGODB_URI, DB_NAME, NUDGE_SCHEDULED_COLLECTION
+import asyncio
 load_dotenv()
 
 async def send_fcm_notification_job(email, title, body):
     nudge_service = get_nudge_service()
     await nudge_service.send_fcm_notification(email, title, body)
+
+def run_async_job(coro, *args, **kwargs):
+    loop = asyncio.get_event_loop()
+    loop.create_task(coro(*args, **kwargs))
+
+def morning_notification_job(email):
+    loop = asyncio.get_event_loop()
+    nudge_service = get_nudge_service()
+    loop.create_task(nudge_service.send_morning_notification(email))
+
+def evening_notification_job(email):
+    loop = asyncio.get_event_loop()
+    nudge_service = get_nudge_service()
+    loop.create_task(nudge_service.send_evening_notification(email))
 
 class NudgeService:
     def __init__(self):
@@ -298,15 +313,16 @@ class NudgeService:
         body = llm_result.get("notification", "Reflect on your progress today!")
         await self.send_fcm_notification(email, title, body)
 
-    def schedule_daily_notifications(self):
-        users = self.users_collection.find({"notifications_enabled": True})
+    # TODO: Maybe this can be integrated using just notification property and we don't need daily_notification
+    async def schedule_daily_notifications(self):
+        print("Scheduling daily notifications for users...")
+        users = await self.users_collection.find({"notifications_enabled": True}).to_list(length=None)
         for user in users:
+            if ("daily_notifications" in user) and not user.get("daily_notifications"):
+                continue
             email = user["email"]
-            morning_time = datetime.now().replace(hour=8, minute=0, second=0, microsecond=0)
-            if morning_time < datetime.now():
-                morning_time += timedelta(days=1)
             self.scheduler.add_job(
-                self.send_morning_notification,
+                morning_notification_job,
                 trigger='cron',
                 hour=8,
                 minute=0,
@@ -315,11 +331,8 @@ class NudgeService:
                 replace_existing=True,
                 coalesce=True,
             )
-            evening_time = datetime.now().replace(hour=20, minute=0, second=0, microsecond=0)
-            if evening_time < datetime.now():
-                evening_time += timedelta(days=1)
             self.scheduler.add_job(
-                self.send_evening_notification,
+                evening_notification_job,
                 trigger='cron',
                 hour=20,
                 minute=0,
@@ -328,6 +341,10 @@ class NudgeService:
                 replace_existing=True,
                 coalesce=True,
             )
+            await self.users_collection.update_one({"email": email}, {"$set": {"daily_notifications": True}})
+            print(f"Scheduled daily notifications for {email}")
+        print("Daily notifications scheduled for users.")
+        
 
     def get_recent_notification_jobs(self, email: str, limit: int = 10) -> List[Dict]:
         jobs = self.scheduler.get_jobs()
