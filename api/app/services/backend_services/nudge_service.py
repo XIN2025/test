@@ -1,3 +1,4 @@
+import email
 from .db import get_db
 import httpx
 from datetime import datetime, timedelta
@@ -21,15 +22,20 @@ from dotenv import load_dotenv
 from app.prompts import GENERATE_MORNING_NOTIFICATION_PROMPT, GENERATE_EVENING_NOTIFICATION_PROMPT
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
-from app.schemas.ai.goals import Goal
+from app.schemas.ai.goals import Goal, ActionItem, GoalWithActionItems
 from app.config import OPENAI_API_KEY, LLM_MODEL, MONGODB_URI, DB_NAME, NUDGE_SCHEDULED_COLLECTION
 load_dotenv()
+
+async def send_fcm_notification_job(email, title, body):
+    nudge_service = get_nudge_service()
+    await nudge_service.send_fcm_notification(email, title, body)
 
 class NudgeService:
     def __init__(self):
         self.db = get_db()
         self.users_collection = self.db["users"]
         self.goals_collection = self.db["goals"]
+        self.action_items_collection = self.db["action_items"]
         self.nudges_collection = self.db["nudges"]
         self.encryption_service = get_encryption_service()
         self._initialize_firebase()
@@ -46,6 +52,9 @@ class NudgeService:
 
     def start_scheduler(self):
         self.scheduler.start()
+    
+    def stop_scheduler(self):
+        self.scheduler.shutdown()
 
     async def _invoke_structured_llm(
         self, schema: dict, system_prompt: str, user_prompt: str, input_vars: dict
@@ -126,97 +135,78 @@ class NudgeService:
                 details={"email": email},
             )
 
-    async def create_nudges_from_goal(self, goal_id: str) -> List[Nudge]:
-        if isinstance(goal_id, str):
-            goal_object_id = ObjectId(goal_id)
-        else:
-            goal_object_id = goal_id
-            
-        goal_doc_raw = await self.goals_collection.find_one(
-            {"_id": goal_object_id}
+    async def get_goal_by_id(self, goal_id: str) -> GoalWithActionItems:
+        goal = await self.goals_collection.find_one({"_id": ObjectId(goal_id)})
+        if not goal:
+            return None
+        action_items = await self.action_items_collection.find(
+            {"goal_id": goal_id}
+        ).to_list(length=None)
+        goal["action_items"] = [ActionItem(
+            id=str(action_item["_id"]),
+            goal_id=action_item["goal_id"],
+            user_email=action_item["user_email"],
+            title=action_item["title"],
+            description=action_item["description"],
+            priority=action_item["priority"],
+            weekly_schedule=action_item["weekly_schedule"],
+        ) for action_item in action_items]
+        goal = GoalWithActionItems(
+            id=str(goal["_id"]),
+            user_email=goal["user_email"],
+            title=goal["title"],
+            description=goal["description"],
+            priority=goal["priority"],
+            category=goal["category"],
+            created_at=goal["created_at"],
+            action_items=goal["action_items"],
         )
-        
-        if not goal_doc_raw:
+        goal = self.encryption_service.decrypt_document(goal, GoalWithActionItems)
+        return goal
+    
+    async def _create_reminder_nudges(self, goal_id: str) -> List[Nudge]:
+        BUFFER_MINUTES = 10
+        goal = await self.get_goal_by_id(goal_id)
+        if not goal:
             raise GoalNotFoundError(f"Goal not found: {goal_id}")
-        
-        user_email = goal_doc_raw.get("user_email", "")
-        goal_title = goal_doc_raw.get("title", "")
-        
-        action_plan = goal_doc_raw.get("action_plan", {})
-        action_items = action_plan.get("action_items", [])
-        
-        weekly_schedule = goal_doc_raw.get("weekly_schedule", {})
-        daily_schedules = weekly_schedule.get("daily_schedules", {})
-        
-        if not action_items or not daily_schedules:
-            return []
-        
-        created_nudges = []
-        
-        for day_name, day_schedule in daily_schedules.items():
-            if not day_schedule or not isinstance(day_schedule, dict):
-                continue
-            
-            date_str = day_schedule.get("date", "")
-            time_slots = day_schedule.get("time_slots", [])
-            
-            for time_slot in time_slots:
-                action_item_title = time_slot.get("action_item", "")
-                start_time = time_slot.get("start_time", "")
-                
-                if not action_item_title or not start_time or not date_str:
+
+        nudges = []
+        for action_item in goal.action_items:
+            for day, daily_schedule in action_item.weekly_schedule.model_dump().items():
+                if not daily_schedule:
                     continue
-                
-                if "T" in date_str:
-                    date_part = date_str.split("T")[0]
-                else:
-                    date_part = date_str
-                
-                full_datetime_str = f"{date_part}T{start_time}"
-                
-                scheduled_time = datetime.fromisoformat(full_datetime_str)
-                reminder_time = scheduled_time - timedelta(minutes=10)
-                
+                date = daily_schedule.get("date")
+                start_time = daily_schedule.get("start_time")
+                reminder_time = datetime.fromisoformat(f"{date.split('T')[0]}T{start_time}") - timedelta(minutes=BUFFER_MINUTES)
                 nudge = Nudge(
-                    goal_id=str(goal_object_id),
-                    user_email=user_email,
-                    action_item_title=action_item_title,
+                    goal_id=goal_id,
+                    user_email=goal.user_email,
+                    action_item_title=action_item.title,
                     type=NudgeType.REMINDER,
                     scheduled_time=reminder_time,
-                    title=f"Reminder: {action_item_title}",
-                    body=f"You have '{action_item_title}' scheduled in 10 minutes for your goal: {goal_title}",
+                    title=f"Reminder: {action_item.title}",
+                    body=f"You have '{action_item.title}' scheduled in {BUFFER_MINUTES} minutes for your goal: {goal.title}",
                     status=NudgeStatus.PENDING
                 )
-                
-                nudge_dict = nudge.model_dump(exclude={'id'})
-                nudge_dict["created_at"] = datetime.utcnow()
-                
-                result = await self.nudges_collection.insert_one(
-                    nudge_dict
-                )
-                
-                nudge_data = nudge.model_dump()
-                nudge_data["id"] = str(result.inserted_id)
-                nudge_data["created_at"] = nudge_dict["created_at"]
-                
-                final_nudge = Nudge(**nudge_data)
-                nudge_data = self.encryption_service.encrypt_document(nudge_data, Nudge)
-                
-                created_nudges.append(final_nudge)
+                nudges.append(nudge)
 
-                self.schedule_notification(
-                    email=user_email,
-                    title=f"Reminder: {action_item_title}",
-                    body=f"You have '{action_item_title}' scheduled in 10 minutes for your goal: {goal_title}",
-                    run_datetime=reminder_time
-                )
-    
-        return created_nudges
+        return nudges
+
+    async def create_nudges_from_goal(self, goal_id: str) -> List[Nudge]:
+        nudges = await self._create_reminder_nudges(goal_id)
+        for nudge in nudges:
+            self.schedule_notification(
+                email=nudge.user_email,
+                title=nudge.title,
+                body=nudge.body,
+                run_datetime=nudge.scheduled_time
+            )
+        return nudges
 
     def schedule_notification(self, email: str, title: str, body: str, run_datetime: datetime):
         job_id = f"nudge_{email}_{run_datetime.isoformat()}"
         self.scheduler.add_job(
-            self.send_fcm_notification,
+            send_fcm_notification_job,
             trigger='date',
             run_date=run_datetime,
             args=[email, title, body],
@@ -364,5 +354,4 @@ def get_nudge_service():
     global _nudge_service_instance
     if _nudge_service_instance is None:
         _nudge_service_instance = NudgeService()
-        _nudge_service_instance.start_scheduler()
     return _nudge_service_instance

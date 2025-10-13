@@ -22,7 +22,7 @@ from app.prompts import (
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from app.config import OPENAI_API_KEY, LLM_MODEL
-from app.services.backend_services.nudge_service import NudgeService
+from app.services.backend_services.nudge_service import get_nudge_service
 from calendar import monthrange
 from app.services.backend_services.encryption_service import get_encryption_service
 from pprint import pprint
@@ -35,7 +35,7 @@ class GoalsService:
         self.reflections_collection = self.db["weekly_reflections"]
         self.encryption_service = get_encryption_service()
         self.vector_store = get_vector_store()
-        self.nudge_service = NudgeService()
+        self.nudge_service = get_nudge_service()
 
     async def _invoke_structured_llm(
         self, schema: dict, system_prompt: str, user_prompt: str, input_vars: dict
@@ -423,6 +423,7 @@ class GoalsService:
                 )
                 action_items[index] = action_item
 
+            print("Generating nudges for action items")
             await self.nudge_service.create_nudges_from_goal(goal_id)
 
             goal = self.encryption_service.encrypt_document(goal, Goal)

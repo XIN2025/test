@@ -8,7 +8,7 @@ import asyncio
 
 from app.services.backend_services.db import get_db, get_client, close_db
 from app.services.backend_services.email_utils import send_email
-from app.services.backend_services.nudge_service import NudgeService
+from app.services.backend_services.nudge_service import get_nudge_service
 from app.routers.backend.auth import auth_router
 from app.routers.backend.user import user_router
 from app.routers.ai.chat import chat_router
@@ -23,63 +23,6 @@ from app.exceptions import AppException, custom_exception_handler, generic_excep
 from motor.motor_asyncio import AsyncIOMotorClient
 from .config import MONGODB_URI
 
-async def check_and_send_nudges(): 
-    client = AsyncIOMotorClient(MONGODB_URI)
-    try:
-        db = client.get_database()
-        nudges_collection = db["nudges"]
-        nudge_service = NudgeService()
-
-        now = datetime.utcnow()
-        ten_minutes_later = now + timedelta(minutes=10)
-
-        pending_nudges = await nudges_collection.find({
-            "status": "pending",
-            "scheduled_time": {
-                "$gte": now,
-                "$lt": ten_minutes_later
-            }
-        }).to_list(length=None)
-
-        print(f"🔍 Found {len(pending_nudges)} nudges at {now}")
-
-        async def process_nudge(nudge):
-            try:
-                await nudge_service.send_fcm_notification(
-                    email=nudge.get("user_email"),
-                    title=nudge.get("title", f"Reminder: {nudge.get('action_item_title', '')}"),
-                    body=nudge.get("body", "You have a scheduled action coming up.")
-                )
-
-                await nudges_collection.update_one(
-                    {"_id": nudge["_id"]},
-                    {"$set": {"status": "sent", "sent_at": datetime.utcnow()}}
-                )
-                print(f"✅ Sent nudge: {nudge.get('title')} to {nudge.get('user_email')}")
-
-            except Exception as e:
-                await nudges_collection.update_one(
-                    {"_id": nudge["_id"]},
-                    {"$set": {"status": "failed", "error": str(e), "failed_at": datetime.utcnow()}}
-                )
-                print(f"❌ Failed to send nudge to {nudge.get('user_email')}: {e}")
-
-        tasks = [asyncio.create_task(process_nudge(n)) for n in pending_nudges]
-        if tasks:
-            await asyncio.gather(*tasks)
-    finally:
-        # Always close the connection when done
-        client.close()
-
-
-
-def start_scheduler():
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(check_and_send_nudges, CronTrigger(minute="*/1"))  # Directly schedule the coroutine
-    scheduler.start()
-    print("✅ Nudge scheduler started")
-    return scheduler
-
 
 def stop_scheduler(scheduler):
     scheduler.shutdown()
@@ -89,12 +32,11 @@ def stop_scheduler(scheduler):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_db()
-    print("🚀 Starting Medical RAG API with Async Nudge Scheduler...")
-    scheduler = start_scheduler()
-
+    nudge_service = get_nudge_service()
+    nudge_service.start_scheduler()
+    print("🚀 Nudge scheduler started")
     yield
-
-    stop_scheduler(scheduler)
+    nudge_service.stop_scheduler()
     await close_db()
     print("✅ Shutdown complete")
 
