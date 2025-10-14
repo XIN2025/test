@@ -261,13 +261,15 @@ class HealthAlertService:
                 id=str(insertion_id.inserted_id), **alert.model_dump()
             )
             alert = self.encryption_service.decrypt_document(alert, HealthAlert)
-
-            if alert.severity == HealthAlertSeverity.HIGH:
+            
+            try:
                 await self.nudge_service.send_fcm_notification(
                     email=user_email,
                     title=alert.title,
                     body=alert.message,
                 )
+            except Exception:
+                print(f"Failed to send FCM notification for health alert for user {user_email}")
 
         return health_metric_hourly_data
 
