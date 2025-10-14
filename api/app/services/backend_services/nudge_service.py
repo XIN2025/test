@@ -192,6 +192,8 @@ class NudgeService:
                     continue
                 date = daily_schedule.get("date")
                 start_time = daily_schedule.get("start_time")
+                if not date or not start_time:
+                    continue
                 reminder_time = datetime.fromisoformat(f"{date.split('T')[0]}T{start_time}") - timedelta(minutes=BUFFER_MINUTES)
                 nudge = Nudge(
                     goal_id=goal_id,
@@ -209,6 +211,7 @@ class NudgeService:
 
     async def create_nudges_from_goal(self, goal_id: str) -> List[Nudge]:
         nudges = await self._create_reminder_nudges(goal_id)
+        print(nudges)
         for nudge in nudges:
             self.schedule_notification(
                 email=nudge.user_email,
