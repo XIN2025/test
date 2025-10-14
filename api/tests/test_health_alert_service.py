@@ -1,4 +1,3 @@
-
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from app.services.backend_services.health_alert_service import HealthAlertService
@@ -7,7 +6,9 @@ from bson import ObjectId
 
 @pytest.fixture
 def health_alert_service():
-    return HealthAlertService()
+    service = HealthAlertService()
+    service.encryption_service.decrypt_document = MagicMock(side_effect=lambda doc, _: doc)
+    return service
 
 
 @pytest.mark.asyncio
