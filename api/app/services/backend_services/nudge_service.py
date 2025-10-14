@@ -318,11 +318,23 @@ class NudgeService:
         await self.send_fcm_notification(email, title, body)
 
     # TODO: Maybe this can be integrated using just notification property and we don't need daily_notification
+    # TODO (Bug): Daily notification being set multiple times even when it is set once
+    async def check_daily_notifications_scheduled(self, email: str) -> bool:
+        jobs = self.scheduler.get_jobs()
+        morning_nudge_id = f"morning_{email}"
+        evening_nudge_id = f"evening_{email}"
+        for job in jobs:
+            if job.id == morning_nudge_id or job.id == evening_nudge_id:
+                return True
+        return False
+
     async def schedule_daily_notifications(self):
         print("Scheduling daily notifications for users...")
         users = await self.users_collection.find({"notifications_enabled": True}).to_list(length=None)
         for user in users:
             if ("daily_notifications" in user) and not user.get("daily_notifications"):
+                continue
+            if not await self.check_daily_notifications_scheduled(user["email"]):
                 continue
             email = user["email"]
             self.scheduler.add_job(
