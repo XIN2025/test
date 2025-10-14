@@ -148,9 +148,9 @@ class HealthAlertSeverity(str, Enum):
 
 class HealthAlertGenerate(BaseModel):
     metric: str
-    title: str
+    title: str = EncryptedField(...)
     key_point: str
-    message: str
+    message: str = EncryptedField(...)
     severity: HealthAlertSeverity
 
 

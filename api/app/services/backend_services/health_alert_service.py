@@ -209,7 +209,6 @@ class HealthAlertService:
                 hourly_data=health_data_create.hourly_data,
                 aggregated_summary=health_data_create.aggregated_summary,
             )
-            health_data = self.encryption_service.encrypt_document(health_data, HealthData)
         else:
             health_data_dict["id"] = str(health_data_dict["_id"])
             del health_data_dict["_id"]
@@ -238,7 +237,6 @@ class HealthAlertService:
                 hourly_data=health_metric_hourly_data_list,
                 aggregated_summary=aggregated_summary,
             )
-            health_data = self.encryption_service.encrypt_document(health_data, HealthData)
 
             await self.health_data_collection.update_one(
                 {"user_email": user_email},
@@ -258,7 +256,11 @@ class HealthAlertService:
                 created_at=datetime.now(timezone.utc),
             )
             alert = self.encryption_service.encrypt_document(alert, HealthAlertCreate)
-            await self.health_alert_collection.insert_one(alert.model_dump())
+            insertion_id = await self.health_alert_collection.insert_one(alert.model_dump())
+            alert = HealthAlert(
+                id=str(insertion_id.inserted_id), **alert.model_dump()
+            )
+            alert = self.encryption_service.decrypt_document(alert, HealthAlert)
 
             if alert.severity == HealthAlertSeverity.HIGH:
                 await self.nudge_service.send_fcm_notification(
