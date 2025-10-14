@@ -104,6 +104,7 @@ class GoalsService:
         result = await self.goals_collection.insert_one(goal_dict)
         goal_dict["id"] = str(result.inserted_id)
         del goal_dict["_id"]  
+        goal_dict = self.encryption_service.decrypt_document(goal_dict, Goal)
         return Goal(**goal_dict)
 
     async def get_user_goals(self, user_email: str) -> List[Dict[str, Any]]:
