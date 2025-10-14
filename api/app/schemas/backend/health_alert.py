@@ -33,7 +33,7 @@ class StepSummary(BaseModel):
 
 
 class HeartRateSummary(BaseModel):
-    average: int = EncryptedField(...)
+    average: float = EncryptedField(...)
     min: int = EncryptedField(...)  
     max: int = EncryptedField(...)
 
