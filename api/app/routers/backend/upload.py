@@ -15,6 +15,7 @@ from ...services.miscellaneous.graph_db import get_graph_db
 from datetime import datetime
 from bson import ObjectId
 from urllib.parse import unquote
+from app.schemas.backend.documents import DocumentType
 
 logger = logging.getLogger(__name__)
 upload_router = APIRouter(prefix="/upload", tags=["upload"])
@@ -74,7 +75,8 @@ async def upload_document(
             upload_id=upload_id,
             content=content,
             filename=filename,
-            user_email=email
+            user_email=email,
+            type=DocumentType.DOCUMENT
         )
         
         # Return immediately - don't wait for processing

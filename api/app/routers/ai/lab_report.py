@@ -5,6 +5,7 @@ import logging
 
 from app.services.ai_services.lab_report_service import get_lab_report_service
 from app.schemas.ai.lab_report import LabReportResponse, LabReportSummary, LabReportUploadResponse
+from app.schemas.backend.documents import DocumentType
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ async def upload_lab_report(
         lab_report_service = get_lab_report_service()
         file_content = await file.read()
         lab_report = await lab_report_service.process_lab_report_pdf(
-            file_content, file.filename, user_email
+            file_content, file.filename, user_email, DocumentType.LAB_REPORT
         )
         
         return LabReportUploadResponse(

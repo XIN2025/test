@@ -4,16 +4,19 @@ import logging
 import base64
 from datetime import datetime
 from bson import ObjectId
-
+from pprint import pprint
+import asyncio
 from app.config import OPENAI_API_KEY, LLM_MODEL
 from app.services.backend_services.db import get_db
 from app.schemas.ai.lab_report import LabTestProperty, LabReportCreate, LabReportResponse, LabReportSummary, LabReportScore, LabReportScoreGenerate
-from app.services.ai_services.document_processor import get_document_processor
 from langchain_openai import ChatOpenAI
 from app.config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 from app.utils.ai.prompts import get_prompts
 from app.schemas.ai.lab_report import LabReport, LabTestPropertyForLLM
 from app.services.backend_services.encryption_service import get_encryption_service
+from app.schemas.backend.documents import DocumentType
+from app.services.backend_services.document_manager import get_document_manager
+from app.services.backend_services.progress_tracker import get_progress_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +34,12 @@ class LabReportService:
             max_retries=MAX_RETRIES,
         )
         self.model = LLM_MODEL
-        self.document_processor = get_document_processor()
         self.db = get_db()
         self.collection = self.db["lab_reports"]
         self.prompts = get_prompts()
         self.encryption_service = get_encryption_service()
+        self.document_manager = get_document_manager()
+        self.progress_tracker = get_progress_tracker()
 
     async def _extract_lab_data_with_ai(self, base64_pdf: str) -> Dict[str, Any]:
         """Extract structured lab data from text using OpenAI"""
@@ -89,7 +93,7 @@ Extract ALL test results with precise values and units. Use original test names 
             logger.error(f"❌ AI extraction failed after {extraction_time:.2f} seconds: {str(e)}")
             raise ValueError(f"Failed to extract lab data: {str(e)}")
 
-    async def process_lab_report_pdf(self, file_content: bytes, filename: str, user_email: str) -> LabReportResponse:
+    async def process_lab_report_pdf(self, file_content: bytes, filename: str, user_email: str, type: DocumentType) -> LabReportResponse:
         """Process a lab report PDF and extract structured data"""
         try:
             # Convert PDF bytes to base64
@@ -141,6 +145,17 @@ Extract ALL test results with precise values and units. Use original test names 
                     logger.warning(f"Could not parse test date: {extracted_data['test_date']}")
                     # Keep as None if parsing fails
             
+            upload_id = self.progress_tracker.create_upload_session(filename)
+            
+            await asyncio.to_thread(
+                self.document_manager.add_document,
+                content=file_content,
+                filename=filename,
+                user_email=user_email,
+                upload_id=upload_id,
+                type=type,
+            )
+
             # Create lab report object
             lab_report_data = LabReportCreate(
                 user_email=user_email,
@@ -270,7 +285,7 @@ Extract ALL test results with precise values and units. Use original test names 
     async def get_lab_reports_by_user(self, user_email: str) -> List[LabReportSummary]:
         """Get all lab reports for a user (summary view)"""
         try:
-            cursor = self.collection.find(
+            cursor = await self.collection.find(
                 {"user_email": user_email},
                 {
                     "test_title": 1,
@@ -280,10 +295,10 @@ Extract ALL test results with precise values and units. Use original test names 
                     "created_at": 1,
                     "properties": 1
                 }
-            ).sort("created_at", -1)
+            ).sort("created_at", -1).to_list(length=None)
             
             reports = []
-            async for doc in cursor:
+            for doc in cursor:
                 reports.append(LabReportSummary(
                     id=str(doc["_id"]),
                     test_title=doc.get("test_title", ""),
@@ -293,14 +308,28 @@ Extract ALL test results with precise values and units. Use original test names 
                     filename=doc.get("filename", ""),
                     created_at=doc.get("created_at", datetime.utcnow())
                 ))
-
+    
             reports = self.encryption_service.decrypt_document(reports, LabReportSummary)
 
             return reports
-            
+
         except Exception as e:
             logger.error(f"Error fetching lab reports: {str(e)}")
             raise
+
+    async def get_lab_report_context_by_user(self, user_email: str) -> str:
+        lab_reports = await self.get_lab_reports_by_user(user_email)
+        context = "User Lab Reports Summary:\n"
+        for report in lab_reports:
+            context += (
+                f"- Title: {report.test_title}\n"
+                f"  Date: {report.test_date.strftime('%Y-%m-%d') if report.test_date else 'N/A'}\n"
+                f"  Description: {report.test_description}\n"
+                f"  Properties Count: {report.properties_count}\n"
+                f"  Filename: {report.filename}\n"
+                f"  Created At: {report.created_at.strftime('%Y-%m-%d %H:%M:%S') if report.created_at else 'N/A'}\n"
+            )
+        return context
 
     # TODO: Instead of returning LabReportResponse, I think it would be better to return LabReport
     async def get_lab_report_by_id(self, report_id: str, user_email: str) -> Optional[LabReportResponse]:

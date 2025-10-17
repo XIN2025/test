@@ -7,9 +7,9 @@ load_dotenv()
 # MongoDB Configuration
 MONGODB_URI = os.getenv("MONGODB_URI")
 DB_NAME = os.getenv("MONGODB_DB_NAME", "evra")
-VECTOR_STORE_DB_URI = os.getenv("VECTOR_STORE_DB_URI")
-VECTOR_COLLECTION_NAME=os.getenv("VECTOR_COLLECTION_NAME")
-VECTOR_DB_NAME=os.getenv("VECTOR_DB_NAME")
+VECTOR_STORE_DB_URI = os.getenv("VECTOR_STORE_DB_URI", "test_vector_store_uri")
+VECTOR_COLLECTION_NAME=os.getenv("VECTOR_COLLECTION_NAME", "test_vector_collection")
+VECTOR_DB_NAME=os.getenv("VECTOR_DB_NAME", "test_vector_db")
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")
 NUDGE_SCHEDULED_COLLECTION = os.getenv("NUDGE_SCHEDULED_COLLECTION", "nudge_scheduled_jobs")
 
@@ -31,9 +31,9 @@ VECTOR_INDEX_PATH = os.getenv("VECTOR_INDEX_PATH", "faiss_index.bin")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
 # LLM Configuration
-OPENAI_API_KEY = os.getenv("OPENAI_KEY")  # Load from OPENAI_KEY in .env
-LLM_MODEL = os.getenv("LLM_MODEL")  # Updated to a valid model name
-LLM_TEMPERATURE = os.getenv("LLM_TEMPERATURE")
+OPENAI_API_KEY = os.getenv("OPENAI_KEY", "test-openai-key")  # Load from OPENAI_KEY in .env
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-3.5-turbo")  # Updated to a valid model name
+LLM_TEMPERATURE = os.getenv("LLM_TEMPERATURE", "0.5")
 
 # File Upload Configuration
 MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # 10MB

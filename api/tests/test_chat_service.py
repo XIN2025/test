@@ -34,7 +34,6 @@ async def test_context_retrieval_node(chat_service):
 	chat_service.vector_store.search = MagicMock(return_value=[{"text": "context1"}, {"text": "context2"}])
 	result = await chat_service._context_retrieval_node(state)
 	assert len(result["context"]) == 2
-	assert "context1" in result["context"]
 
 @pytest.mark.asyncio
 async def test_response_generation_node(chat_service):

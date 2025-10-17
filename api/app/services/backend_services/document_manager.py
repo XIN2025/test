@@ -4,6 +4,7 @@ from .db import get_db
 from app.services.ai_services.mongodb_vectorstore import get_vector_store
 from app.services.ai_services.document_processor import get_document_processor
 from app.services.backend_services.progress_tracker import get_progress_tracker
+from app.schemas.backend.documents import DocumentType
 
 class DocumentManager:
     def __init__(self):
@@ -12,7 +13,7 @@ class DocumentManager:
         self.processor = get_document_processor()
         self.progress_tracker = get_progress_tracker()
 
-    def add_document(self, content: Union[str, bytes], filename: str, user_email: str, upload_id: str) -> Dict:
+    def add_document(self, content: Union[str, bytes], filename: str, user_email: str, upload_id: str, type: DocumentType) -> Dict:
         progress_callback = lambda percentage, message, status: self.progress_tracker.update_progress(
             upload_id=upload_id,
             percentage=percentage,
@@ -23,11 +24,11 @@ class DocumentManager:
         file_extension = filename.split('.')[-1].lower()
         self.progress_tracker.update_progress(upload_id, 20, "Starting document analysis...")
         if file_extension == 'pdf':
-            result = self.processor.process_pdf_file(content, filename, user_email, progress_callback)
+            result = self.processor.process_pdf_file(content, filename, user_email, type, progress_callback)
         elif file_extension == 'docx':
-            result = self.processor.process_docx_file(content, filename, user_email, progress_callback)
+            result = self.processor.process_docx_file(content, filename, user_email, type, progress_callback)
         elif file_extension == 'text' and isinstance(content, str):
-            result = self.processor.process_text_file(content, filename, user_email, progress_callback)
+            result = self.processor.process_text_file(content, filename, user_email, type, progress_callback)
         
         if not result.get("success"):
             progress_callback(

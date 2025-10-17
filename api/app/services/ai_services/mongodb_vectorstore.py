@@ -12,6 +12,7 @@ from typing import List, Optional, Callable
 import time
 from typing import List
 from uuid import uuid4
+from app.schemas.backend.documents import DocumentType
 logger = logging.getLogger(__name__)
 
 class MongoVectorStoreService:
@@ -36,7 +37,7 @@ class MongoVectorStoreService:
             embedding_key="embedding",
         )
 
-    def add_document(self, content: str, user_email: str, filename: str, chunk_size: int = 1500, chunk_overlap: int = 300) -> int:
+    def add_document(self, content: str, user_email: str, filename: str, type: DocumentType, chunk_size: int = 1500, chunk_overlap: int = 300) -> int:
         """
         Add a document (LangChain Document) into the vector store by splitting into chunks.
         Returns number of chunks inserted.
@@ -44,7 +45,13 @@ class MongoVectorStoreService:
         upload_id = str(uuid4())
         doc = Document(
             page_content=content,
-            metadata={"user_email": user_email, "filename": filename, "size": len(content), "upload_id": upload_id},
+            metadata={
+                "user_email": user_email,
+                "filename": filename,
+                "size": len(content),
+                "upload_id": upload_id,
+                "type": type.value 
+            },
         )
 
         splitter = RecursiveCharacterTextSplitter(

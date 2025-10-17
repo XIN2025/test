@@ -4,6 +4,7 @@ import fitz
 import pypandoc
 from langchain.schema import Document
 from app.services.ai_services.mongodb_vectorstore import get_vector_store
+from app.schemas.backend.documents import DocumentType
 
 class DocumentProcessor:
     def __init__(self):
@@ -45,6 +46,7 @@ class DocumentProcessor:
         content: str,
         filename: str,
         user_email: str,
+        type: DocumentType,
         progress_callback: Optional[Callable] = None
     ) -> Dict:
         print(f"Processing markdown file: {filename} for user {user_email}")
@@ -58,7 +60,7 @@ class DocumentProcessor:
                 )
                 time.sleep(0.5)
 
-            chunks_count = self.vector_store.add_document(content, user_email, filename)
+            chunks_count = self.vector_store.add_document(content, user_email, filename, type)
 
             if progress_callback:
                 progress_callback(
@@ -88,6 +90,7 @@ class DocumentProcessor:
         file_content: bytes,
         filename: str,
         user_email: str,
+        type: DocumentType,
         progress_callback: Optional[Callable] = None
     ) -> Dict:
         print(f"Processing PDF file: {filename} for user {user_email}")
@@ -105,7 +108,7 @@ class DocumentProcessor:
             if not markdown:
                 raise ValueError("Failed to convert PDF to markdown.")
 
-            return self.process_markdown_file(markdown, filename, user_email, progress_callback)
+            return self.process_markdown_file(markdown, filename, user_email, type, progress_callback)
         except Exception as e:
             print(f"Error processing PDF file {filename}: {e}")
             return {
@@ -119,6 +122,7 @@ class DocumentProcessor:
         file_content: bytes,
         filename: str,
         user_email: str,
+        type: DocumentType,
         progress_callback: Optional[Callable] = None
     ) -> Dict:
         print(f"Processing DOCX file: {filename} for user {user_email}")
@@ -136,7 +140,7 @@ class DocumentProcessor:
             if not markdown:
                 raise ValueError("Failed to convert DOCX to markdown.")
 
-            return self.process_markdown_file(markdown, filename, user_email, progress_callback)
+            return self.process_markdown_file(markdown, filename, user_email,type, progress_callback)
         except Exception as e:
             print(f"Error processing DOCX file {filename}: {e}")
             return {
@@ -150,6 +154,7 @@ class DocumentProcessor:
         file_content: str,
         filename: str,
         user_email: str,
+        type: DocumentType,
         progress_callback: Optional[Callable] = None
     ) -> Dict:
         try:
@@ -161,7 +166,7 @@ class DocumentProcessor:
                 )
                 time.sleep(0.5)
 
-            return self.process_markdown_file(file_content, filename, user_email, progress_callback)
+            return self.process_markdown_file(file_content, filename, user_email, type, progress_callback)
         except Exception as e:
             print(f"Error processing text file {filename}: {e}")
             return {

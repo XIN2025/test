@@ -11,6 +11,7 @@ from ...config import OPENAI_API_KEY, LLM_MODEL, LLM_TEMPERATURE
 from app.services.ai_services.mongodb_vectorstore import get_vector_store
 from app.utils.ai.prompts import ChatPrompts
 from app.services.backend_services.db import get_db
+from app.services.ai_services.lab_report_service import get_lab_report_service
 from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class ChatService:
         self.graph = self._build_graph()
         self.db = get_db()
         self.user_collection = self.db["users"]
+        self.lab_report_service = get_lab_report_service()
     
     def _build_graph(self) -> StateGraph:
         """Build the LangGraph workflow for chat"""
@@ -119,17 +121,27 @@ class ChatService:
                 user_email=state.user_email,
                 top_k=50  
             )
+
             print(f"🔍 [CONTEXT RETRIEVAL] Step 2: Retrieved {len(relevant_docs)} docs from vector store")
 
             # Step 2: Extract text chunks
-            context_pieces = []
+            doc_context_pieces = []
+            lab_report_context_pieces = []
             for i, doc in enumerate(relevant_docs):
                 text = doc.get("text", "")
+                type = doc.get("type", "unknown")
                 if text.strip():
-                    context_pieces.append(text)
+                    if type == "lab_report":
+                        lab_report_context_pieces.append(text)
+                    else:
+                        doc_context_pieces.append(text)
                     print(f"🔍 [CONTEXT RETRIEVAL] Step 2.{i+1}: Added context piece: {text[:100]}...")
                 else:
                     print(f"🔍 [CONTEXT RETRIEVAL] Step 2.{i+1}: ⚠️ Skipped empty text chunk")
+
+            document_context = """DOCUMENT_CONTEXT_START\n""" + "\n- ".join(doc_context_pieces) + """\nDOCUMENT_CONTEXT_END\n ---"""
+            lab_report_context = """LAB_REPORT_CONTEXT_START\n""" + "\n- ".join(lab_report_context_pieces) + """\nLAB_REPORT_CONTEXT_END\n ---"""
+            context_pieces = [document_context, lab_report_context]
 
             # Step 3: Limit to top 10 for safety
             state.context = context_pieces

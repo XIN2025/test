@@ -331,6 +331,7 @@ class NudgeService:
                 return True
         return False
 
+    # TODO: Look into if the scheduling is working correctly and being sent according to the person local time
     async def schedule_daily_notifications(self):
         print("Scheduling daily notifications for users...")
         users = await self.users_collection.find({"notifications_enabled": True}).to_list(length=None)
