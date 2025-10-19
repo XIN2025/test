@@ -2,7 +2,7 @@ from typing import Dict, Optional, Callable
 import time
 import fitz
 import pypandoc
-from langchain.schema import Document
+from langchain_core.documents import Document
 from app.services.ai_services.mongodb_vectorstore import get_vector_store
 from app.schemas.backend.documents import DocumentType
 

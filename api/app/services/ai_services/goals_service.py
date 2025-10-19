@@ -20,7 +20,7 @@ from app.prompts import (
     GENERATE_ACTION_PLAN_WITH_SCHEDULE_USER_PROMPT,
 )
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from app.config import OPENAI_API_KEY, LLM_MODEL
 from app.services.backend_services.nudge_service import get_nudge_service
 from calendar import monthrange

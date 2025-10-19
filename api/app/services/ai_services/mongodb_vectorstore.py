@@ -1,47 +1,40 @@
-# TODO: Migrate pymongo to motor (async)
-
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_mongodb import MongoDBAtlasVectorSearch
-from langchain_openai import OpenAIEmbeddings
-from langchain.schema import Document
+from langchain_core.documents import Document
 from pymongo import MongoClient
 import logging
-from ...config import VECTOR_STORE_DB_URI, VECTOR_DB_NAME, VECTOR_COLLECTION_NAME, OPENAI_API_KEY
-from typing import Dict
+import json
+from typing import Dict, List
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from typing import List, Optional, Callable
-import time
-from typing import List
 from uuid import uuid4
+
+from ...config import VECTOR_STORE_DB_URI, VECTOR_DB_NAME, VECTOR_COLLECTION_NAME, EMBEDDING_MODEL
 from app.schemas.backend.documents import DocumentType
+
 logger = logging.getLogger(__name__)
 
 class MongoVectorStoreService:
     def __init__(self):
-        # MongoDB client setup
         self.client = MongoClient(VECTOR_STORE_DB_URI)
         self.db = self.client[VECTOR_DB_NAME]
         self.collection = self.db[VECTOR_COLLECTION_NAME]
 
-        # OpenAI embedding model (default: text-embedding-3-small or text-embedding-3-large)
-        self.embedding_fn = OpenAIEmbeddings(
-            model="text-embedding-3-small",  # or "text-embedding-3-large"
-            openai_api_key=OPENAI_API_KEY,
+        logger.info(f"Initializing HuggingFaceEmbeddings with model: {EMBEDDING_MODEL}")
+        self.embedding_fn = HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL,
+            model_kwargs={'device': 'cpu'}
         )
 
-        # LangChain Mongo Vector Store wrapper
         self.vector_store = MongoDBAtlasVectorSearch(
             collection=self.collection,
             embedding=self.embedding_fn,
-            index_name="vector_index",  # must match Atlas index name
+            index_name="vector_index",
             text_key="text",
             embedding_key="embedding",
         )
+        logger.info("MongoVectorStoreService initialized successfully.")
 
-    def add_document(self, content: str, user_email: str, filename: str, type: DocumentType, chunk_size: int = 1500, chunk_overlap: int = 300) -> int:
-        """
-        Add a document (LangChain Document) into the vector store by splitting into chunks.
-        Returns number of chunks inserted.
-        """
+    def add_document(self, content: str, user_email: str, filename: str, type: DocumentType, chunk_size: int = 1500, chunk_overlap: int = 150) -> str:
         upload_id = str(uuid4())
         doc = Document(
             page_content=content,
@@ -58,100 +51,106 @@ class MongoVectorStoreService:
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap
         )
-
         chunks = splitter.split_documents([doc])
+        logger.info(f"Document '{filename}' split into {len(chunks)} chunks.")
 
-        for chunk in chunks:
-            try:
-                embedding = self.embedding_fn.embed_documents([chunk.page_content])[0]
+        if not chunks:
+            logger.warning(f"Document '{filename}' produced no chunks to add.")
+            return upload_id
+        
+        try:
+            texts_to_embed = [chunk.page_content for chunk in chunks]
+            embeddings = self.embedding_fn.embed_documents(texts_to_embed)
+            
+            records_to_insert = []
+            for i, chunk in enumerate(chunks):
                 record = {
                     "text": chunk.page_content,
-                    "embedding": embedding,
-                    **chunk.metadata  # preserves user_email or any metadata
+                    "embedding": embeddings[i],
+                    **chunk.metadata
                 }
-                self.collection.insert_one(record)
-            except Exception as e:
-                logger.error(f"❌ Failed inserting chunk: {e}")
+                records_to_insert.append(record)
+            
+            self.collection.insert_many(records_to_insert)
+            logger.info(f"Successfully inserted {len(records_to_insert)} chunks for '{filename}' into collection '{VECTOR_COLLECTION_NAME}'.")
+        except Exception as e:
+            logger.error(f"❌ Failed to insert document chunks for '{filename}': {e}", exc_info=True)
+            raise
 
         return upload_id
     
     def get_all_documents_by_user_email(self, user_email: str) -> List[Dict]:
         try:
-            docs = [{"user_email": document["user_email"], "filename": document["filename"], "upload_id": str(document["upload_id"]), "size": document["size"]} for document in list(self.collection.find({"user_email": user_email}))]
-            return docs
+            cursor = self.collection.find(
+                {"user_email": user_email}, 
+                {"embedding": 0, "_id": 0}
+            )
+            unique_docs = {doc['filename']: doc for doc in cursor}
+            return list(unique_docs.values())
         except Exception as e:
-            logger.error(f"❌ Failed fetching documents for {user_email}: {e}")
+            logger.error(f"❌ Failed fetching document list for {user_email}: {e}")
             return []
 
     def delete_document_by_upload_id(self, upload_id: str) -> bool:
         try:
             result = self.collection.delete_many({"upload_id": upload_id})
+            logger.info(f"Deleted {result.deleted_count} chunks for upload_id '{upload_id}'.")
             return result.deleted_count > 0
         except Exception as e:
-            logger.error(f"❌ Failed deleting document {upload_id}: {e}")
+            logger.error(f"❌ Failed deleting document chunks for upload_id '{upload_id}': {e}")
             return False
 
-    def search(self, query: str, user_email: str, top_k: int = 50) -> List[Dict]:
-        """
-        Search for similar chunks in the MongoDB vector store filtered by user_email,
-        and return a list of dicts with {text, user_email, node_id}.
-        """
-        print(f"🔍 [VECTOR SEARCH] Starting vector search for query: '{query}' (User: {user_email})")
-        print(f"🔍 [VECTOR SEARCH] Step 1: Checking if query is valid...")
-
+    def search(self, query: str, user_email: str, top_k: int = 5) -> List[Dict]:
+        logger.info(f"🔍 [VECTOR SEARCH] Starting vector search for query: '{query}' (User: {user_email})")
+        
         if not query or not query.strip():
-            print(f"[VECTOR SEARCH] Query is empty or None, returning empty list")
+            logger.warning("🔍 [VECTOR SEARCH] Query is empty or None, returning empty list")
             return []
 
         try:
-            print(f"🔍 [VECTOR SEARCH] Step 2: Running similarity search in MongoDB with filter user_email={user_email}...")
+            search_filter = {"user_email": {"$eq": user_email}}
+            logger.info(f"🔍 [VECTOR SEARCH] Stage 1: Constructed search filter: {json.dumps(search_filter)}")
+            
+            logger.info("🔍 [VECTOR SEARCH] Stage 2: Generating embedding for the query...")
+            query_embedding = self.embedding_fn.embed_query(query)
+            logger.info(f"🔍 [VECTOR SEARCH] Stage 2: ✅ Embedding generated. Vector length: {len(query_embedding)}")
 
+            logger.info(f"🔍 [VECTOR SEARCH] Stage 3: Calling LangChain's similarity_search with k={top_k}...")
+            
             docs = self.vector_store.similarity_search(
                 query,
                 k=top_k,
-                pre_filter={"user_email": user_email}  # 🔑 filter only this user's docs
+                pre_filter=search_filter
             )
 
-            print(f"🔍 [VECTOR SEARCH] Step 2: Retrieved {len(docs)} results from MongoDB")
-
+            logger.info(f"🔍 [VECTOR SEARCH] Stage 4: LangChain call complete. Retrieved {len(docs)} document(s).")
+            
             results = []
-            for i, d in enumerate(docs):
-                if isinstance(d, dict):
-                    # If your vector store returns raw Mongo docs
-                    text = d.get("text", "")
-                    metadata = d.get("user_email", user_email)
-                else:
-                    # If it returns LangChain Document
+            if docs:
+                logger.info("🔍 [VECTOR SEARCH] Stage 5: Processing retrieved documents:")
+                for i, d in enumerate(docs):
                     text = getattr(d, "page_content", "")
-                    metadata = d.metadata.get("user_email", user_email)
+                    metadata = getattr(d, "metadata", {})
+                    logger.info(f"  - Doc {i+1}: Filename='{metadata.get('filename')}', Text='{text[:100].strip()}...'")
+                    if not text.strip():
+                        logger.warning(f"  - Skipping empty document at index {i}")
+                        continue
+                    
+                    result = {"text": text, **metadata}
+                    results.append(result)
+            else:
+                logger.warning("🔍 [VECTOR SEARCH] Stage 5: No documents were returned from the search.")
 
-                if not text.strip():
-                    print(f"🔍 [VECTOR SEARCH] ⚠️ Skipping empty document at index {i}")
-                    continue
-
-                result = {
-                    "text": text,
-                    "user_email": metadata
-                }
-                results.append(result)
-
-            print(f"✅ [VECTOR SEARCH] Completed successfully, returning {len(results)} results")
-            logger.info(f"Vector search for '{query}' (user={user_email}) returned {len(results)} results")
-
+            logger.info(f"✅ [VECTOR SEARCH] Completed successfully, returning {len(results)} valid results.")
             return results
 
         except Exception as e:
-            print(f"❌ [VECTOR SEARCH] Search failed: {e}")
-            logger.error(f"Search failed: {e}")
+            logger.error(f"❌ [VECTOR SEARCH] A critical error occurred during the search operation: {e}", exc_info=True)
             return []
 
-
     def get_stats(self):
-        """Get collection stats"""
         return {"total_nodes": self.collection.count_documents({})}
 
-
-# Singleton wrapper
 vector_store = None
 
 def get_vector_store() -> MongoVectorStoreService:

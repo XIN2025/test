@@ -21,7 +21,7 @@ from apscheduler.jobstores.mongodb import MongoDBJobStore
 from dotenv import load_dotenv
 from app.prompts import GENERATE_MORNING_NOTIFICATION_PROMPT, GENERATE_EVENING_NOTIFICATION_PROMPT
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from app.schemas.ai.goals import Goal, ActionItem, GoalWithActionItems
 from app.config import OPENAI_API_KEY, LLM_MODEL, MONGODB_URI, DB_NAME, NUDGE_SCHEDULED_COLLECTION
 import asyncio
