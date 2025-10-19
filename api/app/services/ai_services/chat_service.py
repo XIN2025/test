@@ -155,6 +155,7 @@ class ChatService:
             logger.info(f"🚀 [CHAT] Step 3: ✅ Returning response: {response_data}")
             return response_data
             
+
         except Exception as e:
             logger.error(f"❌ [CHAT] Critical error in chat workflow for user '{user_email}': {e}", exc_info=True)
             return {
