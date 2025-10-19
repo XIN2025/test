@@ -1,4 +1,4 @@
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_core.documents import Document
 from pymongo import MongoClient
@@ -8,7 +8,7 @@ from typing import Dict, List
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from uuid import uuid4
 
-from ...config import VECTOR_STORE_DB_URI, VECTOR_DB_NAME, VECTOR_COLLECTION_NAME, EMBEDDING_MODEL
+from ...config import VECTOR_STORE_DB_URI, VECTOR_DB_NAME, VECTOR_COLLECTION_NAME, OPENAI_API_KEY, EMBEDDING_MODEL
 from app.schemas.backend.documents import DocumentType
 
 logger = logging.getLogger(__name__)
@@ -19,10 +19,10 @@ class MongoVectorStoreService:
         self.db = self.client[VECTOR_DB_NAME]
         self.collection = self.db[VECTOR_COLLECTION_NAME]
 
-        logger.info(f"Initializing HuggingFaceEmbeddings with model: {EMBEDDING_MODEL}")
-        self.embedding_fn = HuggingFaceEmbeddings(
-            model_name=EMBEDDING_MODEL,
-            model_kwargs={'device': 'cpu'}
+        logger.info(f"Initializing OpenAIEmbeddings with model: {EMBEDDING_MODEL}")
+        self.embedding_fn = OpenAIEmbeddings(
+            model=EMBEDDING_MODEL,
+            openai_api_key=OPENAI_API_KEY
         )
 
         self.vector_store = MongoDBAtlasVectorSearch(
@@ -32,7 +32,7 @@ class MongoVectorStoreService:
             text_key="text",
             embedding_key="embedding",
         )
-        logger.info("MongoVectorStoreService initialized successfully.")
+        logger.info("MongoVectorStoreService initialized successfully with OpenAI embeddings.")
 
     def add_document(self, content: str, user_email: str, filename: str, type: DocumentType, chunk_size: int = 1500, chunk_overlap: int = 150) -> str:
         upload_id = str(uuid4())
@@ -59,6 +59,8 @@ class MongoVectorStoreService:
             return upload_id
         
         try:
+            # OpenAIEmbeddings can handle batching internally, but for clarity and control,
+            # we'll still do it this way.
             texts_to_embed = [chunk.page_content for chunk in chunks]
             embeddings = self.embedding_fn.embed_documents(texts_to_embed)
             
@@ -110,12 +112,8 @@ class MongoVectorStoreService:
         try:
             search_filter = {"user_email": {"$eq": user_email}}
             logger.info(f"🔍 [VECTOR SEARCH] Stage 1: Constructed search filter: {json.dumps(search_filter)}")
-            
-            logger.info("🔍 [VECTOR SEARCH] Stage 2: Generating embedding for the query...")
-            query_embedding = self.embedding_fn.embed_query(query)
-            logger.info(f"🔍 [VECTOR SEARCH] Stage 2: ✅ Embedding generated. Vector length: {len(query_embedding)}")
 
-            logger.info(f"🔍 [VECTOR SEARCH] Stage 3: Calling LangChain's similarity_search with k={top_k}...")
+            logger.info(f"🔍 [VECTOR SEARCH] Stage 2: Calling LangChain's similarity_search with k={top_k}...")
             
             docs = self.vector_store.similarity_search(
                 query,
@@ -123,23 +121,16 @@ class MongoVectorStoreService:
                 pre_filter=search_filter
             )
 
-            logger.info(f"🔍 [VECTOR SEARCH] Stage 4: LangChain call complete. Retrieved {len(docs)} document(s).")
+            logger.info(f"🔍 [VECTOR SEARCH] Stage 3: LangChain call complete. Retrieved {len(docs)} document(s).")
             
             results = []
             if docs:
-                logger.info("🔍 [VECTOR SEARCH] Stage 5: Processing retrieved documents:")
                 for i, d in enumerate(docs):
                     text = getattr(d, "page_content", "")
                     metadata = getattr(d, "metadata", {})
-                    logger.info(f"  - Doc {i+1}: Filename='{metadata.get('filename')}', Text='{text[:100].strip()}...'")
-                    if not text.strip():
-                        logger.warning(f"  - Skipping empty document at index {i}")
-                        continue
-                    
+                    if not text.strip(): continue
                     result = {"text": text, **metadata}
                     results.append(result)
-            else:
-                logger.warning("🔍 [VECTOR SEARCH] Stage 5: No documents were returned from the search.")
 
             logger.info(f"✅ [VECTOR SEARCH] Completed successfully, returning {len(results)} valid results.")
             return results
