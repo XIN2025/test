@@ -27,13 +27,13 @@ class DocumentManager:
         result = None
         
         if file_extension == 'pdf':
-            result = self.processor.process_pdf_file(content, filename, user_email, type, progress_callback)
+            result = self.processor.process_pdf_file(content, filename, user_email, type, upload_id, progress_callback)
         elif file_extension == 'docx':
-            result = self.processor.process_docx_file(content, filename, user_email, type, progress_callback)
+            result = self.processor.process_docx_file(content, filename, user_email, type, upload_id, progress_callback)
         elif file_extension == 'doc':
-            result = self.processor.process_doc_file(content, filename, user_email, type, progress_callback)
+            result = self.processor.process_doc_file(content, filename, user_email, type, upload_id, progress_callback)
         elif file_extension == 'text' and isinstance(content, str):
-            result = self.processor.process_text_file(content, filename, user_email, type, progress_callback)
+            result = self.processor.process_text_file(content, filename, user_email, type, upload_id, progress_callback)
         else:
             error_msg = f"Unsupported file type: .{file_extension}. Supported formats: pdf, docx, doc, text"
             result = {"success": False, "error": error_msg}

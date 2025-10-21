@@ -56,6 +56,7 @@ class DocumentProcessor:
         filename: str,
         user_email: str,
         type: DocumentType,
+        upload_id: str = None,
         progress_callback: Optional[Callable] = None
     ) -> Dict:
         print(f"Processing markdown file: {filename} for user {user_email}")
@@ -69,7 +70,7 @@ class DocumentProcessor:
                 )
                 time.sleep(0.5)
 
-            chunks_count = self.vector_store.add_document(content, user_email, filename, type)
+            chunks_count = self.vector_store.add_document(content, user_email, filename, type, upload_id=upload_id)
 
             if progress_callback:
                 progress_callback(
@@ -100,6 +101,7 @@ class DocumentProcessor:
         filename: str,
         user_email: str,
         type: DocumentType,
+        upload_id: str = None,
         progress_callback: Optional[Callable] = None
     ) -> Dict:
         print(f"Processing PDF file: {filename} for user {user_email}")
@@ -117,7 +119,7 @@ class DocumentProcessor:
             if not markdown:
                 raise ValueError("Failed to convert PDF to markdown.")
 
-            return self.process_markdown_file(markdown, filename, user_email, type, progress_callback)
+            return self.process_markdown_file(markdown, filename, user_email, type, upload_id, progress_callback)
         except Exception as e:
             print(f"Error processing PDF file {filename}: {e}")
             return {
@@ -132,6 +134,7 @@ class DocumentProcessor:
         filename: str,
         user_email: str,
         type: DocumentType,
+        upload_id: str = None,
         progress_callback: Optional[Callable] = None
     ) -> Dict:
         print(f"Processing DOCX file: {filename} for user {user_email}")
@@ -149,7 +152,7 @@ class DocumentProcessor:
             if not markdown:
                 raise ValueError("Failed to convert DOCX to markdown.")
 
-            return self.process_markdown_file(markdown, filename, user_email,type, progress_callback)
+            return self.process_markdown_file(markdown, filename, user_email, type, upload_id, progress_callback)
         except Exception as e:
             print(f"Error processing DOCX file {filename}: {e}")
             return {
@@ -164,6 +167,7 @@ class DocumentProcessor:
         filename: str,
         user_email: str,
         type: DocumentType,
+        upload_id: str = None,
         progress_callback: Optional[Callable] = None
     ) -> Dict:
         print(f"Processing DOC file: {filename} for user {user_email}")
@@ -181,7 +185,7 @@ class DocumentProcessor:
             if not markdown:
                 raise ValueError("Failed to convert DOC to markdown.")
 
-            return self.process_markdown_file(markdown, filename, user_email, type, progress_callback)
+            return self.process_markdown_file(markdown, filename, user_email, type, upload_id, progress_callback)
         except Exception as e:
             print(f"Error processing DOC file {filename}: {e}")
             return {
@@ -196,6 +200,7 @@ class DocumentProcessor:
         filename: str,
         user_email: str,
         type: DocumentType,
+        upload_id: str = None,
         progress_callback: Optional[Callable] = None
     ) -> Dict:
         try:
@@ -207,7 +212,7 @@ class DocumentProcessor:
                 )
                 time.sleep(0.5)
 
-            return self.process_markdown_file(file_content, filename, user_email, type, progress_callback)
+            return self.process_markdown_file(file_content, filename, user_email, type, upload_id, progress_callback)
         except Exception as e:
             print(f"Error processing text file {filename}: {e}")
             return {

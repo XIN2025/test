@@ -34,8 +34,10 @@ class MongoVectorStoreService:
         )
         logger.info("MongoVectorStoreService initialized successfully with OpenAI embeddings.")
 
-    def add_document(self, content: str, user_email: str, filename: str, type: DocumentType, chunk_size: int = 1500, chunk_overlap: int = 150) -> str:
-        upload_id = str(uuid4())
+    def add_document(self, content: str, user_email: str, filename: str, type: DocumentType, upload_id: str = None, chunk_size: int = 1500, chunk_overlap: int = 150) -> int:
+        if upload_id is None:
+            upload_id = str(uuid4())
+        
         doc = Document(
             page_content=content,
             metadata={
@@ -56,7 +58,7 @@ class MongoVectorStoreService:
 
         if not chunks:
             logger.warning(f"Document '{filename}' produced no chunks to add.")
-            return upload_id
+            return 0
         
         try:
             # OpenAIEmbeddings can handle batching internally, but for clarity and control,
@@ -79,7 +81,7 @@ class MongoVectorStoreService:
             logger.error(f"❌ Failed to insert document chunks for '{filename}': {e}", exc_info=True)
             raise
 
-        return upload_id
+        return len(chunks)
     
     def get_all_documents_by_user_email(self, user_email: str) -> List[Dict]:
         try:
@@ -110,6 +112,18 @@ class MongoVectorStoreService:
             return []
 
         try:
+            # Check if documents exist for this user
+            doc_count = self.collection.count_documents({"user_email": user_email})
+            logger.info(f"🔍 [VECTOR SEARCH] Found {doc_count} total documents for user {user_email} in collection")
+            
+            if doc_count == 0:
+                logger.warning(f"⚠️ [VECTOR SEARCH] No documents found for user {user_email}")
+                return []
+            
+            # Check lab report count specifically
+            lab_report_count = self.collection.count_documents({"user_email": user_email, "type": "lab_report"})
+            logger.info(f"🔍 [VECTOR SEARCH] Found {lab_report_count} lab report chunks for user {user_email}")
+            
             search_filter = {"user_email": {"$eq": user_email}}
             logger.info(f"🔍 [VECTOR SEARCH] Stage 1: Constructed search filter: {json.dumps(search_filter)}")
 
@@ -128,16 +142,32 @@ class MongoVectorStoreService:
                 for i, d in enumerate(docs):
                     text = getattr(d, "page_content", "")
                     metadata = getattr(d, "metadata", {})
-                    if not text.strip(): continue
+                    if not text.strip(): 
+                        logger.warning(f"⚠️ [VECTOR SEARCH] Skipping document {i} - empty text content")
+                        continue
                     result = {"text": text, **metadata}
                     results.append(result)
+                    logger.info(f"✅ [VECTOR SEARCH] Doc {i}: type={metadata.get('type')}, filename={metadata.get('filename')}, text_len={len(text)}")
 
             logger.info(f"✅ [VECTOR SEARCH] Completed successfully, returning {len(results)} valid results.")
             return results
 
         except Exception as e:
             logger.error(f"❌ [VECTOR SEARCH] A critical error occurred during the search operation: {e}", exc_info=True)
-            return []
+            # Try a fallback search without vector similarity if the index isn't working
+            try:
+                logger.info(f"🔄 [VECTOR SEARCH] Attempting fallback: direct MongoDB text search")
+                # Fallback: just retrieve recent documents for this user
+                fallback_docs = list(self.collection.find(
+                    {"user_email": user_email},
+                    {"text": 1, "user_email": 1, "filename": 1, "type": 1, "upload_id": 1}
+                ).limit(top_k))
+                
+                logger.info(f"🔄 [VECTOR SEARCH] Fallback retrieved {len(fallback_docs)} documents")
+                return [{"text": doc.get("text", ""), **{k: v for k, v in doc.items() if k != "_id" and k != "text"}} for doc in fallback_docs]
+            except Exception as fallback_error:
+                logger.error(f"❌ [VECTOR SEARCH] Fallback search also failed: {fallback_error}")
+                return []
 
     def get_stats(self):
         return {"total_nodes": self.collection.count_documents({})}
