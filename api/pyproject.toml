@@ -37,6 +37,7 @@ dependencies = [
     "pypandoc>=1.15",
     "pytest-cov>=6.1.1",
     "pytest-asyncio>=1.2.0",
+    "websockets>=15.0",
 ]
 
 [project.optional-dependencies]

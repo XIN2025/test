@@ -35,6 +35,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_KEY", "test-openai-key")  # Load from OPENAI_
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-3.5-turbo")  # Updated to a valid model name
 LLM_TEMPERATURE = os.getenv("LLM_TEMPERATURE", "0.5")
 
+# Deepgram Configuration
+DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
+
 # File Upload Configuration
 MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # 10MB
 ALLOWED_EXTENSIONS = {".txt", ".pdf", ".docx", ".doc"}

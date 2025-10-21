@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException, Form
+from fastapi import APIRouter, HTTPException, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 import json
 import logging
 import asyncio
+import base64
 from typing import Optional
 
-from ...services.ai_services.chat_service import get_chat_service
-from ...services.ai_services.mongodb_vectorstore import get_vector_store
+from app.services.ai_services.chat_service import get_chat_service
+from app.services.ai_services.mongodb_vectorstore import get_vector_store
+from app.services.ai_services.transcription_service import get_transcription_service
 
 logger = logging.getLogger(__name__)
 
@@ -91,3 +93,150 @@ async def clear_vector_store():
     except Exception as e:
         logger.error(f"Error clearing vector store: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Clear error: {str(e)}")
+
+@chat_router.websocket("/transcribe-stream")
+async def transcribe_stream(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time audio transcription using Deepgram.
+    
+    Expected message format from client:
+    - {"type": "audio", "data": "base64_encoded_audio_chunk"}
+    - {"type": "stop"}
+    
+    Response format to client:
+    - {"is_final": false, "text": "interim transcription"}
+    - {"is_final": true, "text": "final transcription"}
+    """
+    try:
+        await websocket.accept()
+        print("🎤 [TRANSCRIBE] WebSocket connection accepted for transcription")
+        logger.info("🎤 WebSocket connection accepted for transcription")
+    except Exception as e:
+        print(f"❌ [TRANSCRIBE] Failed to accept WebSocket: {e}")
+        logger.error(f"❌ Failed to accept WebSocket: {e}", exc_info=True)
+        return
+    
+    transcription_service = None
+    
+    try:
+        print("🔧 [TRANSCRIBE] Creating transcription service instance...")
+        logger.info("🔧 Creating transcription service instance...")
+        transcription_service = get_transcription_service()
+        print("✅ [TRANSCRIBE] Transcription service instance created")
+        logger.info("✅ Transcription service instance created")
+        
+        # Callback for handling Deepgram transcription results
+        async def on_message(is_final: bool, text: str):
+            try:
+                # Send transcription to frontend
+                await websocket.send_json({
+                    "is_final": is_final,
+                    "text": text
+                })
+                
+                logger.info(f"📝 Transcription ({'final' if is_final else 'interim'}): {text[:50]}...")
+                    
+            except Exception as e:
+                logger.error(f"❌ Error processing Deepgram message: {e}", exc_info=True)
+        
+        # Callback for handling Deepgram errors
+        async def on_error(error: str):
+            logger.error(f"❌ Deepgram error: {error}")
+            try:
+                await websocket.send_json({
+                    "error": str(error),
+                    "is_final": False,
+                    "text": ""
+                })
+            except:
+                pass
+        
+        # Create Deepgram connection
+        print("🔌 [TRANSCRIBE] Attempting to create Deepgram connection...")
+        logger.info("🔌 Attempting to create Deepgram connection...")
+        connection_success = await transcription_service.create_connection(
+            on_message_callback=on_message,
+            on_error_callback=on_error
+        )
+        
+        if not connection_success:
+            print("❌ [TRANSCRIBE] Failed to establish Deepgram connection")
+            logger.error("❌ Failed to establish Deepgram connection")
+            await websocket.send_json({
+                "error": "Failed to connect to transcription service",
+                "is_final": False,
+                "text": ""
+            })
+            await websocket.close()
+            return
+        
+        print("✅ [TRANSCRIBE] Transcription service ready, waiting for audio chunks from frontend...")
+        logger.info("✅ Transcription service ready, waiting for audio chunks from frontend...")
+        
+        # Listen for audio data from frontend
+        audio_chunks_received = 0
+        while True:
+            try:
+                # Receive message from frontend
+                message = await websocket.receive_json()
+                print(f"📥 [TRANSCRIBE] Received message from frontend: type={message.get('type')}")
+                logger.info(f"📥 Received message from frontend: type={message.get('type')}")
+                
+                if message.get("type") == "stop":
+                    print(f"🛑 [TRANSCRIBE] Stop signal received after {audio_chunks_received} audio chunks")
+                    logger.info(f"🛑 Stop signal received after {audio_chunks_received} audio chunks")
+                    
+                    # Wait a bit for any final transcriptions from Deepgram
+                    print("⏳ [TRANSCRIBE] Waiting 2 seconds for final transcription from Deepgram...")
+                    await asyncio.sleep(2)
+                    print("✅ [TRANSCRIBE] Done waiting, closing connection")
+                    break
+                
+                if message.get("type") == "audio":
+                    # Decode base64 audio data
+                    audio_base64 = message.get("data", "")
+                    print(f"🔍 [TRANSCRIBE] Audio data length: {len(audio_base64) if audio_base64 else 0}")
+                    
+                    if audio_base64:
+                        audio_chunks_received += 1
+                        # Decode base64 to bytes
+                        audio_bytes = base64.b64decode(audio_base64)
+                        print(f"🎵 [TRANSCRIBE] Audio chunk {audio_chunks_received}: {len(audio_bytes)} bytes decoded, sending to Deepgram...")
+                        logger.info(f"🎵 Audio chunk {audio_chunks_received}: {len(audio_bytes)} bytes decoded, sending to Deepgram...")
+                        
+                        # Send audio to Deepgram
+                        await transcription_service.send_audio(audio_bytes)
+                        print(f"✅ [TRANSCRIBE] Audio chunk {audio_chunks_received} sent to Deepgram")
+                    else:
+                        print("⚠️ [TRANSCRIBE] Received empty audio data")
+                        logger.warning("⚠️ Received empty audio data")
+                        
+            except WebSocketDisconnect:
+                logger.info(f"🔌 WebSocket disconnected by client after {audio_chunks_received} chunks")
+                break
+            except Exception as e:
+                logger.error(f"❌ Error receiving/processing audio: {e}", exc_info=True)
+                break
+    
+    except Exception as e:
+        logger.error(f"❌ WebSocket error: {e}", exc_info=True)
+        try:
+            await websocket.send_json({
+                "error": str(e),
+                "is_final": False,
+                "text": ""
+            })
+        except:
+            pass
+    
+    finally:
+        # Clean up
+        if transcription_service:
+            await transcription_service.close_connection()
+        
+        try:
+            await websocket.close()
+        except:
+            pass
+        
+        logger.info("✅ Transcription WebSocket closed")
