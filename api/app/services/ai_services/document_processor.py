@@ -40,6 +40,15 @@ class DocumentProcessor:
         except Exception as e:
             print(f"Error converting DOCX: {e}")
             return None
+    
+    def convert_doc_bytes_to_markdown(self, doc_bytes: bytes) -> Optional[str]:
+        try:
+            output = pypandoc.convert_text(doc_bytes, 'md', format='doc')
+            print(f"Converted DOC bytes to markdown string")
+            return output
+        except Exception as e:
+            print(f"Error converting DOC: {e}")
+            return None
 
     def process_markdown_file(
         self,
@@ -143,6 +152,38 @@ class DocumentProcessor:
             return self.process_markdown_file(markdown, filename, user_email,type, progress_callback)
         except Exception as e:
             print(f"Error processing DOCX file {filename}: {e}")
+            return {
+                "success": False,
+                "filename": filename,
+                "error": str(e)
+            }
+    
+    def process_doc_file(
+        self,
+        file_content: bytes,
+        filename: str,
+        user_email: str,
+        type: DocumentType,
+        progress_callback: Optional[Callable] = None
+    ) -> Dict:
+        print(f"Processing DOC file: {filename} for user {user_email}")
+
+        try:
+            if progress_callback:
+                progress_callback(
+                    percentage=25,
+                    message="Converting DOC to markdown...",
+                    status="processing"
+                )
+                time.sleep(0.5)
+
+            markdown = self.convert_doc_bytes_to_markdown(file_content)
+            if not markdown:
+                raise ValueError("Failed to convert DOC to markdown.")
+
+            return self.process_markdown_file(markdown, filename, user_email, type, progress_callback)
+        except Exception as e:
+            print(f"Error processing DOC file {filename}: {e}")
             return {
                 "success": False,
                 "filename": filename,

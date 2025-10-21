@@ -28,7 +28,7 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "1234qazw0987")
 
 # Vector Store Configuration
 VECTOR_INDEX_PATH = os.getenv("VECTOR_INDEX_PATH", "faiss_index.bin")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
 # LLM Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_KEY", "test-openai-key")  # Load from OPENAI_KEY in .env

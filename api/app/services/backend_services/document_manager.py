@@ -23,12 +23,20 @@ class DocumentManager:
         print(f"Adding document {filename} for user {user_email} with upload ID {upload_id}")
         file_extension = filename.split('.')[-1].lower()
         self.progress_tracker.update_progress(upload_id, 20, "Starting document analysis...")
+        
+        result = None
+        
         if file_extension == 'pdf':
             result = self.processor.process_pdf_file(content, filename, user_email, type, progress_callback)
         elif file_extension == 'docx':
             result = self.processor.process_docx_file(content, filename, user_email, type, progress_callback)
+        elif file_extension == 'doc':
+            result = self.processor.process_doc_file(content, filename, user_email, type, progress_callback)
         elif file_extension == 'text' and isinstance(content, str):
             result = self.processor.process_text_file(content, filename, user_email, type, progress_callback)
+        else:
+            error_msg = f"Unsupported file type: .{file_extension}. Supported formats: pdf, docx, doc, text"
+            result = {"success": False, "error": error_msg}
         
         if not result.get("success"):
             progress_callback(
