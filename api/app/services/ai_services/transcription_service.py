@@ -28,7 +28,9 @@ class TranscriptionService:
                 "punctuate=true",
                 "interim_results=true",
                 "smart_format=true",
-                # Let Deepgram auto-detect the format (supports M4A/AAC containers)
+                "encoding=linear16",  # Raw PCM audio - TRUE streaming format
+                "sample_rate=16000",
+                "channels=1",
             ]
             
             print(f"🔗 [DEEPGRAM] Connecting to: {params}")
@@ -65,12 +67,15 @@ class TranscriptionService:
                     
                     if "channel" in data and data["channel"]["alternatives"]:
                         transcript = data["channel"]["alternatives"][0]["transcript"]
+                        confidence = data["channel"]["alternatives"][0].get("confidence", 0.0)
+                        is_final = data.get("is_final", False)
+                        speech_final = data.get("speech_final", False)
+                        
                         if transcript:
-                            is_final = data.get("is_final", False)
-                            print(f"📝 [DEEPGRAM] Got transcript ({'final' if is_final else 'interim'}): {transcript}")
+                            print(f"✅ [DEEPGRAM] Got transcript ({'final' if is_final else 'interim'}, conf={confidence:.2f}): '{transcript}'")
                             await on_message_callback(is_final, transcript)
                         else:
-                            print("🔇 [DEEPGRAM] Empty transcript (silence or no speech)")
+                            print(f"🔇 [DEEPGRAM] Empty transcript (silence, final={is_final}, speech_final={speech_final})")
                     elif "error" in data:
                         print(f"❌ [DEEPGRAM] Error from Deepgram: {data['error']}")
                         await on_error_callback(data["error"])
